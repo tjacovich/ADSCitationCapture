@@ -1,0 +1,4 @@
+git+https://github.com/adsabs/ADSPipelineUtils.git@master
+SQLAlchemy==1.1.11
+psycopg2==2.7.1
+alembic==0.9.3
