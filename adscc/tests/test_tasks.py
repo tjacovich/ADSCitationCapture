@@ -22,9 +22,9 @@ class TestWorkers(unittest.TestCase):
         tasks.app = self._app
 
 
-    def test_task_check_citation(self):
-        message = {}
-        tasks.task_check_citation(message)
+    def test_process_citation_changes(self):
+        #message = {}
+        #tasks.task_process_citation_changes(message)
         self.assertTrue(True)
 
     def test_task_output_results(self):

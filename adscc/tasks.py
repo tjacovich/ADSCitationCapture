@@ -12,41 +12,49 @@ logger = app.logger
 
 
 app.conf.CELERY_QUEUES = (
-    Queue('check-citation', app.exchange, routing_key='check-if-extract'),
+    Queue('process-citation-changes', app.exchange, routing_key='process-citation-changes'),
     Queue('output-results', app.exchange, routing_key='output-results'),
 )
 
 
 # ============================= TASKS ============================================= #
 
-@app.task(queue='check-citation')
-def task_check_citation(message):
+@app.task(queue='process-citation-changes')
+def task_process_citation_changes(citation_changes):
     """
-    Checks if the citation needs to be processed
+    Process citation changes
     """
-    logger.debug('Checking content: %s', message)
+    logger.debug('Checking content: %s', citation_changes)
+    for citation_change in citation_changes.changes:
+        if citation_change.doi != "":
+            # TODO: Fetch DOI metadata
+            pass
+        elif citation_change.pid != "":
+            # TODO: Fetch ASCL metadata?
+            pass
+        elif citation_change.url != "":
+            # TODO: Check is a valid and alive URL
+            pass
+        else:
+            raise Exception("Citation change should have doi, pid or url informed: %s", citation_change)
+
+        #logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+        ##task_output_results.delay(citation_change)
+        #task_output_results(citation_change)
 
 @app.task(queue='output-results')
-def task_output_results(msg):
+def task_output_results(citation_change):
     """
     This worker will forward results to the outside
     exchange (typically an ADSMasterPipeline) to be
     incorporated into the storage
 
-    :param msg: contains the bibliographic metadata
-
-            {'bibcode': '....',
-             'authors': [....],
-             'title': '.....',
-             .....
-            }
+    :param citation_change: contains citation changes
     :return: no return
     """
-    logger.debug('Will forward this record: %s', msg)
-    #rec = CitationUpdate(**msg)
-    rec = None
-    logger.debug("Calling 'app.forward_message' with '%s'", str(rec))
-    app.forward_message(rec)
+    logger.debug('Will forward this record: %s', citation_change)
+    logger.debug("Calling 'app.forward_message' with '%s'", str(citation_change))
+    app.forward_message(citation_change)
 
 
 if __name__ == '__main__':

@@ -1,0 +1,13 @@
+1799AnP.....2..154P	{"cited":"...................","citing":"1799AnP.....2..154P","doi":"10.1088/0022-3727/2/1/422","score":"0","source":"/proj/ads/references/resolved/AnP/0002/10.1002_andp.17990020203.xref.xml.result:6"}
+1800AnP.....3..113.	{"cited":"...................","citing":"1800AnP.....3..113.","doi":"10.1107/S0021889870005940","score":"0","source":"/proj/ads/references/resolved/AnP/0003/10.1002_andp.18000030112.xref.xml.result:3"}
+1005PhRvC..71c4906H	{"cited":"1976NuPhB.113..395J","citing":"1005PhRvC..71c4906H","doi":"10.1016/0550-3213(76)90133-4","score":"1","source":"/proj/ads/references/resolved/PhRvC/0071/1005PhRvC..71c4906H.ref.xml.result:17"}
+1910GeoRu...1....1D	{"cited":"1868AmJSA..46..240B","citing":"1910GeoRu...1....1D","doi":"10.2475/ajs.s2-46.137.240","score":"5","source":"/proj/ads/references/resolved/GeoRu/0001/10.1007_BF01801126.xref.xml.result:2"}
+1910GeoRu...1...36M	{"cited":"1898hra..conf...75V","citing":"1910GeoRu...1...36M","doi":"10.2475/ajs.s4-6.31.75","score":"5","source":"/proj/ads/references/resolved/GeoRu/0001/10.1007_BF01792941.xref.xml.result:10"}
+2015MNRAS.453..483K	{"cited":"hola...............","citing":"2015MNRAS.453..483K","pid":"ascl:1208.004","score":"1","source":"/proj/ads/references/resolved/MNRAS/0453/10.1093_mnras_stv1609.xref.xml.result:43"}
+2016AJ....152..123G	{"cited":"...................","citing":"2016AJ....152..123G","pid":"ascl:1208.0042","score":"0","source":"/proj/ads/references/resolved/AJ/0152/iss5.iop.xml.result:1431"}
+2011arXiv1112.0312C	{"cited":"2012ascl.soft03003C","citing":"2011arXiv1112.0312C","pid":"ascl:1203.003","score":"1","source":"/proj/ads/references/resolved/arXiv/1112/0312.raw.result:10"}
+2011arXiv1112.0312C	{"cited":"2012ascl.soft03003C","citing":"2011arXiv1112.0312C","pid":"ascl:1203.003","score":"1","source":"/proj/ads/references/resolved/AUTHOR/2012/0605.pairs.result:89"}
+2013arXiv1310.5912S	{"cited":"2012ascl.soft.8004S","citing":"2013arXiv1310.5912S","pid":"ascl:1208.8004","score":"5","source":"/proj/ads/references/resolved/arXiv/1310/5912.raw.result:50"}
+2015ApJ...815L..10L	{"cited":"2015ascl.soft...10J","citing":"2015ApJ...815L..10L","pid":"ascl:1510.010","score":"5","source":"/proj/ads/references/resolved/ApJL/0815/iss1.iop.xml.result:255"}
+2009arXiv0911.4940W	{"cited":"...................","citing":"2009arXiv0911.4940W","score":"0","source":"/proj/ads/references/resolved/arXiv/0911/4940.raw.result:12","url":"http://github.com/b45ch1/hpsc_hanoi_2009_walter"}
+2010arXiv1003.5943M	{"cited":"...................","citing":"2010arXiv1003.5943M","score":"0","source":"/proj/ads/references/resolved/arXiv/1003/5943.raw.result:71","url":"http://github.com/matsen/pplacer"}
