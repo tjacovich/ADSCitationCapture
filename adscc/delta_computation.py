@@ -370,8 +370,8 @@ class DeltaComputation():
                 {0}.{1}.status is null \
                 and {0}.{1}.new_id is not null \
                 and {0}.{1}.previous_id is not null \
-                and {0}.{1}.new_cited<>{0}.{1}.previous_cited \
-                and {0}.{1}.new_score<>{0}.{1}.previous_score;"
+                and ({0}.{1}.new_cited<>{0}.{1}.previous_cited \
+                    or {0}.{1}.new_score<>{0}.{1}.previous_score);"
         self._execute_sql(update_status_updated_sql, self.schema_name, self.joint_table_name)
 
         update_status_new_sql = \
