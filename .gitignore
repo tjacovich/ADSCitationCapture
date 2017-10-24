@@ -102,3 +102,4 @@ ENV/
 
 local_config.py
 logs/*
+python/*

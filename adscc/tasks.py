@@ -2,7 +2,10 @@ from __future__ import absolute_import, unicode_literals
 import os
 from kombu import Queue
 import adscc.app as app_module
-#from adsmsg import CitationUpdate
+import adscc.webhook as webhook
+import adscc.doi as doi
+import adscc.url as url
+import adsmsg
 
 # ============================= INITIALIZATION ==================================== #
 
@@ -26,17 +29,34 @@ def task_process_citation_changes(citation_changes):
     """
     logger.debug('Checking content: %s', citation_changes)
     for citation_change in citation_changes.changes:
-        if citation_change.doi != "":
-            # TODO: Fetch DOI metadata
-            pass
-        elif citation_change.pid != "":
-            # TODO: Fetch ASCL metadata?
-            pass
-        elif citation_change.url != "":
-            # TODO: Check is a valid and alive URL
-            pass
+        if citation_change.content_type == adsmsg.CitationChangeContentType.doi \
+            and citation_change.content not in ["", None]:
+            # Fetch DOI metadata (if HTTP request fails, an exception is raised
+            # and the task will be re-queued (see app.py and adsputils))
+            is_software = doi.is_software(app.conf['DOI_URL'], citation_change.content)
+            is_link_alive = True
+        elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
+            and citation_change.content not in ["", None]:
+            is_software = True
+            is_link_alive = url.is_alive(app.conf['ASCL_URL'] + citation_change.content)
+        elif citation_change.content_type == adsmsg.CitationChangeContentType.url \
+            and citation_change.content not in ["", None]:
+            is_software = False
+            is_link_alive = url.is_alive(citation_change.content)
         else:
-            raise Exception("Citation change should have doi, pid or url informed: %s", citation_change)
+            is_software = False
+            is_link_alive = False
+            logger.error("Citation change should have doi, pid or url informed: {}", citation_change)
+            #raise Exception("Citation change should have doi, pid or url informed: {}".format(citation_change))
+
+        emitted = False
+        if is_software and is_link_alive:
+            emitted = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change)
+
+        if emitted:
+            logger.debug("Emitted '%s'", citation_change)
+        else:
+            logger.debug("Not emitted '%s'", citation_change)
 
         #logger.debug("Calling 'task_output_results' with '%s'", citation_change)
         ##task_output_results.delay(citation_change)

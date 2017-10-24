@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, String, Text, Integer, func
+from sqlalchemy import Column, Boolean, DateTime, String, Text, Integer, func
 from sqlalchemy.dialects.postgresql import ENUM, JSON, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -18,17 +18,17 @@ class CitationChanges(Base):
     new_id = Column(Integer)
     new_citing = Column(Text())
     new_cited = Column(Text())
-    new_doi = Column(Text())
-    new_pid = Column(Text())
-    new_url = Column(Text())
-    new_data = Column(Text())
-    new_score = Column(Text())
+    new_doi = Column(Boolean())
+    new_pid = Column(Boolean())
+    new_url = Column(Boolean())
+    new_content = Column(Text())
+    new_resolved = Column(Boolean())
     previous_citing = Column(Text())
     previous_cited = Column(Text())
-    previous_doi = Column(Text())
-    previous_pid = Column(Text())
-    previous_url = Column(Text())
-    previous_data = Column(Text())
-    previous_score = Column(Text())
+    previous_doi = Column(Boolean())
+    previous_pid = Column(Boolean())
+    previous_url = Column(Boolean())
+    previous_content = Column(Text())
+    previous_resolved = Column(Boolean())
     status = Column(ENUM('NEW', 'DELETED', 'UPDATED', name='status_type'))
 
