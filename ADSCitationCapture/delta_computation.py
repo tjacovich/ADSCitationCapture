@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import CreateSchema
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import create_engine
-from adscc.models import RawCitation, CitationChanges
+from ADSCitationCapture.models import RawCitation, CitationChanges
 from adsputils import setup_logging
 import adsmsg
 

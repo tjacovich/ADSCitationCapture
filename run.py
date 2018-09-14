@@ -4,12 +4,12 @@ import sys
 import tempfile
 import argparse
 import json
-from adscc import tasks
+from ADSCitationCapture import tasks
 
 from adsputils import setup_logging
 logger = setup_logging('run.py')
 
-from adscc.delta_computation import DeltaComputation
+from ADSCitationCapture.delta_computation import DeltaComputation
 from adsputils import load_config
 config = load_config()
 

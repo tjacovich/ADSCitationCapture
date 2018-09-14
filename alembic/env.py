@@ -22,8 +22,8 @@ fileConfig(config.config_file_name)
 opath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if opath not in sys.path:
     sys.path.insert(0, opath)
-from adscc.tasks import app
-from adscc import models
+from ADSCitationCapture.tasks import app
+from ADSCitationCapture import models
 target_metadata = models.Base.metadata
 
 # other values from the config, defined by the needs of env.py,

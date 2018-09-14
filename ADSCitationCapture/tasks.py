@@ -1,10 +1,10 @@
 from __future__ import absolute_import, unicode_literals
 import os
 from kombu import Queue
-import adscc.app as app_module
-import adscc.webhook as webhook
-import adscc.doi as doi
-import adscc.url as url
+import ADSCitationCapture.app as app_module
+import ADSCitationCapture.webhook as webhook
+import ADSCitationCapture.doi as doi
+import ADSCitationCapture.url as url
 import adsmsg
 
 # ============================= INITIALIZATION ==================================== #

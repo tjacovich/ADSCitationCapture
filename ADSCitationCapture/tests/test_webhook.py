@@ -3,8 +3,8 @@ import httpretty
 import datetime
 import json
 import adsmsg
-from adscc import app, tasks
-from adscc import webhook
+from ADSCitationCapture import app, tasks
+from ADSCitationCapture import webhook
 
 now = datetime.datetime.now()
 

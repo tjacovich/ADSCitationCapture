@@ -2,12 +2,12 @@ import sys
 import os
 import json
 import adsmsg
-from adscc import webhook
-from adscc import doi
-from adscc import url
+from ADSCitationCapture import webhook
+from ADSCitationCapture import doi
+from ADSCitationCapture import url
 
 import unittest
-from adscc import app, tasks
+from ADSCitationCapture import app, tasks
 from mock import patch
 
 
@@ -105,7 +105,7 @@ class TestWorkers(unittest.TestCase):
 
 
     def test_task_output_results(self):
-        with patch('adscc.app.ADSCitationCaptureCelery.forward_message', return_value=None) as forward_message:
+        with patch('ADSCitationCapture.app.ADSCitationCaptureCelery.forward_message', return_value=None) as forward_message:
             msg = { }
             tasks.task_output_results(msg)
             self.assertTrue(forward_message.called)

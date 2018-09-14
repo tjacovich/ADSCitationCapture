@@ -1,7 +1,7 @@
 import unittest
 import httpretty
-from adscc import app, tasks
-from adscc import doi
+from ADSCitationCapture import app, tasks
+from ADSCitationCapture import doi
 
 
 class TestWorkers(unittest.TestCase):

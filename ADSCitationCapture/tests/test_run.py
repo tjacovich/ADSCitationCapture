@@ -3,7 +3,7 @@ import os
 import json
 
 import unittest
-from adscc import app, tasks
+from ADSCitationCapture import app, tasks
 from mock import patch
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import create_engine
@@ -37,7 +37,7 @@ class TestWorkers(unittest.TestCase):
 
 
     def test_run(self):
-        first_refids_filename = os.path.join(self.app.conf['PROJ_HOME'], "adscc/tests/data/sample-refids1.dat")
+        first_refids_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/sample-refids1.dat")
         os.utime(first_refids_filename, (0, 0)) # set the access and modified times to 19700101_000000
         expected_citation_change_from_first_file = [
                 '\n\x131005PhRvC..71c4906H\x12\x131990PhLB..243..432G"\x1c10.1016/0370-2693(90)91409-5(\x010\x02',
@@ -53,7 +53,7 @@ class TestWorkers(unittest.TestCase):
                 '\n\x132015MNRAS.453..483K\x12\x13...................\x18\x01"\rascl:1208.0040\x02',
                 '\n\x132016AJ....152..123G\x12\x13...................\x18\x01"\x0eascl:1208.00420\x02'
             ]
-        second_refids_filename = os.path.join(self.app.conf['PROJ_HOME'], "adscc/tests/data/sample-refids2.dat")
+        second_refids_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/sample-refids2.dat")
         os.utime(second_refids_filename, (24*60*60, 24*60*60)) # set the access and modified times to 19700102_000000
         expected_citation_change_from_second_file = [
                 '\n\x132015MNRAS.453..483K\x12\x13hola...............\x18\x01"\rascl:1208.004(\x010\x03',
