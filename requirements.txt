@@ -1,4 +1,4 @@
-git+https://github.com/adsabs/ADSPipelineUtils.git@v1.0.5
+git+https://github.com/adsabs/ADSPipelineUtils.git@v1.0.7
 psycopg2==2.7.1
 alembic==0.9.3
 sqlalchemy-postgres-copy==0.5.0
