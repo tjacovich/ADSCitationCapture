@@ -73,6 +73,7 @@ class TestWorkers(unittest.TestCase):
         return expected_json_body
 
     ### DOI
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_doi_new_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -95,6 +96,7 @@ class TestWorkers(unittest.TestCase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_doi_new_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -117,6 +119,7 @@ class TestWorkers(unittest.TestCase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_doi_updated_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -131,6 +134,7 @@ class TestWorkers(unittest.TestCase):
         self.assertFalse(emitted, "Non-agreed citation change was assigned to an agreed event")
 
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_doi_updated_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -152,6 +156,7 @@ class TestWorkers(unittest.TestCase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_doi_deleted_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -174,6 +179,7 @@ class TestWorkers(unittest.TestCase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_doi_deleted_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -197,6 +203,7 @@ class TestWorkers(unittest.TestCase):
         self._assert_request(request, expected_json_body)
 
     ### ASCL
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_ascl_new_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -219,6 +226,7 @@ class TestWorkers(unittest.TestCase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_ascl_new_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -241,6 +249,7 @@ class TestWorkers(unittest.TestCase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_ascl_updated_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -255,6 +264,7 @@ class TestWorkers(unittest.TestCase):
         self.assertFalse(emitted, "Non-agreed citation change was assigned to an agreed event")
 
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     #def test_ascl_updated_citation_with_bibcode(self):
         #citation_changes = adsmsg.CitationChanges()
         #citation_change = citation_changes.changes.add()
@@ -299,6 +309,7 @@ class TestWorkers(unittest.TestCase):
         #request = httpretty.last_request()
         #self._assert_request(request, expected_json_body)
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_ascl_deleted_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -324,6 +335,7 @@ class TestWorkers(unittest.TestCase):
 
 
     ### URL
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_url_new_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -346,6 +358,7 @@ class TestWorkers(unittest.TestCase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_url_new_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -368,6 +381,7 @@ class TestWorkers(unittest.TestCase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_url_updated_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -381,6 +395,7 @@ class TestWorkers(unittest.TestCase):
         self.assertFalse(emitted, "Non-agreed citation change was assigned to an agreed event")
 
 
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_url_updated_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
