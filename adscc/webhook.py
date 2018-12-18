@@ -2,39 +2,45 @@ import requests
 import json
 from adsputils import setup_logging
 import adsmsg
+import datetime
 
 logger = setup_logging(__name__)
 
 def _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url):
+    now = datetime.datetime.now()
     data = {
-        "event_type": event_type,
-        "payload": [
-            {
-                "source": {
-                    "identifier": {
-                        "id_url": "http://adsabs.harvard.edu/abs/",
-                        "id": source_bibcode,
-                        "id_schema": "bibcode"
-                    }
-                },
-                "relationship_type": {
-                    "scholix_relationship": "references",
-                    "original_relationship_name": original_relationship_name,
-                    "original_relationship_schema": "DataCite"
-                },
-                "target": {
-                    "type": {
-                        "name": "software"
-                    },
-                    "identifier": {
-                        "id_url": target_id_url,
-                        "id": target_id,
-                        "id_schema": target_id_schema
-                    }
-                },
-                "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+        "RelationshipType": {
+            "SubTypeSchema": "DataCite",
+            "SubType": "Cites",
+            "Name": "References"
+        },
+        "Source": {
+            "Identifier": {
+                "IDScheme": "ads",
+                "IDURL": "http://adsabs.harvard.edu/abs/{}".format(source_bibcode),
+                "ID": source_bibcode
+            },
+            "Type": {
+                "Name": "unknown"
             }
-        ],
+        },
+        "LicenseURL": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "Target": {
+            "Identifier": {
+                "IDScheme": target_id_schema,
+                "IDURL": target_id_url,
+                "ID": target_id
+            },
+            "Type": {
+                "Name": "software"
+            }
+        },
+        "LinkPublicationDate": now.strftime("%Y-%m-%d"),
+        "LinkProvider": [
+            {
+                "Name": "SAO/NASA Astrophysics Data System"
+            }
+        ]
     }
     return data
 
@@ -88,8 +94,9 @@ def _to_data(citation_change):
         return {}
 
 def emit_event(ads_webhook_url, ads_webhook_auth_token, citation_change, timeout=30):
-    data = _to_data(citation_change)
-    if data:
+    event_data = _to_data(citation_change)
+    if event_data:
+        data = [event_data]
         headers = {}
         headers["Content-Type"] = "application/json"
         headers["Authorization"] = "Bearer {}".format(ads_webhook_auth_token)

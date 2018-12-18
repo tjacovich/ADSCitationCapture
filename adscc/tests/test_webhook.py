@@ -1,10 +1,12 @@
 import unittest
 import httpretty
+import datetime
 import json
 import adsmsg
 from adscc import app, tasks
 from adscc import webhook
 
+now = datetime.datetime.now()
 
 class TestWorkers(unittest.TestCase):
 
@@ -34,34 +36,40 @@ class TestWorkers(unittest.TestCase):
 
 
     def _build_expected_json_body(self, event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_url):
-        expected_json_body = {
-                                u'event_type': event_type,
-                                u'payload': [
-                                    {
-                                        u'license_url': u'https://creativecommons.org/publicdomain/zero/1.0/',
-                                        u'relationship_type': {
-                                           u'original_relationship_name': original_relationship_name,
-                                           u'original_relationship_schema': u'DataCite',
-                                           u'scholix_relationship': u'references'
-                                        },
-                                        u'source': {
-                                             u'identifier': {
-                                                 u'id': source_bibcode,
-                                                 u'id_schema': u'bibcode',
-                                                 u'id_url': u'http://adsabs.harvard.edu/abs/'
-                                             }
-                                        },
-                                        u'target': {
-                                             u'identifier': {
-                                                 u'id': target_id,
-                                                 u'id_schema': target_id_schema,
-                                                 u'id_url': target_url
-                                             },
-                                            u'type': {u'name': u'software'}
-                                        }
-                                    }
-                                ]
-                            }
+        expected_json_body = [{
+            u'RelationshipType': {
+                u'SubTypeSchema': u'DataCite',
+                u'SubType': u'Cites',
+                u'Name': u'References'
+            },
+            u'Source': {
+                u'Identifier': {
+                    u'IDScheme': u'ads',
+                    u'IDURL': u'http://adsabs.harvard.edu/abs/{}'.format(source_bibcode),
+                    u'ID': source_bibcode
+                },
+                u'Type': {
+                    u'Name': u'unknown'
+                }
+            },
+            u'LicenseURL': u'https://creativecommons.org/publicdomain/zero/1.0/',
+            u'Target': {
+                u'Identifier': {
+                    u'IDScheme': target_id_schema,
+                    u'IDURL': target_url,
+                    u'ID': target_id
+                },
+                u'Type': {
+                    u'Name': u'software'
+                }
+            },
+            u'LinkPublicationDate': now.strftime("%Y-%m-%d"),
+            u'LinkProvider': [
+                {
+                    u'Name': u'SAO/NASA Astrophysics Data System'
+                }
+            ]
+        }]
         return expected_json_body
 
     ### DOI

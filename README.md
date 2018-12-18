@@ -1,3 +1,8 @@
+[![Waffle.io - Columns and their card count](https://badge.waffle.io/adsabs/ADSCitationCapture.svg?columns=all)](https://waffle.io/adsabs/ADSCitationCapture)
+[![Build Status](https://travis-ci.org/adsabs/ADSCitationCapture.svg?branch=master)](https://travis-ci.org/adsabs/ADSCitationCapture)
+[![Coverage Status](https://coveralls.io/repos/adsabs/ADSCitationCapture/badge.svg)](https://coveralls.io/r/adsabs/ADSCitationCapture)
+[![Code Climate](https://codeclimate.com/github/adsabs/ADSCitationCapture/badges/gpa.svg)](https://codeclimate.com/github/adsabs/ADSCitationCapture)
+[![Issue Count](https://codeclimate.com/github/adsabs/ADSCitationCapture/badges/issue_count.svg)](https://codeclimate.com/github/adsabs/ADSCitationCapture)
 # ADSCitationCapture
 
 Copy ```config.py``` to ```local_config.py``` and modify its content to reflect your system.

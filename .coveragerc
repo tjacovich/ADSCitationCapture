@@ -1,0 +1,4 @@
+[run]
+source = adscc
+omit = 
+    adscc/tests*
