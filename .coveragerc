@@ -1,4 +1,3 @@
 [run]
-source = adscc
-omit = 
-    adscc/tests*
+source = ADSCitationCapture
+omit = ADSCitationCapture/tests*
