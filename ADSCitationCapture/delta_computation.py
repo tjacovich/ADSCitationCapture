@@ -44,6 +44,7 @@ class DeltaComputation():
         self.offset = 0
         self.n_changes = 0
         self.force = force
+        self.last_modification_date = None
 
     def compute(self, input_refids_filename):
         """
@@ -56,7 +57,7 @@ class DeltaComputation():
         self.input_refids_filename = input_refids_filename
         self._setup_schemas()
         if self.force or self.joint_table_name not in Inspector.from_engine(self.engine).get_table_names(schema=self.schema_name):
-            self.logger.info("Importing '%s' into table '%s.%s'", self.input_refids_filename, self.schema_name, self.table_name)
+            self.logger.info("Importing '%s' into table '%s.%s' and expanding JSON into talbe '%s.%s'", self.input_refids_filename, self.schema_name, self.table_name, self.schema_name, self.expanded_table_name)
             try:
                 self._import()
             except:
@@ -66,7 +67,7 @@ class DeltaComputation():
                 self._execute_sql(drop_schema, self.schema_name)
                 raise
             if self.previous_schema_name is not None:
-                self.logger.info("Comparing table '%s.%s' with previous table '%s.%s'", self.schema_name, self.table_name, self.previous_schema_name, self.table_name)
+                self.logger.info("Comparing table '%s.%s' with previous table '%s.%s'", self.schema_name, self.expanded_table_name, self.previous_schema_name, self.expanded_table_name)
             self._join_tables()
             self._calculate_delta()
             self.logger.info("Created table '%s.%s'", self.schema_name, self.joint_table_name)
@@ -122,6 +123,7 @@ class DeltaComputation():
                     citation_change.content_type = adsmsg.CitationChangeContentType.url
                 citation_change.content = getattr(instance, prefix+"content")
                 citation_change.resolved = getattr(instance, prefix+"resolved")
+                citation_change.timestamp.FromDatetime(self.last_modification_date)
                 citation_change.status = getattr(adsmsg.Status, instance.status.lower())
             self.session.commit()
 
@@ -131,8 +133,8 @@ class DeltaComputation():
     def _setup_schemas(self):
         """Create new schema, identify previous and drop older ones"""
         # Schema name for current file
-        last_modification_date = datetime.fromtimestamp(os.stat(self.input_refids_filename).st_mtime)
-        self.schema_name = self.schema_prefix + last_modification_date.strftime("%Y%m%d_%H%M%S")
+        self.last_modification_date = datetime.utcfromtimestamp(os.stat(self.input_refids_filename).st_mtime)
+        self.schema_name = self.schema_prefix + self.last_modification_date.strftime("%Y%m%d_%H%M%S")
 
         # Create schema if needed
         existing_schema_names = Inspector.from_engine(self.engine).get_schema_names()
@@ -215,9 +217,10 @@ class DeltaComputation():
                         (payload->>'pid' is not null) as pid, \
                         (payload->>'url' is not null) as url, \
                         concat(payload->>'doi'::text, payload->>'pid'::text, payload->>'url'::text) as content, \
-                        (payload->>'score' is not null and payload->>'score' = '1') as resolved \
+                        (payload->>'score' is not null and payload->>'score' = '1') as resolved, \
+                        timestamp '{3}' AT TIME ZONE 'UTC' as timestamp \
                     from {0}.{1} order by citing asc, content asc, resolved desc;"
-        self._execute_sql(create_expanded_table, self.schema_name, self.table_name, self.expanded_table_name)
+        self._execute_sql(create_expanded_table, self.schema_name, self.table_name, self.expanded_table_name, self.last_modification_date.isoformat())
 
 
     def _delete_dups(self):
@@ -325,6 +328,7 @@ class DeltaComputation():
                             {0}.{1}.url as new_url, \
                             {0}.{1}.content as new_content, \
                             {0}.{1}.resolved as new_resolved, \
+                            {0}.{1}.timestamp as new_timestamp, \
                             cast(null as text) as previous_id, \
                             cast(null as text) as previous_citing, \
                             cast(null as text) as previous_cited, \
@@ -332,7 +336,8 @@ class DeltaComputation():
                             cast(null as boolean) as previous_pid, \
                             cast(null as boolean) as previous_url, \
                             cast(null as text) as previous_content, \
-                            cast(null as boolean) as previous_resolved \
+                            cast(null as boolean) as previous_resolved, \
+                            cast(null as timestamp) as previous_timestamp \
                         from {0}.{1};"
             self._execute_sql(joint_table_sql, self.schema_name, self.expanded_table_name, self.joint_table_name)
         else:
@@ -347,6 +352,7 @@ class DeltaComputation():
                             {0}.{2}.url as new_url, \
                             {0}.{2}.content as new_content, \
                             {0}.{2}.resolved as new_resolved, \
+                            {0}.{2}.timestamp as new_timestamp, \
                             {1}.{2}.id as previous_id, \
                             {1}.{2}.citing as previous_citing, \
                             {1}.{2}.cited as previous_cited, \
@@ -354,7 +360,8 @@ class DeltaComputation():
                             {1}.{2}.pid as previous_pid, \
                             {1}.{2}.url as previous_url, \
                             {1}.{2}.content as previous_content, \
-                            {1}.{2}.resolved as previous_resolved \
+                            {1}.{2}.resolved as previous_resolved, \
+                            {1}.{2}.timestamp as previous_timestamp \
                         from {1}.{2} full join {0}.{2} \
                         on \
                             {0}.{2}.citing={1}.{2}.citing \

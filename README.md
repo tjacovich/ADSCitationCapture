@@ -29,6 +29,9 @@ docker exec -it postgres bash -c "psql -c 'GRANT CREATE ON DATABASE citation_cap
 Copy `config.py` to `local_config.py` and modify its content to reflect your system. Then, prepare the database:
 
 ```
+virtualenv python/
+source python/bin/activate
+pip install -r requirements.txt
 alembic upgrade head
 ```
 
@@ -92,7 +95,7 @@ CELERY_ALWAYS_EAGER = True
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 ```
 
-Then you can run the diagnose or an ingestion:
+Then you can run the diagnose or an ingestion (input files can be found in ADS back-end servers `/proj/ads/references/links/refids_zenodo.dat`):
 
 ```
 python run.py --diagnose
@@ -156,5 +159,47 @@ alembic downgrade -1
 alembic upgrade +1
 ```
 
+## Logic
+
+The pipeline will process a ADS Classic generated file that contains the list of identified citations to DOI/PID/URLs:
+
+```
+python run.py -r refids_zenodo.dat.20180911
+```
+
+The input file can have duplicates such as:
+
+```
+2011arXiv1112.0312C	{"cited":"2012ascl.soft03003C","citing":"2011arXiv1112.0312C","pid":"ascl:1203.003","score":"1","source":"/proj/ads/references/resolved/arXiv/1112/0312.raw.result:10"}
+2011arXiv1112.0312C	{"cited":"2012ascl.soft03003C","citing":"2011arXiv1112.0312C","pid":"ascl:1203.003","score":"1","source":"/proj/ads/references/resolved/AUTHOR/2012/0605.pairs.result:89"}
+```
+
+This is because the same citation was identified in more than one source. Only one entry will be selected among these duplicates, prioritising a resolved one if there is any.
+
+In a synchronous fashion, a schema is created with a name based on the file last modification date (e.g., `citation_capture_20180919_113032`), the file is imported into a new table named `raw_citation` and the JSON fields are expanded in a second table named `expanded_raw_citation`.
+
+- `citation_changes`: Changes with respect to the last data ingestion (i.e., NEW, UPDATED, DELETED)
+    
+Next, a full join based on `citing` and `content` fields (which supposed to be unique) is executed between the previous and the new expanded tables but keeping only NEW, DELETED and UPDATED records. The resulting table is named `citation_changes`. Previous and new values are preserved in columns with names composed by a prefix `previous_` or `new_`. If there was no previous table, a new emulated joint table is built with null values for all the `previous_` columns.
+
+Every `citation change` is sent to an asynchronous task for processing and they all have a timestamp that matches the last modification date from the original imported file:
+
+- If the citation change type is NEW, metadata in datacite format will be fetched/parsed for citations to DOIs (only case that we care about given the current scope of the ASCLEPIAS project), and a new citation entry will be created in the `citation` table in the database.
+- If the citation change type is UPDATED, its respective entry in `citation` is updated.
+- If the citation change type is DELETED, its respective entry in `citation` is marked as status DELETED but the row is not actually deleted.
+
+Updates and deletion for records that do not exist in `citation` are logged and ignored, NEW for records that are already in `citation` are logged and ignored. The timestamp field is used to avoid race conditions (e.g., older messages are processed after newer messages), no changes will be made to the database if the timestamp of the `citation change` is older than the timestamp registered in the database. This implies that it is possible to check if all the citation changes have been processed by comparing these two numbers:
+
+```
+$ psql10 -h localhost citation_capture_pipeline citation_capture_pipeline
+select timestamp, count(*) from citation group by timestamp;
+select new_timestamp, count(*) from citation_capture_20180919_153032.citation_changes group by new_timestamp;
+```
+
+Other useful SQL requests:
+
+```
+select parsed_cited_metadata->'bibcode' AS bibcode, parsed_cited_metadata->'doctype' AS doctype, parsed_cited_metadata->'title' AS title, parsed_cited_metadata->'version' AS version, content from citation_target;
+```
 
 

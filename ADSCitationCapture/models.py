@@ -1,8 +1,20 @@
-from sqlalchemy import Column, Boolean, DateTime, String, Text, Integer, func
+from sqlalchemy import Column, Boolean, DateTime, String, Text, Integer, func, UniqueConstraint, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy import orm
 from sqlalchemy.dialects.postgresql import ENUM, JSON, JSONB
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy_continuum import make_versioned
+from adsputils import UTCDateTime, get_date
+
+# Must be called before defining all the models
+make_versioned(user_cls=None)
 
 Base = declarative_base()
+
+citation_content_type = ENUM('DOI', 'PID', 'URL', name='citation_content_type')
+citation_change_type = ENUM('NEW', 'DELETED', 'UPDATED', name='citation_change_type')
+citation_status_type = ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='citation_status_type')
+target_status_type = ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type')
 
 class RawCitation(Base):
     __tablename__ = 'raw_citation'
@@ -30,5 +42,38 @@ class CitationChanges(Base):
     previous_url = Column(Boolean())
     previous_content = Column(Text())
     previous_resolved = Column(Boolean())
-    status = Column(ENUM('NEW', 'DELETED', 'UPDATED', name='status_type'))
+    status = Column(citation_change_type)
 
+class Citation(Base):
+    __tablename__ = 'citation'
+    __table_args__ = (
+        UniqueConstraint('citing', 'content', name='citing_content_unique_constraint'),
+        {"schema": "public"}
+    )
+    __versioned__ = {}  # Must be added to all models that are to be versioned
+    id = Column(Integer, primary_key=True)
+    content = Column(Text(), ForeignKey('public.citation_target.content'))
+    citing = Column(Text())                         # Bibcode of the article that is citing a target
+    cited = Column(Text())                          # Probably not necessary to keep
+    resolved = Column(Boolean())                    # Probably not necessary to keep
+    timestamp = Column(UTCDateTime)
+    status = Column(citation_status_type)
+    created = Column(UTCDateTime, default=get_date)
+    updated = Column(UTCDateTime, onupdate=get_date)
+
+
+class CitationTarget(Base):
+    __tablename__ = 'citation_target'
+    __table_args__ = ({"schema": "public"})
+    __versioned__ = {}  # Must be added to all models that are to be versioned
+    content = Column(Text(), primary_key=True)      # DOI/URL/PID value: we assume it is unique independently what content type is
+    content_type = Column(citation_content_type)
+    raw_cited_metadata = Column(Text())
+    parsed_cited_metadata = Column(JSONB)
+    status = Column(target_status_type)
+    created = Column(UTCDateTime, default=get_date)
+    updated = Column(UTCDateTime, onupdate=get_date)
+    citations = relationship("Citation", primaryjoin="CitationTarget.content==Citation.content")
+
+# Must be called after defining all the models
+orm.configure_mappers()

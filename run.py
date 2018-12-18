@@ -23,7 +23,7 @@ def run(refids_filename, **kwargs):
     :return: no return
     """
 
-    logger.info('Loading records from: {0}'.format(refids_filename))
+    logger.info('Loading records from: %s', refids_filename)
 
     force = kwargs.get('force', False)
     diagnose = kwargs.get('diagnose', False)
@@ -42,7 +42,12 @@ def run(refids_filename, **kwargs):
         if diagnose:
             print("Calling 'task_process_citation_changes' with '{}'".format(str(changes)))
         logger.debug("Calling 'task_process_citation_changes' with '%s'", str(changes))
-        tasks.task_process_citation_changes.delay(changes)
+        try:
+            tasks.task_process_citation_changes.delay(changes)
+        except:
+            # In asynchronous mode, no exception is expected
+            # In synchronous mode (for debugging purposes), exception may happen (e.g., failures to fetch metadata)
+            logger.exception('Exception produced while processing citation changes')
     if diagnose:
         delta._execute_sql("drop schema {0} cascade;", delta.schema_name)
 

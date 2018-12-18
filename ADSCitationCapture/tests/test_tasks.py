@@ -5,41 +5,257 @@ import adsmsg
 from ADSCitationCapture import webhook
 from ADSCitationCapture import doi
 from ADSCitationCapture import url
+from ADSCitationCapture import db
+from .test_base import TestBase
 
 import unittest
 from ADSCitationCapture import app, tasks
 from mock import patch
 
 
-class TestWorkers(unittest.TestCase):
+class TestWorkers(TestBase):
 
     def setUp(self):
-        unittest.TestCase.setUp(self)
-        self.proj_home = tasks.app.conf['PROJ_HOME']
-        self._app = tasks.app
-        self.app = app.ADSCitationCaptureCelery('test', proj_home=self.proj_home, local_config={})
-        tasks.app = self.app # monkey-patch the app object
+        TestBase.setUp(self)
 
     def tearDown(self):
-        unittest.TestCase.tearDown(self)
-        self.app.close_app()
-        tasks.app = self._app
+        TestBase.tearDown(self)
 
-    def test_process_citation_changes_doi(self):
+    def _common_citation_changes_doi(self, status):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
         citation_change.citing = '2005CaJES..42.1987P'
         citation_change.cited = '...................'
-        citation_change.content = '10.1016/0277-3791'
+        citation_change.content = '10.5281/zenodo.11020'
         citation_change.content_type = adsmsg.CitationChangeContentType.doi
         citation_change.resolved = False
-        citation_change.status = adsmsg.Status.new
+        citation_change.status = status
+        return citation_changes
 
-        with patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-            with patch.object(doi, 'is_software', return_value=True) as doi_is_software:
+    def test_process_new_citation_changes_doi(self):
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
+        doi_id = "10.5281/zenodo.11020" # software
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(doi_is_software.called)
+                self.assertTrue(citation_already_exists.called)
+                self.assertTrue(get_citation_target_metadata.called)
+                self.assertTrue(fetch_metadata.called)
+                self.assertTrue(parse_metadata.called)
+                self.assertFalse(url_is_alive.called)
+                self.assertTrue(store_citation_target.called)
+                self.assertTrue(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
                 self.assertTrue(webhook_emit_event.called)
+
+    def test_process_updated_citation_changes_doi(self):
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.updated)
+        doi_id = "10.5281/zenodo.11020" # software
+        with patch.object(db, 'citation_already_exists', return_value=True) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertTrue(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
+                self.assertFalse(url_is_alive.called)
+                self.assertFalse(store_citation_target.called)
+                self.assertFalse(store_citation.called)
+                self.assertTrue(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertTrue(webhook_emit_event.called)
+
+    def test_process_deleted_citation_changes_doi(self):
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.deleted)
+        doi_id = "10.5281/zenodo.11020" # software
+        with patch.object(db, 'citation_already_exists', return_value=True) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertTrue(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
+                self.assertFalse(url_is_alive.called)
+                self.assertFalse(store_citation_target.called)
+                self.assertFalse(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertTrue(mark_citation_as_deleted.called)
+                self.assertTrue(webhook_emit_event.called)
+
+    def test_process_new_citation_changes_doi_when_target_exists_citation_doesnt(self):
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
+        doi_id = "10.5281/zenodo.11020" # software
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertTrue(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
+                self.assertFalse(url_is_alive.called)
+                self.assertFalse(store_citation_target.called)
+                self.assertTrue(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertTrue(webhook_emit_event.called)
+
+    def test_process_updated_citation_changes_doi_when_target_exists_citation_doesnt(self):
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.updated)
+        doi_id = "10.5281/zenodo.11020" # software
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertFalse(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
+                self.assertFalse(url_is_alive.called)
+                self.assertFalse(store_citation_target.called)
+                self.assertFalse(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertFalse(webhook_emit_event.called)
+
+    def test_process_deleted_citation_changes_doi_when_target_exists_citation_doesnt(self):
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.deleted)
+        doi_id = "10.5281/zenodo.11020" # software
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertFalse(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
+                self.assertFalse(url_is_alive.called)
+                self.assertFalse(store_citation_target.called)
+                self.assertFalse(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertFalse(webhook_emit_event.called)
+
+    def test_process_new_citation_changes_doi_when_target_and_citation_exist(self):
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
+        doi_id = "10.5281/zenodo.11020" # software
+        with patch.object(db, 'citation_already_exists', return_value=True) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertFalse(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
+                self.assertFalse(url_is_alive.called)
+                self.assertFalse(store_citation_target.called)
+                self.assertFalse(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertFalse(webhook_emit_event.called)
+
+    def test_process_updated_citation_changes_doi_when_citation_doesnt_exist(self):
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.updated)
+        doi_id = "10.5281/zenodo.11020" # software
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertFalse(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
+                self.assertFalse(url_is_alive.called)
+                self.assertFalse(store_citation_target.called)
+                self.assertFalse(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertFalse(webhook_emit_event.called)
+
+    def test_process_deleted_citation_changes_doi_when_citation_doesnt_exist(self):
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.deleted)
+        doi_id = "10.5281/zenodo.11020" # software
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertFalse(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
+                self.assertFalse(url_is_alive.called)
+                self.assertFalse(store_citation_target.called)
+                self.assertFalse(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertFalse(webhook_emit_event.called)
 
     def test_process_citation_changes_ascl(self):
         citation_changes = adsmsg.CitationChanges()
@@ -50,12 +266,27 @@ class TestWorkers(unittest.TestCase):
         citation_change.content_type = adsmsg.CitationChangeContentType.pid
         citation_change.resolved = False
         citation_change.status = adsmsg.Status.new
-
-        with patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-            with patch.object(url, 'is_alive', return_value=True) as url_is_alive:
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertTrue(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
                 self.assertTrue(url_is_alive.called)
-                self.assertTrue(webhook_emit_event.called)
+                self.assertFalse(store_citation_target.called)
+                self.assertFalse(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
 
     def test_process_citation_changes_url(self):
         citation_changes = adsmsg.CitationChanges()
@@ -66,12 +297,28 @@ class TestWorkers(unittest.TestCase):
         citation_change.content_type = adsmsg.CitationChangeContentType.url
         citation_change.resolved = False
         citation_change.status = adsmsg.Status.new
-
-        with patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-            with patch.object(url, 'is_alive', return_value=True) as url_is_alive:
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertTrue(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
                 self.assertTrue(url_is_alive.called)
+                self.assertFalse(store_citation_target.called)
+                self.assertFalse(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
+
 
     def test_process_citation_changes_malformed_url(self):
         citation_changes = adsmsg.CitationChanges()
@@ -82,10 +329,27 @@ class TestWorkers(unittest.TestCase):
         citation_change.content_type = adsmsg.CitationChangeContentType.url
         citation_change.resolved = False
         citation_change.status = adsmsg.Status.new
-
-        with patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-            tasks.task_process_citation_changes(citation_changes)
-            self.assertFalse(webhook_emit_event.called) # because URL does not match an URL pattern
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertTrue(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
+                self.assertTrue(url_is_alive.called)
+                self.assertFalse(store_citation_target.called)
+                self.assertFalse(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
 
     def test_process_citation_changes_empty(self):
         citation_changes = adsmsg.CitationChanges()
@@ -96,12 +360,76 @@ class TestWorkers(unittest.TestCase):
         citation_change.content_type = adsmsg.CitationChangeContentType.url
         citation_change.resolved = False
         citation_change.status = adsmsg.Status.new
-
-        with patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-            with patch.object(url, 'is_alive', return_value=True) as url_is_alive:
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertTrue(get_citation_target_metadata.called)
+                self.assertFalse(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
+                self.assertFalse(url_is_alive.called) # Not executed because content is empty
+                self.assertFalse(store_citation_target.called)
+                self.assertFalse(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
+
+    def test_process_new_citation_changes_doi_unparsable_http_response(self):
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value="Unparsable response") as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertTrue(get_citation_target_metadata.called)
+                self.assertTrue(fetch_metadata.called)
+                self.assertTrue(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
-                self.assertFalse(webhook_emit_event.called)
+                self.assertTrue(store_citation_target.called)
+                self.assertTrue(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
+
+
+    def test_process_new_citation_changes_doi_http_error(self):
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
+        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
+            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
+            patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
+            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
+            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
+            patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'update_citation', return_value=True) as update_citation, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                tasks.task_process_citation_changes(citation_changes)
+                self.assertTrue(citation_already_exists.called)
+                self.assertTrue(get_citation_target_metadata.called)
+                self.assertTrue(fetch_metadata.called)
+                self.assertFalse(parse_metadata.called)
+                self.assertFalse(url_is_alive.called)
+                self.assertTrue(store_citation_target.called)
+                self.assertTrue(store_citation.called)
+                self.assertFalse(update_citation.called)
+                self.assertFalse(mark_citation_as_deleted.called)
+                self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
 
 
     def test_task_output_results(self):

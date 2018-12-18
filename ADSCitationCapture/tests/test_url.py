@@ -2,21 +2,16 @@ import unittest
 import httpretty
 from ADSCitationCapture import app, tasks
 from ADSCitationCapture import url
+from .test_base import TestBase
 
 
-class TestWorkers(unittest.TestCase):
+class TestWorkers(TestBase):
 
     def setUp(self):
-        unittest.TestCase.setUp(self)
-        self.proj_home = tasks.app.conf['PROJ_HOME']
-        self._app = tasks.app
-        self.app = app.ADSCitationCaptureCelery('test', proj_home=self.proj_home, local_config={})
-        tasks.app = self.app # monkey-patch the app object
+        TestBase.setUp(self)
 
     def tearDown(self):
-        unittest.TestCase.tearDown(self)
-        self.app.close_app()
-        tasks.app = self._app
+        TestBase.tearDown(self)
 
     def test_url_is_alive(self):
         valid_url = "https://zenodo.org/record/1011088"
