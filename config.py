@@ -1,5 +1,7 @@
-LOGGING_LEVEL = 'WARN'
-LOG_STDOUT = False
+#LOGGING_LEVEL = 'WARN'
+#LOGGING_LEVEL = 'DEBUG'
+LOGGING_LEVEL = 'INFO'
+LOG_STDOUT = True
 
 CELERY_INCLUDE = 'ADSCitationCapture.tasks'
 CELERY_BROKER = 'pyamqp://user:password@localhost:5672/citation_capture_pipeline'
@@ -14,5 +16,7 @@ ADS_WEBHOOK_AUTH_TOKEN = "This is a secret!"
 DOI_URL = "https://doi.org/"
 ASCL_URL = "http://ascl.net/"
 
-CELERY_ALWAYS_EAGER = False
-CELERY_EAGER_PROPAGATES_EXCEPTIONS = False
+# When 'True', it converts all the asynchronous calls into synchronous,
+# thus no need for rabbitmq and allow debuggers to run if needed:
+CELERY_ALWAYS_EAGER = True
+CELERY_EAGER_PROPAGATES_EXCEPTIONS = True

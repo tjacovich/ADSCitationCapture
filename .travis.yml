@@ -12,7 +12,8 @@ install:
  - pip install -r requirements.txt
  - pip install -r dev-requirements.txt
 before_script:
-  - psql -c "CREATE DATABASE citation_capture_pipeline;" -U postgres
+ - psql -c "CREATE DATABASE citation_capture_pipeline;" -U postgres
+ - alembic upgrade head
 script:
  - py.test
 after_success:
