@@ -1,4 +1,5 @@
 from psycopg2 import IntegrityError
+from dateutil.tz import tzutc
 from ADSCitationCapture.models import Citation, CitationTarget
 
 def store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
@@ -34,7 +35,7 @@ def store_citation(app, citation_change, content_type, raw_metadata, parsed_meta
         citation.cited = citation_change.cited
         citation.content = citation_change.content
         citation.resolved = citation_change.resolved
-        citation.timestamp = citation_change.timestamp.ToDatetime()
+        citation.timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc())
         citation.status = status
         session.add(citation)
         try:
@@ -79,13 +80,14 @@ def update_citation(app, citation_change):
     updated = False
     with app.session_scope() as session:
         citation = session.query(Citation).with_for_update().filter_by(citing=citation_change.citing, content=citation_change.content).first()
-        if citation.timestamp < citation_change.timestamp.ToDatetime():
+        change_timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
+        if citation.timestamp < change_timestamp:
             if citation.status in ("REGISTERED", "DISCARDED"):
                 #citation.citing = citation_change.citing # This should not change
                 #citation.content = citation_change.content # This should not change
                 citation.cited = citation_change.cited
                 citation.resolved = citation_change.resolved
-                citation.timestamp = citation_change.timestamp.ToDatetime()
+                citation.timestamp = change_timestamp
                 session.add(citation)
                 session.commit()
                 updated = True
@@ -102,9 +104,10 @@ def mark_citation_as_deleted(app, citation_change):
     marked_as_deleted = False
     with app.session_scope() as session:
         citation = session.query(Citation).with_for_update().filter_by(citing=citation_change.citing, content=citation_change.content).first()
-        if citation.timestamp < citation_change.timestamp.ToDatetime():
+        change_timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
+        if citation.timestamp < change_timestamp:
             citation.status = "DELETED"
-            citation.timestamp = citation_change.timestamp.ToDatetime()
+            citation.timestamp = change_timestamp
             session.add(citation)
             session.commit()
             marked_as_deleted = True
