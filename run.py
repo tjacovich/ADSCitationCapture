@@ -43,7 +43,7 @@ def run(refids_filename, **kwargs):
             print("Calling 'task_process_citation_changes' with '{}'".format(str(changes)))
         logger.debug("Calling 'task_process_citation_changes' with '%s'", str(changes))
         try:
-            tasks.task_process_citation_changes.delay(changes)
+            tasks.task_process_citation_changes.delay(changes, force=force)
         except:
             # In asynchronous mode, no exception is expected
             # In synchronous mode (for debugging purposes), exception may happen (e.g., failures to fetch metadata)

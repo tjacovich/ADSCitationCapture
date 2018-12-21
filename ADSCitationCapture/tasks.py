@@ -27,7 +27,7 @@ app.conf.CELERY_QUEUES = (
 # ============================= TASKS ============================================= #
 
 @app.task(queue='process-new-citation')
-def task_process_new_citation(citation_change):
+def task_process_new_citation(citation_change, force=False):
     """
     """
     content_type = None
@@ -50,7 +50,7 @@ def task_process_new_citation(citation_change):
         if not citation_target_in_db:
             # Fetch DOI metadata (if HTTP request fails, an exception is raised
             # and the task will be re-queued (see app.py and adsputils))
-            raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], citation_change.content)
+            raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], citation_change.content)
             if raw_metadata:
                 parsed_metadata = doi.parse_metadata(raw_metadata)
                 if parsed_metadata.get('bibcode') not in (None, ""):
@@ -81,7 +81,7 @@ def task_process_new_citation(citation_change):
             task_emit_event.delay(citation_change, parsed_metadata)
 
 @app.task(queue='process-updated-citation')
-def task_process_updated_citation(citation_change):
+def task_process_updated_citation(citation_change, force=False):
     """
     Update citation record unless the record it is DELETED
     """
@@ -93,7 +93,7 @@ def task_process_updated_citation(citation_change):
         task_emit_event.delay(citation_change, parsed_metadata)
 
 @app.task(queue='process-deleted-citation')
-def task_process_deleted_citation(citation_change):
+def task_process_deleted_citation(citation_change, force=False):
     """
     Mark a citation as deleted
     """
@@ -122,7 +122,7 @@ def task_emit_event(citation_change, parsed_metadata):
         logger.debug("Not emitted '%s'", citation_change)
 
 @app.task(queue='process-citation-changes')
-def task_process_citation_changes(citation_changes):
+def task_process_citation_changes(citation_changes, force=False):
     """
     Process citation changes
     """
@@ -136,13 +136,13 @@ def task_process_citation_changes(citation_changes):
                 logger.error("Ignoring new citation (citting '%s', content '%s' and timestamp '%s') because it already exists in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             else:
                 logger.debug("Calling 'task_process_new_citation' with '%s'", citation_change)
-                task_process_new_citation.delay(citation_change)
+                task_process_new_citation.delay(citation_change, force=force)
         elif citation_change.status == adsmsg.Status.updated:
             if not citation_in_db:
                 logger.error("Ignoring updated citation (citting '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             else:
                 logger.debug("Calling 'task_process_updated_citation' with '%s'", citation_change)
-                task_process_updated_citation.delay(citation_change)
+                task_process_updated_citation.delay(citation_change, force=False)
         elif citation_change.status == adsmsg.Status.deleted:
             if not citation_in_db:
                 logger.error("Ignoring deleted citation (citting '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())

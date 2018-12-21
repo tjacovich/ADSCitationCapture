@@ -21,9 +21,9 @@ docker run -d -e POSTGRES_USER=root -e POSTGRES_PASSWORD=root -p 5432:5432 --nam
 The creation of a user and a database is also required:
 
 ```
-docker exec -it postgres bash -c "createuser --pwprompt citation_capture_pipeline" # pwd: citation_capture_pipeline
-docker exec -it postgres bash -c "createdb citation_capture_pipeline citation_capture_pipeline"
-docker exec -it postgres bash -c "psql -c 'GRANT CREATE ON DATABASE citation_capture_pipeline TO citation_capture_pipeline;'"
+docker exec -it postgres bash -c "psql -c \"CREATE ROLE citation_capture_pipeline WITH LOGIN PASSWORD 'citation_capture_pipeline';\""
+docker exec -it postgres bash -c "psql -c \"CREATE DATABASE citation_capture_pipeline;\""
+docker exec -it postgres bash -c "psql -c \"GRANT CREATE ON DATABASE citation_capture_pipeline TO citation_capture_pipeline;\""
 ```
 
 Copy `config.py` to `local_config.py` and modify its content to reflect your system. Then, prepare the database:
@@ -103,6 +103,17 @@ python run.py -r refids_zenodo.dat.20180911
 python run.py -r refids_zenodo.dat.20180914
 ```
 
+To dump the database to a file:
+
+```
+docker exec -it postgres bash -c "pg_dump --clean --if-exists --create  citation_capture_pipeline" > citation_capture_pipeline.sql
+```
+
+To restore the database from a file:
+
+```
+cat citation_capture_pipeline.sql | docker exec -i postgres bash -c "psql"
+```
 
 # Miscellaneous
 

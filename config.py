@@ -14,6 +14,7 @@ SQLALCHEMY_ECHO = False
 ADS_WEBHOOK_URL = "http://adsabs.harvard.edu/webhooks/trigger"
 ADS_WEBHOOK_AUTH_TOKEN = "This is a secret!"
 DOI_URL = "https://doi.org/"
+DATACITE_URL = "https://api.datacite.org/works/"
 ASCL_URL = "http://ascl.net/"
 
 # When 'True', it converts all the asynchronous calls into synchronous,
