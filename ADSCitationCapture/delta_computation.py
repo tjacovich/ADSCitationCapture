@@ -35,6 +35,7 @@ class DeltaComputation():
         #
         self.table_name = RawCitation.__tablename__
         self.expanded_table_name = "expanded_" + self.table_name
+        self.recreated_previous_expanded_table_name = "recreated_previous_expanded_" + self.table_name
         self.joint_table_name = CitationChanges.__tablename__
         self.schema_prefix = schema_prefix
         self.schema_name = None
@@ -131,7 +132,11 @@ class DeltaComputation():
             return citation_changes
 
     def _setup_schemas(self):
-        """Create new schema, identify previous and drop older ones"""
+        """
+        Create new schema, identify previous and drop older ones.
+        It also verifies if all the data from the previous schema has been
+        processed.
+        """
         # Schema name for current file
         self.last_modification_date = datetime.utcfromtimestamp(os.stat(self.input_refids_filename).st_mtime)
         self.schema_name = self.schema_prefix + self.last_modification_date.strftime("%Y%m%d_%H%M%S")
@@ -145,10 +150,27 @@ class DeltaComputation():
         else:
             filtered_existing_schema_names = filter(lambda x: x != self.schema_name, existing_schema_names)
 
+
         # Determine previous schema name if any
         if len(filtered_existing_schema_names) > 0:
             filtered_existing_schema_names.sort(reverse=True)
             self.previous_schema_name = filtered_existing_schema_names[0]
+
+            # Reconstruct expanded raw table from the official citation table
+            drop_reconstructed_previous_expanded_table = "DROP TABLE IF EXISTS {0}.{1};"
+            self._execute_sql(drop_reconstructed_previous_expanded_table, self.previous_schema_name, self.recreated_previous_expanded_table_name)
+            reconstruct_previous_expanded_table = "CREATE TABLE {0}.{1} AS SELECT id, citing, cited, CASE WHEN citation_target.content_type = 'DOI' THEN true ELSE false END AS doi, CASE WHEN citation_target.content_type = 'PID' THEN true ELSE false END AS pid, CASE WHEN citation_target.content_type = 'URL' THEN true ELSE false END AS url, citation.content, citation.resolved, citation.timestamp FROM citation INNER JOIN citation_target ON citation.content = citation_target.content WHERE citation.status != 'DELETED';"
+            self._execute_sql(reconstruct_previous_expanded_table, self.previous_schema_name, self.recreated_previous_expanded_table_name)
+
+            # Compared reconstruction with the previous expanded raw table
+            # - Do not compare cited field because it is only accepted if score is 1 (resolved)
+            discrepancies = "SELECT a.citing, a.content FROM {0}.{1} a FULL OUTER JOIN {0}.{2} b USING (citing, doi, pid, url, content, resolved, timestamp) WHERE a.id IS NULL OR b.id IS NULL ;"
+            missing = self._execute_sql(discrepancies, self.previous_schema_name, self.expanded_table_name, self.recreated_previous_expanded_table_name).fetchall()
+            if missing:
+                missing_str = ",\n".join(["citing: '{}', content: '{}'".format(m[0], m[1]) for m in missing])
+                error_msg = "Some previous records were not processed yet ({} in total) probably due to slow processing or to HTTP errors (e.g., 502/503) fetching metadata: {}".format(len(missing), missing_str)
+                #logging.error(error_msg)
+                raise Exception(error_msg)
 
             # Verify the data that is going to be imported is newer than the data already imported
             schema_date_fingerprint = int(self.schema_name.replace(self.schema_prefix, "").replace("_", ""))
