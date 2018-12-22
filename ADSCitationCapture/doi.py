@@ -26,7 +26,9 @@ def _fetch_metadata(url, headers={}, timeout=30):
         logger.exception("HTTP request failed: %s", url)
         try_later = True
     else:
-        if r.status_code == 406:
+        if r.status_code == 400:
+            logger.error("Bad request due to bad DOI or DOI not activated yet for: %s", url)
+        elif r.status_code == 406:
             logger.error("No answer with the requested format (%s) for: %s", headers.get("Accept", "None"), url)
         elif r.status_code == 404:
             logger.error("Entry not found (404 HTTP error code): %s", url)
