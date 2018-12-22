@@ -113,6 +113,7 @@ To restore the database from a file:
 
 ```
 cat citation_capture_pipeline.sql | docker exec -i postgres bash -c "psql"
+docker exec -it postgres bash -c "psql -c \"GRANT CREATE ON DATABASE citation_capture_pipeline TO citation_capture_pipeline;\""
 ```
 
 # Miscellaneous
@@ -202,15 +203,62 @@ Every `citation change` is sent to an asynchronous task for processing and they 
 Updates and deletion for records that do not exist in `citation` are logged and ignored, NEW for records that are already in `citation` are logged and ignored. The timestamp field is used to avoid race conditions (e.g., older messages are processed after newer messages), no changes will be made to the database if the timestamp of the `citation change` is older than the timestamp registered in the database. This implies that it is possible to check if all the citation changes have been processed by comparing these two numbers:
 
 ```
-$ psql10 -h localhost citation_capture_pipeline citation_capture_pipeline
-select timestamp, count(*) from citation group by timestamp;
-select new_timestamp, count(*) from citation_capture_20180919_153032.citation_changes group by new_timestamp;
+docker exec -it postgres bash -c "psql citation_capture_pipeline"
+SELECT timestamp, count(*) FROM citation GROUP BY timestamp;
+SELECT new_timestamp, count(*) FROM citation_capture_20180919_153032.citation_changes GROUP BY new_timestamp;
 ```
+
 
 Other useful SQL requests:
 
+- List schemas and tables where imports happen:
+    
 ```
-select parsed_cited_metadata->'bibcode' AS bibcode, parsed_cited_metadata->'doctype' AS doctype, parsed_cited_metadata->'title' AS title, parsed_cited_metadata->'version' AS version, content from citation_target;
+\dt c*.*
+```
+
+- List tables with the processed data:
+    
+```
+\dt
+\d+ citation_target
+```
+
+- Show description of a table
+    
+```
+\d+ citation_target
+```
+
+- Access JSONB fields
+
+```
+SELECT parsed_cited_metadata->'bibcode' AS bibcode, parsed_cited_metadata->'doctype' AS doctype, parsed_cited_metadata->'title' AS title, parsed_cited_metadata->'version' AS version, content FROM citation_target;
+```
+
+- Top registered citations
+
+```
+SELECT citation_target.parsed_cited_metadata->'title' AS title, citation_target.parsed_cited_metadata->'version' AS version, g.count FROM (SELECT content, count(*) FROM citation WHERE status = 'REGISTERED' GROUP BY content) AS g INNER JOIN citation_target USING (content) ORDER BY g.count DESC;
+```
+ 
+- More frequent updated citations
+
+```
+SELECT citing, content, count(*) FROM citation_version GROUP BY citing, content ORDER BY count(*) DESC HAVING count(*) > 1 ;
+```
+
+- Status statistics
+
+```
+SELECT status, count(*) FROM citation_target GROUP BY status;
+SELECT status, count(*) FROM citation GROUP BY status;
+```
+
+- Reconstruct expanded raw data
+
+```
+SELECT id, citing, cited, CASE WHEN citation_target.content_type = 'DOI' THEN true ELSE false END AS doi, CASE WHEN citation_target.content_type = 'PID' THEN true ELSE false END AS pid, CASE WHEN citation_target.content_type = 'URL' THEN true ELSE false END AS url, citation.content, citation.resolved, citation.timestamp FROM citation INNER JOIN citation_target ON citation.content = citation_target.content WHERE citation.status != 'DELETED';
 ```
 
 
