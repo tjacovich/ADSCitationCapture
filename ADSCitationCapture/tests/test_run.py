@@ -3,7 +3,7 @@ import os
 import json
 
 import unittest
-from ADSCitationCapture import app, tasks
+from ADSCitationCapture import app, tasks, delta_computation
 from .test_base import TestBase
 from mock import patch
 from sqlalchemy.engine.reflection import Inspector
@@ -58,9 +58,11 @@ class TestWorkers(TestBase):
 
         # Process first file
         i = 0
-        with patch.object(tasks.task_process_citation_changes, 'delay', return_value=None) as task_process_citation_changes:
+        with patch.object(tasks.task_process_citation_changes, 'delay', return_value=None) as task_process_citation_changes, \
+                patch.object(delta_computation.DeltaComputation, '_find_not_processed_records_from_previous_run', return_value=[]) as find_not_processed_records_from_previous_run:
             self.run(first_refids_filename, schema_prefix=self.schema_prefix)
             self.assertTrue(task_process_citation_changes.called)
+            self.assertFalse(find_not_processed_records_from_previous_run.called)
 
             for args in task_process_citation_changes.call_args_list:
                 citation_changes = args[0][0]
@@ -71,9 +73,11 @@ class TestWorkers(TestBase):
 
         # Process second file
         i = 0
-        with patch.object(tasks.task_process_citation_changes, 'delay', return_value=None) as task_process_citation_changes:
+        with patch.object(tasks.task_process_citation_changes, 'delay', return_value=None) as task_process_citation_changes, \
+                patch.object(delta_computation.DeltaComputation, '_find_not_processed_records_from_previous_run', return_value=[]) as find_not_processed_records_from_previous_run:
             self.run(second_refids_filename, schema_prefix=self.schema_prefix)
             self.assertTrue(task_process_citation_changes.called)
+            self.assertTrue(find_not_processed_records_from_previous_run.called)
 
             for args in task_process_citation_changes.call_args_list:
                 citation_changes = args[0][0]

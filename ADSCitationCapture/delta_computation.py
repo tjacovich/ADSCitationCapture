@@ -156,33 +156,50 @@ class DeltaComputation():
             filtered_existing_schema_names.sort(reverse=True)
             self.previous_schema_name = filtered_existing_schema_names[0]
 
-            # Reconstruct expanded raw table from the official citation table
-            drop_reconstructed_previous_expanded_table = "DROP TABLE IF EXISTS {0}.{1};"
-            self._execute_sql(drop_reconstructed_previous_expanded_table, self.previous_schema_name, self.recreated_previous_expanded_table_name)
-            reconstruct_previous_expanded_table = "CREATE TABLE {0}.{1} AS SELECT id, citing, cited, CASE WHEN citation_target.content_type = 'DOI' THEN true ELSE false END AS doi, CASE WHEN citation_target.content_type = 'PID' THEN true ELSE false END AS pid, CASE WHEN citation_target.content_type = 'URL' THEN true ELSE false END AS url, citation.content, citation.resolved, citation.timestamp FROM citation INNER JOIN citation_target ON citation.content = citation_target.content WHERE citation.status != 'DELETED';"
-            self._execute_sql(reconstruct_previous_expanded_table, self.previous_schema_name, self.recreated_previous_expanded_table_name)
-
-            # Compared reconstruction with the previous expanded raw table
-            # - Do not compare cited field because it is only accepted if score is 1 (resolved)
-            discrepancies = "SELECT a.citing, a.content FROM {0}.{1} a FULL OUTER JOIN {0}.{2} b USING (citing, doi, pid, url, content, resolved, timestamp) WHERE a.id IS NULL OR b.id IS NULL ;"
-            missing = self._execute_sql(discrepancies, self.previous_schema_name, self.expanded_table_name, self.recreated_previous_expanded_table_name).fetchall()
-            if missing:
-                missing_str = ",\n".join(["citing: '{}', content: '{}'".format(m[0], m[1]) for m in missing])
-                error_msg = "Some previous records were not processed yet ({} in total) probably due to slow processing or to HTTP errors (e.g., 502/503) fetching metadata: {}".format(len(missing), missing_str)
-                #logging.error(error_msg)
-                raise Exception(error_msg)
-
             # Verify the data that is going to be imported is newer than the data already imported
             schema_date_fingerprint = int(self.schema_name.replace(self.schema_prefix, "").replace("_", ""))
             previous_schema_date_fingerprint = int(self.previous_schema_name.replace(self.schema_prefix, "").replace("_", ""))
             if previous_schema_date_fingerprint >= schema_date_fingerprint:
-                raise Exception("The data to be imported has a date fingerprint '{0}' older than the data already in the DB '{1}'".format(self.schema_name, self.previous_schema_name))
+                raise Exception("The data to be imported has a date fingerprint '{0}' equal or older than the data already in the DB '{1}'".format(self.schema_name, self.previous_schema_name))
+
+            # Verify if all the data from the previous schema has been processed.
+            self._reconstruct_previous_expanded_raw_data()
+            missing = self._find_not_processed_records_from_previous_run()
+            if missing:
+                missing_str = ",\n".join(["citing: '{}', content: '{}'".format(m[0], m[1]) for m in missing])
+                raise Exception("Some previous records were not processed yet ({} in total) probably due to slow processing or to HTTP errors (e.g., 502/503) fetching metadata: {}".format(len(missing), missing_str))
 
             # Drop old schemas (just keep last 3)
             if len(filtered_existing_schema_names) > 2:
                 for old_schema_name in filtered_existing_schema_names[2:]:
                     drop_schema = "drop schema {0} cascade;"
                     self._execute_sql(drop_schema, old_schema_name)
+
+    def _reconstruct_previous_expanded_raw_data(self):
+        """
+        Reconstructs previous expanded raw data from the table where all the
+        processed records are stored.
+        """
+        # Reconstruct expanded raw table from the official citation table
+        drop_reconstructed_previous_expanded_table = "DROP TABLE IF EXISTS {0}.{1};"
+        self._execute_sql(drop_reconstructed_previous_expanded_table, self.previous_schema_name, self.recreated_previous_expanded_table_name)
+        reconstruct_previous_expanded_table = "CREATE TABLE {0}.{1} AS SELECT id, citing, cited, CASE WHEN citation_target.content_type = 'DOI' THEN true ELSE false END AS doi, CASE WHEN citation_target.content_type = 'PID' THEN true ELSE false END AS pid, CASE WHEN citation_target.content_type = 'URL' THEN true ELSE false END AS url, citation.content, citation.resolved, citation.timestamp FROM citation INNER JOIN citation_target ON citation.content = citation_target.content WHERE citation.status != 'DELETED';"
+        self._execute_sql(reconstruct_previous_expanded_table, self.previous_schema_name, self.recreated_previous_expanded_table_name)
+
+    def _find_not_processed_records_from_previous_run(self):
+        """
+        To be run after `_reconstruct_previous_expanded_raw_data`. It compares
+        the reconstructed previous expanded raw data with the real previous
+        expanded raw data. If all the records were processed, these twot tables
+        should be identical.
+        It returns a list of tuples, each tuple has two elements (citing and content)
+        for all the missing citations.
+        """
+        # Compared reconstruction with the previous expanded raw table
+        # - Do not compare cited field because it is only accepted if score is 1 (resolved)
+        discrepancies = "SELECT a.citing, a.content FROM {0}.{1} a FULL OUTER JOIN {0}.{2} b USING (citing, doi, pid, url, content, resolved, timestamp) WHERE a.id IS NULL OR b.id IS NULL ;"
+        missing = self._execute_sql(discrepancies, self.previous_schema_name, self.expanded_table_name, self.recreated_previous_expanded_table_name).fetchall()
+        return missing
 
     def _import(self):
         """Import from file, expand its JSON column and delete duplicates"""
