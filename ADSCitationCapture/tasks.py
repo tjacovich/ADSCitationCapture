@@ -1,11 +1,13 @@
 from __future__ import absolute_import, unicode_literals
 import os
 from kombu import Queue
+from google.protobuf.json_format import MessageToDict
 import ADSCitationCapture.app as app_module
 import ADSCitationCapture.webhook as webhook
 import ADSCitationCapture.doi as doi
 import ADSCitationCapture.url as url
 import ADSCitationCapture.db as db
+import ADSCitationCapture.forward as forward
 import adsmsg
 
 # ============================= INITIALIZATION ==================================== #
@@ -76,7 +78,11 @@ def task_process_new_citation(citation_change, force=False):
             # Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
-        if stored:
+        if stored and status == "REGISTERED":
+            if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+                citations = db.get_citations(app, citation_change)
+                logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+                task_output_results.delay(citation_change, parsed_metadata, citations)
             logger.debug("Calling 'task_emit_event' with '%s'", citation_change)
             task_emit_event.delay(citation_change, parsed_metadata)
 
@@ -89,6 +95,10 @@ def task_process_updated_citation(citation_change, force=False):
     metadata = db.get_citation_target_metadata(app, citation_change)
     parsed_metadata = metadata.get('parsed', None)
     if updated:
+        if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+            citations = db.get_citations(app, citation_change)
+            logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+            task_output_results.delay(citation_change, parsed_metadata, citations)
         logger.debug("Calling 'task_emit_event' with '%s'", citation_change)
         task_emit_event.delay(citation_change, parsed_metadata)
 
@@ -101,25 +111,29 @@ def task_process_deleted_citation(citation_change, force=False):
     metadata = db.get_citation_target_metadata(app, citation_change)
     parsed_metadata = metadata.get('parsed', None)
     if marked_as_deleted:
+        if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+            citations = db.get_citations(app, citation_change)
+            logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+            task_output_results.delay(citation_change, parsed_metadata, citations)
         logger.debug("Calling 'task_emit_event' with '%s'", citation_change)
         task_emit_event.delay(citation_change, parsed_metadata)
 
-
-@app.task(queue='process-emit-event')
-def task_emit_event(citation_change, parsed_metadata):
+def _protobuf_to_adsmsg_citation_change(pure_protobuf):
     """
-    Emit event
+    Transforms pure citation_change protobuf to adsmsg.CitationChange,
+    which can be safely sent via Celery/RabbitMQ.
     """
-    emitted = False
-    is_link_alive = parsed_metadata and parsed_metadata.get("link_alive", False)
-    is_software = parsed_metadata and parsed_metadata.get("doctype", "").lower() == "software"
-    if is_software and is_link_alive:
-        emitted = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change)
-
-    if emitted:
-        logger.debug("Emitted '%s'", citation_change)
+    tmp = MessageToDict(pure_protobuf, preserving_proto_field_name=True)
+    if 'content_type' in tmp:
+        # Convert content_type from string to value
+        tmp['content_type'] = getattr(adsmsg.CitationChangeContentType, tmp['content_type'])
     else:
-        logger.debug("Not emitted '%s'", citation_change)
+        tmp['content_type'] = 0 # default: adsmsg.CitationChangeContentType.doi
+    if 'timestamp' in tmp:
+        # Ignore original protobuf timestamps since that value is set when the
+        # protobuf is created
+        del tmp['timestamp']
+    return adsmsg.CitationChange(**tmp)
 
 @app.task(queue='process-citation-changes')
 def task_process_citation_changes(citation_changes, force=False):
@@ -128,6 +142,7 @@ def task_process_citation_changes(citation_changes, force=False):
     """
     logger.debug('Checking content: %s', citation_changes)
     for citation_change in citation_changes.changes:
+        citation_change = _protobuf_to_adsmsg_citation_change(citation_change)
         # Check: Is this citation already stored in the DB?
         citation_in_db = db.citation_already_exists(app, citation_change)
 
@@ -151,12 +166,26 @@ def task_process_citation_changes(citation_changes, force=False):
                 task_process_deleted_citation.delay(citation_change)
 
 
-        #logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-        ##task_output_results.delay(citation_change)
-        #task_output_results(citation_change)
+@app.task(queue='process-emit-event')
+def task_emit_event(citation_change, parsed_metadata):
+    """
+    Emit event
+    """
+    emitted = False
+    is_link_alive = parsed_metadata and parsed_metadata.get("link_alive", False)
+    is_software = parsed_metadata and parsed_metadata.get("doctype", "").lower() == "software"
+    if is_software and is_link_alive:
+        emitted = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change)
+        #emitted = True
+
+    if emitted:
+        logger.debug("Emitted '%s'", citation_change)
+    else:
+        logger.debug("Not emitted '%s'", citation_change)
+
 
 @app.task(queue='output-results')
-def task_output_results(citation_change):
+def task_output_results(citation_change, parsed_metadata, citations):
     """
     This worker will forward results to the outside
     exchange (typically an ADSMasterPipeline) to be
@@ -165,9 +194,13 @@ def task_output_results(citation_change):
     :param citation_change: contains citation changes
     :return: no return
     """
-    logger.debug('Will forward this record: %s', citation_change)
-    logger.debug("Calling 'app.forward_message' with '%s'", str(citation_change))
-    app.forward_message(citation_change)
+    record, nonbib_record = forward.build_record(app, citation_change, parsed_metadata, citations)
+    logger.debug('Will forward this record: %s', record)
+    logger.debug("Calling 'app.forward_message' with '%s'", str(record))
+    app.forward_message(record)
+    logger.debug('Will forward this record: %s', nonbib_record)
+    logger.debug("Calling 'app.forward_message' with '%s'", str(nonbib_record))
+    app.forward_message(nonbib_record)
 
 
 

@@ -1,6 +1,7 @@
 from psycopg2 import IntegrityError
 from dateutil.tz import tzutc
 from ADSCitationCapture.models import Citation, CitationTarget
+from adsmsg import CitationChange
 
 def store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
     """
@@ -61,6 +62,29 @@ def get_citation_target_metadata(app, citation_change):
             metadata['raw'] = citation_target.raw_cited_metadata
             metadata['parsed'] = citation_target.parsed_cited_metadata
     return metadata
+
+def get_citations_by_bibcode(app, bibcode):
+    """
+    Transform bibcode into content and get all the citations by content.
+    It will ignore DELETED and DISCARDED citations and citations targets.
+    """
+    citations = []
+    with app.session_scope() as session:
+        #bibcode = "2015zndo.....14475J"
+        citation_target = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata['bibcode'].astext == bibcode).filter_by(status="REGISTERED").first()
+        if citation_target:
+            dummy_citation_change = CitationChange(content=citation_target.content)
+            citations = get_citations(app, dummy_citation_change)
+    return citations
+
+def get_citations(app, citation_change):
+    """
+    Return all the citations to a given content.
+    It will ignore DELETED and DISCARDED citations.
+    """
+    with app.session_scope() as session:
+        citation_bibcodes = [r.citing for r in session.query(Citation).filter_by(content=citation_change.content, status="REGISTERED").all()]
+    return citation_bibcodes
 
 
 def citation_already_exists(app, citation_change):

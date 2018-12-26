@@ -32,6 +32,7 @@ Copy `config.py` to `local_config.py` and modify its content to reflect your sys
 virtualenv python/
 source python/bin/activate
 pip install -r requirements.txt
+pip install -r dev-requirements.txt
 alembic upgrade head
 ```
 
@@ -57,11 +58,89 @@ The creation of virtual hosts is also required:
 ```
 docker exec -it rabbitmq bash -c "rabbitmqctl add_vhost citation_capture_pipeline"
 docker exec -it rabbitmq bash -c "rabbitmqctl set_permissions -p citation_capture_pipeline guest '.*' '.*' '.*'"
+```
+
+Copy `config.py` to `local_config.py` and modify its content to reflect your system. The RabbitMQ web interface can be found at [http://localhost:15672](http://localhost:15672)
+
+### Master Pipeline
+
+Prepare the database:
+
+```
+docker exec -it postgres bash -c "psql -c \"CREATE ROLE master_pipeline WITH LOGIN PASSWORD 'master_pipeline';\""
+docker exec -it postgres bash -c "psql -c \"CREATE DATABASE master_pipeline;\""
+docker exec -it postgres bash -c "psql -c \"GRANT CREATE ON DATABASE master_pipeline TO master_pipeline;\""
+```
+
+And RabbitMQ:
+
+```
 docker exec -it rabbitmq bash -c "rabbitmqctl add_vhost master_pipeline"
 docker exec -it rabbitmq bash -c "rabbitmqctl set_permissions -p master_pipeline guest '.*' '.*' '.*'"
 ```
 
-Copy `config.py` to `local_config.py` and modify its content to reflect your system. The RabbitMQ web interface can be found at [http://localhost:15672](http://localhost:15672)
+Clone [ADSMasterPipeline](https://github.com/adsabs/ADSMasterPipeline/) and copy `config.py` to `local_config.py` and modify its content to reflect your system. Then, install dependencies:
+
+```
+virtualenv python/
+source python/bin/activate
+pip install -r requirements.txt
+pip install -r dev-requirements.txt
+alembic upgrade head
+```
+
+Diagnose your setup by running an asynchronous worker (it requires a rabbitmq instance):
+
+```
+celery worker -l DEBUG -A adsmp.tasks -c 1
+```
+
+When data is sent to master pipeline, it can be asked to process it (i.e., send to Solr and resolver service) with:
+
+```
+python run.py -r s -o -f --ignore_checksums -s 1972
+python run.py -r l -o -f --ignore_checksums -s 1972
+```
+
+### Resolver service
+
+Prepare the database:
+
+```
+docker exec -it postgres bash -c "psql -c \"CREATE ROLE resolver_service WITH LOGIN PASSWORD 'resolver_service';\""
+docker exec -it postgres bash -c "psql -c \"CREATE DATABASE resolver_service;\""
+docker exec -it postgres bash -c "psql -c \"GRANT CREATE ON DATABASE resolver_service TO resolver_service;\""
+```
+
+Clone [resolver-service](https://github.com/adsabs/resolver_service) and copy `config.py` to `local_config.py` and modify its content to reflect your system. Then, install dependencies:
+
+```
+virtualenv python/
+source python/bin/activate
+pip install -r requirements.txt
+pip install -r dev-requirements.txt
+alembic upgrade head
+```
+
+And run it (it will listen on `http://0.0.0.0:5000/`):
+
+```
+python wsgi.py
+```
+
+### Solr
+
+Download the compiled version of montysolr and run it:
+
+```
+https://github.com/romanchyla/montysolr/releases
+wget -c https://github.com/romanchyla/montysolr/releases/download/v63.1.0.36/montysolr.zip
+unzip montysolr.zip
+cd montysolr/
+bash bin/solr start -f -p 8984
+```
+
+Access the solr query interface via [http://localhost:8984/solr/#/collection1/query](http://localhost:8984/solr/#/collection1/query)
 
 
 ## Testing your setup
@@ -109,7 +188,7 @@ To dump the database to a file:
 docker exec -it postgres bash -c "pg_dump --clean --if-exists --create  citation_capture_pipeline" > citation_capture_pipeline.sql
 ```
 
-To restore the database from a file:
+To restore/import the database from a file:
 
 ```
 cat citation_capture_pipeline.sql | docker exec -i postgres bash -c "psql"
@@ -230,6 +309,13 @@ Other useful SQL requests:
 \d+ citation_target
 ```
 
+- List and delete schemas
+    
+```
+SELECT nspname FROM pg_catalog.pg_namespace;
+DROP SCHEMA citation_capture_20180919_153032 CASCADE;
+```
+
 - Access JSONB fields
 
 ```
@@ -260,5 +346,4 @@ SELECT status, count(*) FROM citation GROUP BY status;
 ```
 SELECT id, citing, cited, CASE WHEN citation_target.content_type = 'DOI' THEN true ELSE false END AS doi, CASE WHEN citation_target.content_type = 'PID' THEN true ELSE false END AS pid, CASE WHEN citation_target.content_type = 'URL' THEN true ELSE false END AS url, citation.content, citation.resolved, citation.timestamp FROM citation INNER JOIN citation_target ON citation.content = citation_target.content WHERE citation.status != 'DELETED';
 ```
-
 
