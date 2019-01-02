@@ -92,7 +92,7 @@ alembic upgrade head
 Diagnose your setup by running an asynchronous worker (it requires a rabbitmq instance):
 
 ```
-celery worker -l DEBUG -A adsmp.tasks -c 1
+celery worker -l DEBUG -A ADSCitationCapture.tasks -c 1
 ```
 
 When data is sent to master pipeline, it can be asked to process it (i.e., send to Solr and resolver service) with:
@@ -345,5 +345,102 @@ SELECT status, count(*) FROM citation GROUP BY status;
 
 ```
 SELECT id, citing, cited, CASE WHEN citation_target.content_type = 'DOI' THEN true ELSE false END AS doi, CASE WHEN citation_target.content_type = 'PID' THEN true ELSE false END AS pid, CASE WHEN citation_target.content_type = 'URL' THEN true ELSE false END AS url, citation.content, citation.resolved, citation.timestamp FROM citation INNER JOIN citation_target ON citation.content = citation_target.content WHERE citation.status != 'DELETED';
+```
+
+## Deploy in production
+
+- Create a version of the pipeline and upload it to AWS S3:
+
+
+```
+ssh ads@backoffice_hostname
+git clone https://github.com/adsabs/eb-deploy
+cd eb-deploy/
+source init.sh
+cd backoffice/backoffice/
+sudo apt install zip # Make sure zip command exists
+cv citation_capture_pipeline --force # Ignore errors related to `aws elasticbeanstalk create-application-version`
+```
+
+- Deploy the pipeline
+
+```
+cd /proj.backoffice_hostname
+run-s3-locally.sh backoffice citation_capture_pipeline # /proj/ads/ads/devtools/bin/run-s3-locally.sh
+```
+ 
+- Access the pipeline container and setup the database schema
+
+```
+docker exec -it backoffice_citation_capture_pipeline bash
+alembic upgrade head
+```
+ 
+- Access the pipeline database
+ 
+```
+docker exec -it backoffice_citation_capture_pipeline bash
+apt install postgresql-client -y
+psql -h database_hostname -p database_port -U database_user citation_capture_pipeline
+```
+ 
+- Start a worker in debug mode:
+
+```
+docker exec -it backoffice_citation_capture_pipeline bash
+celery worker -l DEBUG -A ADSCitationCapture.tasks -c 1
+```
+
+- Import the file `refids_zenodo_small_software_record_sample.dat`:
+
+```
+2012arXiv1208.3124R	{"cited":"...................","citing":"2012arXiv1208.3124R","doi":"10.5281/zenodo.1048204","score":"0","source":"/proj/ads/references/resolved/arXiv/1208/3124.raw.result:52"}
+2012arXiv1212.1095R	{"cited":"...................","citing":"2012arXiv1212.1095R","doi":"10.5281/zenodo.1048204","score":"0","source":"/proj/ads/references/resolved/arXiv/1212/1095.raw.result:67"}
+2013arXiv1305.5675A	{"cited":"2014hesa.conf11759.","citing":"2013arXiv1305.5675A","doi":"10.5281/zenodo.11759","score":"5","source":"/proj/ads/references/resolved/arXiv/1305/5675.raw.result:42"}
+2013arXiv1307.4030S	{"cited":"...................","citing":"2013arXiv1307.4030S","doi":"10.5281/zenodo.10679","score":"0","source":"/proj/ads/references/resolved/arXiv/1307/4030.raw.result:54"}
+2014NatCo...5E5024S	{"cited":"...................","citing":"2014NatCo...5E5024S","doi":"10.5281/zenodo.10679","score":"0","source":"/proj/ads/references/resolved/NatCo/0005/iss._chunk_.2014NatCo___5E50.nature.xml.result:54"}
+```
+
+with the commands:
+
+```
+docker exec -it backoffice_citation_capture_pipeline bash
+python run.py -r refids_zenodo_small_software_record_sample.dat
+```
+
+which should create:
+
+```
+citation_capture_pipeline=> select content, parsed_cited_metadata->'bibcode' from citation_target;
+        content         |       ?column?
+------------------------+-----------------------
+ 10.5281/zenodo.1048204 | "2017zndo...1048204R"
+ 10.5281/zenodo.11759   | "2014zndo.....11759V"
+ 10.5281/zenodo.10679   | "2014zndo.....10679I"
+ 
+citation_capture_pipeline=> select content, citing from citation;
+        content         |       citing
+------------------------+---------------------
+ 10.5281/zenodo.1048204 | 2012arXiv1208.3124R
+ 10.5281/zenodo.1048204 | 2012arXiv1212.1095R
+ 10.5281/zenodo.11759   | 2013arXiv1305.5675A
+ 10.5281/zenodo.10679   | 2013arXiv1307.4030S
+ 10.5281/zenodo.10679   | 2014NatCo...5E5024S
+(5 rows)
+
+master_pipeline=> select bibcode,solr_processed,datalinks_processed,processed,status from records where bibcode in ('2017zndo...1048204R', '2014zndo.....11759V', '2014zndo.....10679I');
+       bibcode       | solr_processed | datalinks_processed | processed | status
+---------------------+----------------+---------------------+-----------+--------
+ 2014zndo.....10679I |                |                     |           |
+ 2014zndo.....11759V |                |                     |           |
+ 2017zndo...1048204R |                |                     |           |
+(3 rows)
+```
+
+- Access the pipeline broker
+
+```
+ssh broker_hostname
+docker exec -it backoffice_rabbitmq rabbitmqctl list_queues -q -p citation_capture_pipeline
 ```
 

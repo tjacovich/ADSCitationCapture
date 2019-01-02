@@ -102,6 +102,7 @@ def emit_event(ads_webhook_url, ads_webhook_auth_token, citation_change, timeout
         headers["Authorization"] = "Bearer {}".format(ads_webhook_auth_token)
         r = requests.post(ads_webhook_url, data=json.dumps(data), headers=headers, timeout=timeout)
         if not r.ok:
+            logger.error("Emit event failed with status code '{}': {}".format(r.status_code, r.content))
             raise Exception("HTTP Post to '{}' failed: {}".format(ads_webhook_url, json.dumps(data)))
         return True
     return False
