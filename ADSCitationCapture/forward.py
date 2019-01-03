@@ -1,8 +1,34 @@
+import itertools
 import datetime
 from adsputils import get_date, date2solrstamp
 from dateutil.tz import tzutc
 from adsmsg import DenormalizedRecord, NonBibRecord, Status, CitationChangeContentType
 from bs4 import BeautifulSoup
+from nameparser import HumanName
+
+def _parse_name(raw_name):
+    """
+    Parse some raw author name and return the normalized and common version
+    """
+    name = HumanName(raw_name)
+    first_name = name.first
+    if name.is_an_initial(first_name):
+        first_name_initial = first_name
+    elif len(first_name) > 0:
+        first_name_initial = first_name[0]
+    else:
+        first_name_initial = u""
+    middle_name = name.middle
+    if name.is_an_initial(middle_name):
+        middle_name_initial = middle_name
+    elif len(middle_name) > 0:
+        middle_name_initial = middle_name[0]
+    else:
+        middle_name_initial = u""
+    last_name = name.last
+    normalized_author_str = "{}, {} {}".format(last_name, first_name_initial, middle_name_initial).strip()
+    author_str = "{}, {} {}".format(last_name, first_name, middle_name).strip()
+    return normalized_author_str, author_str
 
 def build_record(app, citation_change, parsed_metadata, citations):
     if citation_change.content_type != CitationChangeContentType.doi:
@@ -12,8 +38,8 @@ def build_record(app, citation_change, parsed_metadata, citations):
     abstract = parsed_metadata.get('abstract', u"")
     title = parsed_metadata.get('title', u"")
     keywords = parsed_metadata.get('keywords', [])
-    authors = parsed_metadata.get('authors', [])
-    affiliations = parsed_metadata.get('affiliations', [u'-']*len(authors))
+    raw_authors = parsed_metadata.get('authors', [])
+    affiliations = parsed_metadata.get('affiliations', [u'-']*len(raw_authors))
     pubdate = parsed_metadata.get('pubdate', get_date().strftime("%Y-%m-%d"))
     source = parsed_metadata.get('source', "Unknown")
     version = parsed_metadata.get('version', u"")
@@ -23,6 +49,20 @@ def build_record(app, citation_change, parsed_metadata, citations):
     title = ''.join(BeautifulSoup(title, features="lxml").findAll(text=True)).replace('\n', ' ').replace('\r', '')
     # Extract year
     year = pubdate.split("-")[0]
+    # Parse authors
+    authors = []
+    normalized_authors = []
+    for raw_author in raw_authors:
+        normalized_author, author = _parse_name(raw_author)
+        authors.append(author)
+        normalized_authors.append(normalized_author)
+    # Build an author_facet_hier list with the following structure:
+    #   "0/Blanco-Cuaresma, S",
+    #   "1/Blanco-Cuaresma, S/Blanco-Cuaresma, S",
+    #   "0/Soubiran, C",
+    #   "1/Soubiran, C/Soubiran, C",
+    author_facet_hier = list(itertools.chain.from_iterable(zip(["0/"+a for a in normalized_authors], ["1/"+a[0]+"/"+a[1] for a in zip(normalized_authors, authors)])))
+
     # Count
     n_keywords = len(keywords)
     n_authors = len(authors)
@@ -37,15 +77,15 @@ def build_record(app, citation_change, parsed_metadata, citations):
         'arxiv_class': [],
         'author': authors,
         'author_count': n_authors,
-        'author_facet': authors, # TODO: This should be a list of normalized authors
-        'author_facet_hier': ["0/"+a for a in authors], # TODO: This should be a list of normalized authors plus non-normalized at level "1/"
-        'author_norm': authors, # TODO: This should be a list of normalized authors
+        'author_facet': normalized_authors,
+        'author_facet_hier': author_facet_hier,
+        'author_norm': normalized_authors,
         'bibcode': bibcode,
         'bibstem': [u'zndo'],
         'bibstem_facet': u'zndo',
         'copyright': [],
         'comment': [],
-        'database': [u'general'], # TODO: What database should we select for software records? Options: physics, astronomy, general
+        'database': [u'general', u'astronomy'],
         'entry_date': date2solrstamp(citation_change.timestamp.ToDatetime()), # date2solrstamp(get_date()),
         'year': year,
         'date': (citation_change.timestamp.ToDatetime()+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), # TODO: Why this date has to be 30 minutes in advance? This is based on ADSImportPipeline SolrAdapter
@@ -55,8 +95,8 @@ def build_record(app, citation_change, parsed_metadata, citations):
         'eid': doi,
         'email': [u'-']*n_authors,
         'first_author': authors[0] if n_authors > 0 else u'',
-        'first_author_facet_hier': ["0/"+author for author in authors[:1]], # TODO: This should be a list of the first normalized author plus its non-normalized name at level "1/"
-        'first_author_norm': authors[0] if n_authors > 0 else u'', # TODO: This should be a the first normalized author
+        'first_author_facet_hier': author_facet_hier[:2],
+        'first_author_norm': normalized_authors[0] if n_authors > 0 else u'',
         'links_data': [u'{{"access": "", "instances": "", "title": "", "type": "electr", "url": "{}"}}'.format(app.conf['DOI_URL'] + doi)], # TODO: How is it different from nonbib?
         'identifier': [bibcode, doi],
         'esources': ["PUB_HTML"],
@@ -68,7 +108,7 @@ def build_record(app, citation_change, parsed_metadata, citations):
         'keyword_facet': keywords,
         'keyword_norm': [u"-"]*n_keywords,
         'keyword_schema': [u"-"]*n_keywords,
-        'property': ["ESOURCE", "PUB_OPENACCESS", "OPENACCESS"],
+        'property': ["ESOURCE", "NONARTICLE", "NOT REFEREED", "PUB_OPENACCESS", "OPENACCESS"],
         'pub': source,
         'pub_raw': source,
         'pubdate': pubdate,
@@ -120,5 +160,6 @@ def _build_nonbib_record(app, citation_change, record, status):
     nonbib_record = NonBibRecord(**nonbib_record_dict)
     nonbib_record.esource.extend(record.esources)
     nonbib_record.reference.extend(record.reference)
+    nonbib_record.property.extend(record.property)
     return nonbib_record
 

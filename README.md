@@ -365,7 +365,7 @@ cv citation_capture_pipeline --force # Ignore errors related to `aws elasticbean
 - Deploy the pipeline
 
 ```
-cd /proj.backoffice_hostname
+cd /proj.backoffice_hostname/backoffice/
 run-s3-locally.sh backoffice citation_capture_pipeline # /proj/ads/ads/devtools/bin/run-s3-locally.sh
 ```
  
@@ -382,13 +382,6 @@ alembic upgrade head
 docker exec -it backoffice_citation_capture_pipeline bash
 apt install postgresql-client -y
 psql -h database_hostname -p database_port -U database_user citation_capture_pipeline
-```
- 
-- Start a worker in debug mode:
-
-```
-docker exec -it backoffice_citation_capture_pipeline bash
-celery worker -l DEBUG -A ADSCitationCapture.tasks -c 1
 ```
 
 - Import the file `refids_zenodo_small_software_record_sample.dat`:
