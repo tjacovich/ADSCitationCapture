@@ -34,7 +34,7 @@ def task_process_new_citation(citation_change, force=False):
     """
     content_type = None
     is_link_alive = False
-    status = "DISCARDED"
+    status = u"DISCARDED"
 
     # Check if we already have the citation target in the DB
     metadata = db.get_citation_target_metadata(app, citation_change)
@@ -42,12 +42,12 @@ def task_process_new_citation(citation_change, force=False):
     raw_metadata = metadata.get('raw', None)
     parsed_metadata = metadata.get('parsed', None)
     if citation_target_in_db:
-        status = metadata.get('status', 'DISCARDED') # "REGISTERED" if it is a software record
+        status = metadata.get('status', u'DISCARDED') # "REGISTERED" if it is a software record
 
     if citation_change.content_type == adsmsg.CitationChangeContentType.doi \
         and citation_change.content not in ["", None]:
         # Default values
-        content_type = "DOI"
+        content_type = u"DOI"
         #
         if not citation_target_in_db:
             # Fetch DOI metadata (if HTTP request fails, an exception is raised
@@ -57,16 +57,16 @@ def task_process_new_citation(citation_change, force=False):
                 parsed_metadata = doi.parse_metadata(raw_metadata)
                 is_software = parsed_metadata.get('doctype', u'').lower() == "software"
                 if parsed_metadata.get('bibcode') not in (None, "") and is_software:
-                    status = "REGISTERED"
+                    status = u"REGISTERED"
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
-        content_type = "PID"
+        content_type = u"PID"
         status = None
         is_link_alive = url.is_alive(app.conf['ASCL_URL'] + citation_change.content)
         parsed_metadata = {'link_alive': is_link_alive }
     elif citation_change.content_type == adsmsg.CitationChangeContentType.url \
         and citation_change.content not in ["", None]:
-        content_type = "URL"
+        content_type = u"URL"
         status = None
         is_link_alive = url.is_alive(citation_change.content)
         parsed_metadata = {'link_alive': is_link_alive }
@@ -79,7 +79,7 @@ def task_process_new_citation(citation_change, force=False):
             # Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
-        if stored and status == "REGISTERED":
+        if stored and status == u"REGISTERED":
             if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
                 citations = db.get_citations(app, citation_change)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)

@@ -18,6 +18,7 @@ def _parse_name(raw_name):
         first_name_initial = first_name[0]
     else:
         first_name_initial = u""
+    first_name_initial = first_name_initial.replace(u".", u"") # Make sure there are no dots
     middle_name = name.middle
     if name.is_an_initial(middle_name):
         middle_name_initial = middle_name
@@ -25,9 +26,10 @@ def _parse_name(raw_name):
         middle_name_initial = middle_name[0]
     else:
         middle_name_initial = u""
+    middle_name_initial = middle_name_initial.replace(u".", u"") # Make sure there are no dots
     last_name = name.last
-    normalized_author_str = "{}, {} {}".format(last_name, first_name_initial, middle_name_initial).strip()
-    author_str = "{}, {} {}".format(last_name, first_name, middle_name).strip()
+    normalized_author_str = u"{}, {} {}".format(last_name, first_name_initial, middle_name_initial).strip()
+    author_str = u"{}, {} {}".format(last_name, first_name, middle_name).strip()
     return normalized_author_str, author_str
 
 def build_record(app, citation_change, parsed_metadata, citations):
@@ -41,12 +43,12 @@ def build_record(app, citation_change, parsed_metadata, citations):
     raw_authors = parsed_metadata.get('authors', [])
     affiliations = parsed_metadata.get('affiliations', [u'-']*len(raw_authors))
     pubdate = parsed_metadata.get('pubdate', get_date().strftime("%Y-%m-%d"))
-    source = parsed_metadata.get('source', "Unknown")
+    source = parsed_metadata.get('source', u"Unknown")
     version = parsed_metadata.get('version', u"")
     doctype = parsed_metadata.get('doctype', u"software")
     # Clean abstract and title
-    abstract = ''.join(BeautifulSoup(abstract, features="lxml").findAll(text=True)).replace('\n', ' ').replace('\r', '')
-    title = ''.join(BeautifulSoup(title, features="lxml").findAll(text=True)).replace('\n', ' ').replace('\r', '')
+    abstract = u''.join(BeautifulSoup(abstract, features="lxml").findAll(text=True)).replace('\n', ' ').replace('\r', '')
+    title = u''.join(BeautifulSoup(title, features="lxml").findAll(text=True)).replace('\n', ' ').replace('\r', '')
     # Extract year
     year = pubdate.split("-")[0]
     # Parse authors
@@ -99,7 +101,7 @@ def build_record(app, citation_change, parsed_metadata, citations):
         'first_author_norm': normalized_authors[0] if n_authors > 0 else u'',
         'links_data': [u'{{"access": "", "instances": "", "title": "", "type": "electr", "url": "{}"}}'.format(app.conf['DOI_URL'] + doi)], # TODO: How is it different from nonbib?
         'identifier': [bibcode, doi],
-        'esources': ["PUB_HTML"],
+        'esources': [u"PUB_HTML"],
         'citation': citations,
         'citation_count': n_citations,
         'citation_count_norm': n_citations/n_authors if n_authors > 0 else 0,
@@ -108,7 +110,7 @@ def build_record(app, citation_change, parsed_metadata, citations):
         'keyword_facet': keywords,
         'keyword_norm': [u"-"]*n_keywords,
         'keyword_schema': [u"-"]*n_keywords,
-        'property': ["ESOURCE", "NONARTICLE", "NOT REFEREED", "PUB_OPENACCESS", "OPENACCESS"],
+        'property': [u"ESOURCE", u"NONARTICLE", u"NOT REFEREED", u"PUB_OPENACCESS", u"OPENACCESS"],
         'pub': source,
         'pub_raw': source,
         'pubdate': pubdate,
