@@ -41,8 +41,8 @@ def task_process_new_citation(citation_change, force=False):
     citation_target_in_db = bool(metadata) # False if dict is empty
     raw_metadata = metadata.get('raw', None)
     parsed_metadata = metadata.get('parsed', None)
-    if parsed_metadata and parsed_metadata.get('bibcode') not in (None, ""):
-        status = "REGISTERED"
+    if citation_target_in_db:
+        status = metadata.get('status', 'DISCARDED') # "REGISTERED" if it is a software record
 
     if citation_change.content_type == adsmsg.CitationChangeContentType.doi \
         and citation_change.content not in ["", None]:
@@ -55,7 +55,8 @@ def task_process_new_citation(citation_change, force=False):
             raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], citation_change.content)
             if raw_metadata:
                 parsed_metadata = doi.parse_metadata(raw_metadata)
-                if parsed_metadata.get('bibcode') not in (None, ""):
+                is_software = parsed_metadata.get('doctype', u'').lower() == "software"
+                if parsed_metadata.get('bibcode') not in (None, "") and is_software:
                     status = "REGISTERED"
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:

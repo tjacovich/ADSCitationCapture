@@ -50,7 +50,9 @@ def store_citation(app, citation_change, content_type, raw_metadata, parsed_meta
 
 def get_citation_target_metadata(app, citation_change):
     """
-    If the citation target already exists in the database, return the metadata.
+    If the citation target already exists in the database, return the raw and
+    parsed metadata together with the status of the citation target in the
+    database.
     If not, return an empty dictionary.
     """
     citation_in_db = False
@@ -61,6 +63,7 @@ def get_citation_target_metadata(app, citation_change):
         if citation_target_in_db:
             metadata['raw'] = citation_target.raw_cited_metadata
             metadata['parsed'] = citation_target.parsed_cited_metadata
+            metadata['status'] = citation_target.status
     return metadata
 
 def get_citations_by_bibcode(app, bibcode):

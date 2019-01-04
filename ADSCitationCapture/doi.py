@@ -173,7 +173,7 @@ def _parse_metadata_zenodo_doi(raw_metadata):
         logger.exception("Failed parsing")
         return {}
     parsed_metadata['link_alive'] = True
-    is_software = parsed_metadata['doctype'].lower() == "software"
+    is_software = parsed_metadata.get('doctype', u'').lower() == "software"
 
     if is_software:
         zenodo_bibstem = "zndo"

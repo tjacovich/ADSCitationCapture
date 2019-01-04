@@ -47,5 +47,6 @@ class TestBase(unittest.TestCase):
                     'version_of': [],
                     'source': u'ZENODO',
                     'link_alive': True
-                }
+                },
+                'status': 'REGISTERED'
         }
