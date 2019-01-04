@@ -11,25 +11,34 @@ def _parse_name(raw_name):
     Parse some raw author name and return the normalized and common version
     """
     name = HumanName(raw_name)
-    first_name = name.first
+    first_name = name.first.replace(u".", u"") # Make sure there are no dots
     if name.is_an_initial(first_name):
         first_name_initial = first_name
     elif len(first_name) > 0:
         first_name_initial = first_name[0]
     else:
         first_name_initial = u""
-    first_name_initial = first_name_initial.replace(u".", u"") # Make sure there are no dots
-    middle_name = name.middle
+    first_name_initial = first_name_initial.upper()
+    middle_name = name.middle.replace(u".", u"") # Make sure there are no dots
     if name.is_an_initial(middle_name):
         middle_name_initial = middle_name
     elif len(middle_name) > 0:
         middle_name_initial = middle_name[0]
     else:
         middle_name_initial = u""
-    middle_name_initial = middle_name_initial.replace(u".", u"") # Make sure there are no dots
-    last_name = name.last
-    normalized_author_str = u"{}, {} {}".format(last_name, first_name_initial, middle_name_initial).strip()
-    author_str = u"{}, {} {}".format(last_name, first_name, middle_name).strip()
+    middle_name_initial = middle_name_initial.upper()
+    last_name = name.last.replace(u".", u"") # Make sure there are no dots
+    if len(first_name) > 0 and len(last_name) > 0:
+        # At least first and last name were present
+        normalized_author_str = u"{}, {} {}".format(last_name, first_name_initial, middle_name_initial).strip()
+        author_str = u"{}, {} {}".format(last_name, first_name, middle_name).strip()
+    elif first_name != u'':
+        # E.g., usernames from github or other services (single word)
+        normalized_author_str = first_name
+        author_str = normalized_author_str
+    else:
+        normalized_author_str = u"Unknown, U"
+        author_str = normalized_author_str
     return normalized_author_str, author_str
 
 def build_record(app, citation_change, parsed_metadata, citations):
