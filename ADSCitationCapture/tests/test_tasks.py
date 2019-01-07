@@ -6,6 +6,7 @@ from ADSCitationCapture import webhook
 from ADSCitationCapture import doi
 from ADSCitationCapture import url
 from ADSCitationCapture import db
+from ADSCitationCapture import api
 from .test_base import TestBase
 
 import unittest
@@ -40,6 +41,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -53,11 +57,14 @@ class TestWorkers(TestBase):
                 self.assertTrue(fetch_metadata.called)
                 self.assertTrue(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
+                self.assertTrue(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcodes.called)
+                self.assertTrue(get_citations_by_bibcode.called)
                 self.assertTrue(store_citation_target.called)
                 self.assertTrue(store_citation.called)
                 self.assertFalse(update_citation.called)
                 self.assertFalse(mark_citation_as_deleted.called)
-                self.assertTrue(get_citations.called)
+                self.assertFalse(get_citations.called)
                 self.assertTrue(forward_message.called)
                 self.assertTrue(webhook_emit_event.called)
 
@@ -69,6 +76,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -82,11 +92,14 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
+                self.assertTrue(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcodes.called)
+                self.assertTrue(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertFalse(store_citation.called)
                 self.assertTrue(update_citation.called)
                 self.assertFalse(mark_citation_as_deleted.called)
-                self.assertTrue(get_citations.called)
+                self.assertFalse(get_citations.called)
                 self.assertTrue(forward_message.called)
                 self.assertTrue(webhook_emit_event.called)
 
@@ -98,6 +111,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -111,11 +127,14 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
+                self.assertTrue(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcodes.called)
+                self.assertTrue(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertFalse(store_citation.called)
                 self.assertFalse(update_citation.called)
                 self.assertTrue(mark_citation_as_deleted.called)
-                self.assertTrue(get_citations.called)
+                self.assertFalse(get_citations.called)
                 self.assertTrue(forward_message.called)
                 self.assertTrue(webhook_emit_event.called)
 
@@ -127,6 +146,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -140,11 +162,14 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
+                self.assertTrue(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcodes.called)
+                self.assertTrue(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertTrue(store_citation.called)
                 self.assertFalse(update_citation.called)
                 self.assertFalse(mark_citation_as_deleted.called)
-                self.assertTrue(get_citations.called)
+                self.assertFalse(get_citations.called)
                 self.assertTrue(forward_message.called)
                 self.assertTrue(webhook_emit_event.called)
 
@@ -156,6 +181,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -169,6 +197,9 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
+                self.assertFalse(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcodes.called)
+                self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertFalse(store_citation.called)
                 self.assertFalse(update_citation.called)
@@ -185,6 +216,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -198,6 +232,9 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
+                self.assertFalse(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcodes.called)
+                self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertFalse(store_citation.called)
                 self.assertFalse(update_citation.called)
@@ -214,6 +251,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -227,6 +267,9 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
+                self.assertFalse(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcodes.called)
+                self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertFalse(store_citation.called)
                 self.assertFalse(update_citation.called)
@@ -243,6 +286,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -256,6 +302,9 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
+                self.assertFalse(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcodes.called)
+                self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertFalse(store_citation.called)
                 self.assertFalse(update_citation.called)
@@ -272,6 +321,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -285,6 +337,9 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
+                self.assertFalse(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcodes.called)
+                self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertFalse(store_citation.called)
                 self.assertFalse(update_citation.called)
@@ -307,6 +362,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -320,6 +378,9 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertTrue(url_is_alive.called)
+                self.assertFalse(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcodes.called)
+                self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertFalse(store_citation.called)
                 self.assertFalse(update_citation.called)
@@ -342,6 +403,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -355,6 +419,9 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertTrue(url_is_alive.called)
+                self.assertFalse(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcodes.called)
+                self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertFalse(store_citation.called)
                 self.assertFalse(update_citation.called)
@@ -378,6 +445,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -391,6 +461,9 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertTrue(url_is_alive.called)
+                self.assertFalse(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcodes.called)
+                self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertFalse(store_citation.called)
                 self.assertFalse(update_citation.called)
@@ -413,6 +486,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -426,6 +502,9 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called) # Not executed because content is empty
+                self.assertFalse(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcodes.called)
+                self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
                 self.assertFalse(store_citation.called)
                 self.assertFalse(update_citation.called)
@@ -441,6 +520,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value="Unparsable response") as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -454,6 +536,9 @@ class TestWorkers(TestBase):
                 self.assertTrue(fetch_metadata.called)
                 self.assertTrue(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
+                self.assertFalse(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcodes.called)
+                self.assertFalse(get_citations_by_bibcode.called)
                 self.assertTrue(store_citation_target.called)
                 self.assertTrue(store_citation.called)
                 self.assertFalse(update_citation.called)
@@ -470,6 +555,9 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
@@ -483,6 +571,9 @@ class TestWorkers(TestBase):
                 self.assertTrue(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
+                self.assertFalse(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcodes.called)
+                self.assertFalse(get_citations_by_bibcode.called)
                 self.assertTrue(store_citation_target.called)
                 self.assertTrue(store_citation.called)
                 self.assertFalse(update_citation.called)
@@ -497,7 +588,8 @@ class TestWorkers(TestBase):
             citation_change = adsmsg.CitationChange(content_type=adsmsg.CitationChangeContentType.doi, status=adsmsg.Status.active)
             parsed_metadata = {
                     'bibcode': 'test123456789012345',
-                    'authors': ['Unite Test']
+                    'authors': ['Test, Unit'],
+                    'normalized_authors': ['Test, U']
                     }
             citations = []
             tasks.task_output_results(citation_change, parsed_metadata, citations)

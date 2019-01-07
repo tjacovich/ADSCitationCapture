@@ -276,6 +276,7 @@ Next, a full join based on `citing` and `content` fields (which supposed to be u
 Every `citation change` is sent to an asynchronous task for processing and they all have a timestamp that matches the last modification date from the original imported file:
 
 - If the citation change type is NEW, metadata in datacite format will be fetched/parsed for citations to DOIs (only case that we care about given the current scope of the ASCLEPIAS project), and a new citation entry will be created in the `citation` table in the database.
+    - For records citing DOIs, the cited target is created in Solr with a list of citations that is built using the ADS API to make sure that all the bibcodes exist. Additionally, `run.py` offers a `maintenance` flag to verify the citations of all the registered and detect merges/deletions via the ADS API.
 - If the citation change type is UPDATED, its respective entry in `citation` is updated.
 - If the citation change type is DELETED, its respective entry in `citation` is marked as status DELETED but the row is not actually deleted.
 

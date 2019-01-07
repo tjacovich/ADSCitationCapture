@@ -67,7 +67,7 @@ class TestWorkers(TestBase):
 
     def test_build_bibcode(self):
         expected_bibcode = "2007zndo.....48535G"
-        datacite_parsed_metadata_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/datacite_parsed_metadata.json")
+        datacite_parsed_metadata_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/datacite_parsed_metadata_and_authors.json")
         with open(datacite_parsed_metadata_filename, "r") as f:
             parsed_metadata = json.loads("".join(f.readlines()))
         zenodo_bibstem = "zndo"

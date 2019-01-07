@@ -3,6 +3,7 @@ import requests
 import re
 import json
 import base64
+from nameparser import HumanName
 from pyingest.parsers.datacite import DataCiteParser
 from adsputils import setup_logging
 
@@ -13,6 +14,41 @@ zenodo_doi_re = re.compile("^10.\d{4,9}/zenodo\.([0-9]*)$", re.IGNORECASE)
 
 
 # =============================== FUNCTIONS ======================================= #
+def _parse_name(raw_name):
+    """
+    Parse some raw author name and return the normalized and common version
+    """
+    name = HumanName(raw_name)
+    first_name = name.first.replace(u".", u"") # Make sure there are no dots
+    if name.is_an_initial(first_name):
+        first_name_initial = first_name
+    elif len(first_name) > 0:
+        first_name_initial = first_name[0]
+    else:
+        first_name_initial = u""
+    first_name_initial = first_name_initial.upper()
+    middle_name = name.middle.replace(u".", u"") # Make sure there are no dots
+    if name.is_an_initial(middle_name):
+        middle_name_initial = middle_name
+    elif len(middle_name) > 0:
+        middle_name_initial = middle_name[0]
+    else:
+        middle_name_initial = u""
+    middle_name_initial = middle_name_initial.upper()
+    last_name = name.last.replace(u".", u"") # Make sure there are no dots
+    if len(first_name) > 0 and len(last_name) > 0:
+        # At least first and last name were present
+        normalized_author_str = u"{}, {} {}".format(last_name, first_name_initial, middle_name_initial).strip()
+        author_str = u"{}, {} {}".format(last_name, first_name, middle_name).strip()
+    elif first_name != u'':
+        # E.g., usernames from github or other services (single word)
+        normalized_author_str = first_name
+        author_str = normalized_author_str
+    else:
+        normalized_author_str = u"Unknown, U"
+        author_str = normalized_author_str
+    return normalized_author_str, author_str
+
 
 def _fetch_metadata(url, headers={}, timeout=30):
     """
@@ -136,10 +172,10 @@ def build_bibcode(metadata, doi_re, bibstem):
         logger.error("Unknown publication year '%s' for DOI '%s'", metadata.get('pubdate'), doi)
         return bibcode
 
-    if len(metadata.get('authors', [])) >= 1 and len(metadata['authors'][0]) >= 1:
-        first_author_last_name_initial = str(metadata['authors'][0][0])
+    if len(metadata.get('normalized_authors', [])) >= 1 and len(metadata['normalized_authors'][0]) >= 1:
+        first_author_last_name_initial = str(metadata['normalized_authors'][0][0])
     else:
-        logger.error("Unknown first author last name initial '%s' for DOI '%s'", ";".join(metadata.get('authors', [])), doi)
+        logger.error("Unknown first author last name initial '%s' for DOI '%s'", ";".join(metadata.get('normalized_authors', [])), doi)
         return bibcode
 
     bibcode_allowed_size = 19
@@ -166,6 +202,7 @@ def _parse_metadata_zenodo_doi(raw_metadata):
     It expects metadata in datacite format from a zenodo DOI [string] and returns
     the parsed metadata [dict] unless it did not correspond to a software
     record, for which a None value is returned.
+    Author list is also parsed and normalized (keys 'authors' and 'normalized_authors').
     """
     try:
         parsed_metadata = dc.parse(raw_metadata)
@@ -174,6 +211,17 @@ def _parse_metadata_zenodo_doi(raw_metadata):
         return {}
     parsed_metadata['link_alive'] = True
     is_software = parsed_metadata.get('doctype', u'').lower() == "software"
+
+    ## Improved author parsing:
+    # Copy original author list
+    parsed_metadata['raw_authors'] = parsed_metadata.get('authors', [])
+    # Parse authors
+    parsed_metadata['authors'] = []
+    parsed_metadata['normalized_authors'] = []
+    for raw_author in parsed_metadata['raw_authors']:
+        normalized_author, author = _parse_name(raw_author)
+        parsed_metadata['authors'].append(author)
+        parsed_metadata['normalized_authors'].append(normalized_author)
 
     if is_software:
         zenodo_bibstem = "zndo"

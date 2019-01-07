@@ -4,43 +4,13 @@ from adsputils import get_date, date2solrstamp
 from dateutil.tz import tzutc
 from adsmsg import DenormalizedRecord, NonBibRecord, Status, CitationChangeContentType
 from bs4 import BeautifulSoup
-from nameparser import HumanName
+from adsputils import setup_logging
 
-def _parse_name(raw_name):
-    """
-    Parse some raw author name and return the normalized and common version
-    """
-    name = HumanName(raw_name)
-    first_name = name.first.replace(u".", u"") # Make sure there are no dots
-    if name.is_an_initial(first_name):
-        first_name_initial = first_name
-    elif len(first_name) > 0:
-        first_name_initial = first_name[0]
-    else:
-        first_name_initial = u""
-    first_name_initial = first_name_initial.upper()
-    middle_name = name.middle.replace(u".", u"") # Make sure there are no dots
-    if name.is_an_initial(middle_name):
-        middle_name_initial = middle_name
-    elif len(middle_name) > 0:
-        middle_name_initial = middle_name[0]
-    else:
-        middle_name_initial = u""
-    middle_name_initial = middle_name_initial.upper()
-    last_name = name.last.replace(u".", u"") # Make sure there are no dots
-    if len(first_name) > 0 and len(last_name) > 0:
-        # At least first and last name were present
-        normalized_author_str = u"{}, {} {}".format(last_name, first_name_initial, middle_name_initial).strip()
-        author_str = u"{}, {} {}".format(last_name, first_name, middle_name).strip()
-    elif first_name != u'':
-        # E.g., usernames from github or other services (single word)
-        normalized_author_str = first_name
-        author_str = normalized_author_str
-    else:
-        normalized_author_str = u"Unknown, U"
-        author_str = normalized_author_str
-    return normalized_author_str, author_str
+# ============================= INITIALIZATION ==================================== #
+logger = setup_logging(__name__)
 
+
+# =============================== FUNCTIONS ======================================= #
 def build_record(app, citation_change, parsed_metadata, citations):
     if citation_change.content_type != CitationChangeContentType.doi:
         raise Exception("Only DOI records can be forwarded to master")
@@ -49,8 +19,9 @@ def build_record(app, citation_change, parsed_metadata, citations):
     abstract = parsed_metadata.get('abstract', u"")
     title = parsed_metadata.get('title', u"")
     keywords = parsed_metadata.get('keywords', [])
-    raw_authors = parsed_metadata.get('authors', [])
-    affiliations = parsed_metadata.get('affiliations', [u'-']*len(raw_authors))
+    authors = parsed_metadata.get('authors', [])
+    normalized_authors = parsed_metadata.get('normalized_authors', [])
+    affiliations = parsed_metadata.get('affiliations', [u'-']*len(authors))
     pubdate = parsed_metadata.get('pubdate', get_date().strftime("%Y-%m-%d"))
     source = parsed_metadata.get('source', u"Unknown")
     version = parsed_metadata.get('version', u"")
@@ -60,13 +31,6 @@ def build_record(app, citation_change, parsed_metadata, citations):
     title = u''.join(BeautifulSoup(title, features="lxml").findAll(text=True)).replace('\n', ' ').replace('\r', '')
     # Extract year
     year = pubdate.split("-")[0]
-    # Parse authors
-    authors = []
-    normalized_authors = []
-    for raw_author in raw_authors:
-        normalized_author, author = _parse_name(raw_author)
-        authors.append(author)
-        normalized_authors.append(normalized_author)
     # Build an author_facet_hier list with the following structure:
     #   "0/Blanco-Cuaresma, S",
     #   "1/Blanco-Cuaresma, S/Blanco-Cuaresma, S",

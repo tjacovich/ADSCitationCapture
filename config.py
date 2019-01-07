@@ -17,6 +17,9 @@ DOI_URL = "https://doi.org/"
 DATACITE_URL = "https://api.datacite.org/works/"
 ASCL_URL = "http://ascl.net/"
 
+ADS_API_TOKEN = "<secret>"
+ADS_API_URL = "https://ui.adsabs.harvard.edu/v1/"
+
 # When 'True', it converts all the asynchronous calls into synchronous,
 # thus no need for rabbitmq and allow debuggers to run if needed:
 CELERY_ALWAYS_EAGER = True
