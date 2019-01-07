@@ -87,13 +87,9 @@ def task_process_new_citation(citation_change, force=False):
                 # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                 original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
                 citations = api.get_canonical_bibcodes(app, original_citations)
-                # Clean before adding the current citation
-                citations = [c for c in citations if c != citation_change.citing and c != canonical_citing_bibcode]
                 # Add canonical bibcode of current detected citation
-                if canonical_citing_bibcode:
+                if canonical_citing_bibcode and canonical_citing_bibcode not in citations:
                     citations.append(canonical_citing_bibcode)
-                else:
-                    citations.append(citation_change.citing)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                 task_output_results.delay(citation_change, parsed_metadata, citations)
             logger.debug("Calling 'task_emit_event' with '%s'", citation_change)
@@ -197,8 +193,12 @@ def task_emit_event(citation_change, parsed_metadata):
     is_link_alive = parsed_metadata and parsed_metadata.get("link_alive", False)
     is_software = parsed_metadata and parsed_metadata.get("doctype", "").lower() == "software"
     if is_software and is_link_alive:
-        emitted = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change)
-        #emitted = True
+        canonical_citing_bibcode = api.get_canonical_bibcode(app, citation_change.citing)
+        if canonical_citing_bibcode:
+            # Citing source exists in ADS
+            citation_change.citing = canonical_citing_bibcode
+            emitted = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change)
+            #emitted = True
 
     if emitted:
         logger.debug("Emitted '%s'", citation_change)

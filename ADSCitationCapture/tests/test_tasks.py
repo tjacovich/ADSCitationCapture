@@ -41,7 +41,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -76,7 +76,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -92,7 +92,7 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcode.called)
                 self.assertTrue(get_canonical_bibcodes.called)
                 self.assertTrue(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
@@ -111,7 +111,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -127,7 +127,7 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcode.called)
                 self.assertTrue(get_canonical_bibcodes.called)
                 self.assertTrue(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
@@ -146,7 +146,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -181,7 +181,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -216,7 +216,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -251,7 +251,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -286,7 +286,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -321,7 +321,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -362,7 +362,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -403,7 +403,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -445,7 +445,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -486,7 +486,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -520,7 +520,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value="Unparsable response") as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
@@ -555,7 +555,7 @@ class TestWorkers(TestBase):
             patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
             patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
             patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=None) as get_canonical_bibcode, \
+            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
             patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
