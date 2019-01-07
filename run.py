@@ -75,6 +75,7 @@ if __name__ == '__main__':
                         dest='refids',
                         action='store',
                         type=str,
+                        default=False,
                         help='Path to the refids.dat file'
                              ' that contains the citation list.')
 
@@ -82,6 +83,7 @@ if __name__ == '__main__':
                         '--force',
                         dest='force',
                         action='store_true',
+                        default=False,
                         help='Force the processing of all the citations')
 
     parser.add_argument('-d',
@@ -105,41 +107,47 @@ if __name__ == '__main__':
                         default=None,
                         help='Semicolon delimited list of json citation (for diagnostics)')
 
-    parser.set_defaults(refids=False)
-    parser.set_defaults(force=False)
-    parser.set_defaults(diagnose=False)
+    parser.add_argument('-m',
+                        '--maintenance',
+                        dest='maintenance',
+                        action='store_true',
+                        default=False,
+                        help='Execute maintenance task')
 
     args = parser.parse_args()
 
-    if args.diagnose:
-        if args.bibcodes:
-            args.bibcodes = [x.strip() for x in args.bibcodes.split(',')]
-        else:
-            # Defaults
-            args.bibcodes = ["1005PhRvC..71c4906H", "1915PA.....23..189P", "2017PASP..129b4005R"]
+    if args.maintenance:
+        tasks.task_maintenance.delay()
+    else:
+        if args.diagnose:
+            if args.bibcodes:
+                args.bibcodes = [x.strip() for x in args.bibcodes.split(',')]
+            else:
+                # Defaults
+                args.bibcodes = ["1005PhRvC..71c4906H", "1915PA.....23..189P", "2017PASP..129b4005R"]
 
-        if args.json:
-            args.json = [x.strip() for x in args.json.split(';')]
-        else:
-            # Defaults
-            args.json = [
-                    "{\"cited\":\"1976NuPhB.113..395J\",\"citing\":\"1005PhRvC..71c4906H\",\"doi\":\"10.1016/0550-3213(76)90133-4\",\"score\":\"1\",\"source\":\"/proj/ads/references/resolved/PhRvC/0071/1005PhRvC..71c4906H.ref.xml.result:17\"}",
-                    "{\"cited\":\"...................\",\"citing\":\"2017SSEle.128..141M\",\"score\":\"0\",\"source\":\"/proj/ads/references/resolved/SSEle/0128/10.1016_j.sse.2016.10.029.xref.xml.result:10\",\"url\":\"https://github.com/viennats/viennats-dev\"}",
-                    "{\"cited\":\"2013ascl.soft03021B\",\"citing\":\"2017PASP..129b4005R\",\"pid\":\"ascl:1303.021\",\"score\":\"1\",\"source\":\"/proj/ads/references/resolved/PASP/0129/iss972.iop.xml.result:114\"}",
-                    ]
+            if args.json:
+                args.json = [x.strip() for x in args.json.split(';')]
+            else:
+                # Defaults
+                args.json = [
+                        "{\"cited\":\"1976NuPhB.113..395J\",\"citing\":\"1005PhRvC..71c4906H\",\"doi\":\"10.1016/0550-3213(76)90133-4\",\"score\":\"1\",\"source\":\"/proj/ads/references/resolved/PhRvC/0071/1005PhRvC..71c4906H.ref.xml.result:17\"}",
+                        "{\"cited\":\"...................\",\"citing\":\"2017SSEle.128..141M\",\"score\":\"0\",\"source\":\"/proj/ads/references/resolved/SSEle/0128/10.1016_j.sse.2016.10.029.xref.xml.result:10\",\"url\":\"https://github.com/viennats/viennats-dev\"}",
+                        "{\"cited\":\"2013ascl.soft03021B\",\"citing\":\"2017PASP..129b4005R\",\"pid\":\"ascl:1303.021\",\"score\":\"1\",\"source\":\"/proj/ads/references/resolved/PASP/0129/iss972.iop.xml.result:114\"}",
+                        ]
 
-        args.refids = build_diagnostics(json_payloads=args.json, bibcodes=args.bibcodes)
+            args.refids = build_diagnostics(json_payloads=args.json, bibcodes=args.bibcodes)
 
-    if not args.refids:
-        print 'You need to give the input list'
-        parser.print_help()
-        sys.exit(0)
+        if not args.refids:
+            print 'You need to give the input list'
+            parser.print_help()
+            sys.exit(0)
 
-    # Send the files to be put on the queue
-    run(args.refids,
-        force=args.force,
-        diagnose=args.diagnose)
+        # Send the files to be put on the queue
+        run(args.refids,
+            force=args.force,
+            diagnose=args.diagnose)
 
-    if args.diagnose:
-        print("Removing diagnostics temporary file '{}'".format(args.refids))
-        os.unlink(args.refids)
+        if args.diagnose:
+            print("Removing diagnostics temporary file '{}'".format(args.refids))
+            os.unlink(args.refids)

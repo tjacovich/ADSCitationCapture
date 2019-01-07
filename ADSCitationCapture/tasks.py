@@ -8,6 +8,7 @@ import ADSCitationCapture.doi as doi
 import ADSCitationCapture.url as url
 import ADSCitationCapture.db as db
 import ADSCitationCapture.forward as forward
+import ADSCitationCapture.api as api
 import adsmsg
 
 # ============================= INITIALIZATION ==================================== #
@@ -22,6 +23,7 @@ app.conf.CELERY_QUEUES = (
     Queue('process-new-citation', app.exchange, routing_key='process-new-citation'),
     Queue('process-updated-citation', app.exchange, routing_key='process-updated-citation'),
     Queue('process-deleted-citation', app.exchange, routing_key='process-deleted-citation'),
+    Queue('maintenance', app.exchange, routing_key='maintenance'),
     Queue('output-results', app.exchange, routing_key='output-results'),
 )
 
@@ -183,6 +185,37 @@ def task_emit_event(citation_change, parsed_metadata):
         logger.debug("Emitted '%s'", citation_change)
     else:
         logger.debug("Not emitted '%s'", citation_change)
+
+@app.task(queue='maintenance')
+def task_maintenance():
+    """
+    Maintenance operations
+    """
+    registered_records = db.get_registered_citation_targets(app)
+    for registered_record in registered_records:
+        bibcode = registered_record['bibcode']
+        try:
+            existing_citation_bibcodes = api.request_existing_citations(app, bibcode)
+        except:
+            logger.exception("Failed API request to retreive existing citations for bibcode '{}'".format(bibcode))
+            continue
+        dummy_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                       content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                       status=adsmsg.Status.updated
+                                                       )
+        parsed_metadata = db.get_citation_target_metadata(app, dummy_citation_change)['parsed']
+        # Temporary hack to clean wrong bibcodes
+        record, nonbib_record = forward.build_record(app, dummy_citation_change, parsed_metadata, existing_citation_bibcodes)
+        if record.bibcode[-1] != record.first_author_norm[0]:
+            dummy_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                           content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                           status=adsmsg.Status.deleted
+                                                           )
+            logger.debug("Calling 'task_output_results' with '%s'", dummy_citation_change)
+            task_output_results.delay(dummy_citation_change, parsed_metadata, existing_citation_bibcodes)
+        else:
+            logger.debug("Calling 'task_output_results' with '%s'", dummy_citation_change)
+            task_output_results.delay(dummy_citation_change, parsed_metadata, existing_citation_bibcodes)
 
 
 @app.task(queue='output-results')

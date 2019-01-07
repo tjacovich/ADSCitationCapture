@@ -48,6 +48,23 @@ def store_citation(app, citation_change, content_type, raw_metadata, parsed_meta
             stored = True
     return stored
 
+def get_registered_citation_targets(app):
+    """
+    Return a list of dict with registered citation target
+    """
+    with app.session_scope() as session:
+        registered_records_db = session.query(CitationTarget).filter_by(status='REGISTERED').all()
+        registered_records = [
+            {
+                'bibcode': record.parsed_cited_metadata.get('bibcode', None),
+                'content': record.content,
+                'content_type': record.content_type,
+            }
+            for record in registered_records_db
+            if record.parsed_cited_metadata.get('bibcode', None) is not None
+        ]
+    return registered_records
+
 def get_citation_target_metadata(app, citation_change):
     """
     If the citation target already exists in the database, return the raw and
@@ -82,7 +99,7 @@ def get_citations_by_bibcode(app, bibcode):
 
 def get_citations(app, citation_change):
     """
-    Return all the citations to a given content.
+    Return all the citations (bibcodes) to a given content.
     It will ignore DELETED and DISCARDED citations.
     """
     with app.session_scope() as session:
