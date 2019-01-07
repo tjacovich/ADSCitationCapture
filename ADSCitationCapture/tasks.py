@@ -84,7 +84,9 @@ def task_process_new_citation(citation_change, force=False):
             if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
                 canonical_citing_bibcode = api.get_canonical_bibcode(app, citation_change.citing)
                 citation_target_bibcode = parsed_metadata.get('bibcode')
-                citations = _get_citations(app, citation_target_bibcode)
+                # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+                original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
+                citations = api.get_canonical_bibcodes(app, original_citations)
                 # Clean before adding the current citation
                 citations = [c for c in citations if c != citation_change.citing and c != canonical_citing_bibcode]
                 # Add canonical bibcode of current detected citation
@@ -100,26 +102,6 @@ def task_process_new_citation(citation_change, force=False):
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
 
-def _get_citations(app, bibcode):
-    """
-    Get citations for a bibcode from Solr or, if it does not exist in solr, get
-    them from the Citation Capture database and transform the stored bibcodes
-    into their canonical ones as registered in Solr.
-    """
-    # Check if the citation target already exists in Solr
-    bibcode = api.get_canonical_bibcode(app, bibcode)
-    if bibcode:
-        # It exists, then use the list of citations as provided by
-        # ADS API which already merged duplicated records and removed invalid bibcodes
-        existing_citation_bibcodes = api.request_existing_citations(app, bibcode)
-        citations = existing_citation_bibcodes
-    else:
-        # It does not exist, use Citation Capture database
-        original_citations = db.get_citations_by_bibcode(app, bibcode)
-        # Transform citation bibcodes into their canonical form
-        citations = api.get_canonical_bibcodes(app, original_citations)
-    return list(set(citations))
-
 @app.task(queue='process-updated-citation')
 def task_process_updated_citation(citation_change, force=False):
     """
@@ -131,7 +113,9 @@ def task_process_updated_citation(citation_change, force=False):
     citation_target_bibcode = parsed_metadata.get('bibcode')
     if updated:
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
-            citations = _get_citations(app, citation_target_bibcode)
+            # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+            original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
+            citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
             task_output_results.delay(citation_change, parsed_metadata, citations)
         logger.debug("Calling 'task_emit_event' with '%s'", citation_change)
@@ -148,7 +132,9 @@ def task_process_deleted_citation(citation_change, force=False):
     citation_target_bibcode = parsed_metadata.get('bibcode')
     if marked_as_deleted:
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
-            citations = _get_citations(app, citation_target_bibcode)
+            # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+            original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
+            citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
             task_output_results.delay(citation_change, parsed_metadata, citations)
         logger.debug("Calling 'task_emit_event' with '%s'", citation_change)
@@ -228,7 +214,9 @@ def task_maintenance():
     for registered_record in registered_records:
         bibcode = registered_record['bibcode']
         try:
-            existing_citation_bibcodes = _get_citations(app, bibcode)
+            # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+            original_citations = db.get_citations_by_bibcode(app, bibcode)
+            existing_citation_bibcodes = api.get_canonical_bibcodes(app, original_citations)
         except:
             logger.exception("Failed API request to retreive existing citations for bibcode '{}'".format(bibcode))
             continue
