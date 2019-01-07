@@ -39,8 +39,7 @@ def request_existing_citations(app, bibcode):
     existing_citation_bibcodes = [b['bibcode'] for b in existing_citation_bibcodes]
     return existing_citation_bibcodes
 
-
-def get_canonical_bibcodes(app, bibcodes):
+def _get_canonical_bibcodes(app, bibcodes):
     """
     Convert input bibcodes into their canonical form if they exist
     """
@@ -48,7 +47,8 @@ def get_canonical_bibcodes(app, bibcodes):
                 'fl': 'bibcode',
                 'q': '*:*',
                 'wt': 'json',
-                'fq':'{!bitset}'
+                'fq':'{!bitset}',
+                'rows': len(bibcodes)
             })
     headers = {}
     headers["Authorization"] = "Bearer:{}".format(app.conf['ADS_API_TOKEN'])
@@ -56,6 +56,23 @@ def get_canonical_bibcodes(app, bibcodes):
     data = "bibcode\n" + "\n".join(bibcodes)
     r = requests.post(url, headers=headers, data=data)
     return [d['bibcode'] for d in r.json().get('response', {}).get('docs', [])]
+
+def get_canonical_bibcodes(app, bibcodes):
+    """
+    Convert input bibcodes into their canonical form if they exist.
+    If the list of bibcodes is higher than the bigquery limit, it will
+    paginate through them.
+    """
+    start = 0
+    limit = 2000
+    n_bibcodes = len(bibcodes)
+    canonical_bibcodes = []
+    while True:
+        canonical_bibcodes += _get_canonical_bibcodes(app, bibcodes[start:limit])
+        start += limit
+        if start > n_bibcodes:
+            break
+    return canonical_bibcodes
 
 def get_canonical_bibcode(app, bibcode):
     """
