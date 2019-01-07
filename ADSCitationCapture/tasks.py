@@ -204,18 +204,8 @@ def task_maintenance():
                                                        status=adsmsg.Status.updated
                                                        )
         parsed_metadata = db.get_citation_target_metadata(app, dummy_citation_change)['parsed']
-        # Temporary hack to clean wrong bibcodes
-        record, nonbib_record = forward.build_record(app, dummy_citation_change, parsed_metadata, existing_citation_bibcodes)
-        if record.bibcode[-1] != record.first_author_norm[0]:
-            dummy_citation_change = adsmsg.CitationChange(content=registered_record['content'],
-                                                           content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
-                                                           status=adsmsg.Status.deleted
-                                                           )
-            logger.debug("Calling 'task_output_results' with '%s'", dummy_citation_change)
-            task_output_results.delay(dummy_citation_change, parsed_metadata, existing_citation_bibcodes)
-        else:
-            logger.debug("Calling 'task_output_results' with '%s'", dummy_citation_change)
-            task_output_results.delay(dummy_citation_change, parsed_metadata, existing_citation_bibcodes)
+        logger.debug("Calling 'task_output_results' with '%s'", dummy_citation_change)
+        task_output_results.delay(dummy_citation_change, parsed_metadata, existing_citation_bibcodes)
 
 
 @app.task(queue='output-results')
