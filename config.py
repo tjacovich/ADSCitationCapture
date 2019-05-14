@@ -20,7 +20,10 @@ ASCL_URL = "http://ascl.net/"
 ADS_API_TOKEN = "<secret>"
 ADS_API_URL = "https://ui.adsabs.harvard.edu/v1/"
 
+# When 'True', no events are emitted to the broker via the webhook
+TESTING_MODE = True
 # When 'True', it converts all the asynchronous calls into synchronous,
-# thus no need for rabbitmq and allow debuggers to run if needed:
+# thus no need for rabbitmq, it does not forward to master
+# and it allows debuggers to run if needed:
 CELERY_ALWAYS_EAGER = True
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = True

@@ -204,10 +204,14 @@ def task_emit_event(citation_change, parsed_metadata):
         if canonical_citing_bibcode:
             # Citing source exists in ADS
             citation_change.citing = canonical_citing_bibcode
-            emitted = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change)
-            #emitted = True
+            if not app.conf['TESTING_MODE']:
+                emitted = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change)
+            else:
+                emitted = True
 
-    if emitted:
+    if app.conf['TESTING_MODE'] and emitted:
+        logger.debug("Emitted '%s' (testing mode, not really emitted)", citation_change)
+    elif emitted:
         logger.debug("Emitted '%s'", citation_change)
     else:
         logger.debug("Not emitted '%s'", citation_change)
@@ -249,10 +253,12 @@ def task_output_results(citation_change, parsed_metadata, citations):
     record, nonbib_record = forward.build_record(app, citation_change, parsed_metadata, citations)
     logger.debug('Will forward this record: %s', record)
     logger.debug("Calling 'app.forward_message' with '%s'", str(record))
-    app.forward_message(record)
+    if not app.conf['CELERY_ALWAYS_EAGER']:
+        app.forward_message(record)
     logger.debug('Will forward this record: %s', nonbib_record)
     logger.debug("Calling 'app.forward_message' with '%s'", str(nonbib_record))
-    app.forward_message(nonbib_record)
+    if not app.conf['CELERY_ALWAYS_EAGER']:
+        app.forward_message(nonbib_record)
 
 
 if __name__ == '__main__':
