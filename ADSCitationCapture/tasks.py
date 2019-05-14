@@ -147,11 +147,18 @@ def _protobuf_to_adsmsg_citation_change(pure_protobuf):
         tmp['content_type'] = getattr(adsmsg.CitationChangeContentType, tmp['content_type'])
     else:
         tmp['content_type'] = 0 # default: adsmsg.CitationChangeContentType.doi
+    recover_timestamp = False
     if 'timestamp' in tmp:
-        # Ignore original protobuf timestamps since that value is set when the
-        # protobuf is created
+        # Ignore timestamp in string format
+        # 'timestamp': '2019-01-03T21:00:02.010610Z'
         del tmp['timestamp']
-    return adsmsg.CitationChange(**tmp)
+        recover_timestamp = True
+    citation_change =  adsmsg.CitationChange(**tmp)
+    if recover_timestamp:
+        # Recover timestamp in google.protobuf.timestamp_pb2.Timestamp format
+        # 'timestamp': seconds: 1546549202 nanos: 10610000
+        citation_change.timestamp = pure_protobuf.timestamp
+    return citation_change
 
 @app.task(queue='process-citation-changes')
 def task_process_citation_changes(citation_changes, force=False):
