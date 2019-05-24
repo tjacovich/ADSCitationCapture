@@ -8,7 +8,12 @@ class TestBase(unittest.TestCase):
         unittest.TestCase.setUp(self)
         self.proj_home = tasks.app.conf['PROJ_HOME']
         self._app = tasks.app
-        self.app = app.ADSCitationCaptureCelery('test', proj_home=self.proj_home, local_config={})
+        config = {
+            "TESTING_MODE": False,
+            "CELERY_ALWAYS_EAGER": False,
+            "CELERY_EAGER_PROPAGATES_EXCEPTIONS": False,
+        }
+        self.app = app.ADSCitationCaptureCelery('test', proj_home=self.proj_home, local_config=config)
         tasks.app = self.app # monkey-patch the app object
         self._init_mock_data()
 
@@ -36,9 +41,8 @@ class TestBase(unittest.TestCase):
                     'citations': [],
                     'references': [],
                     'description_of': [],
-                    'authors': [u'Foreman-Mackey, Dan', u'Price-Whelan, Adrian', u'Ryan, Geoffrey', u'Emily', u'Smith, Michael', u'Barbary, Kyle', u'Hogg, David W', u'Brewer, Brendon J'],
+                    'authors': [u'Foreman-Mackey, Dan', u'Price-Whelan, Adrian', u'Ryan, Geoffrey', u'Emily', u'Smith, Michael', u'Barbary, Kyle', u'Hogg, David W.', u'Brewer, Brendon J.'],
                     'normalized_authors': [u'Foreman-Mackey, D', u'Price-Whelan, A', u'Ryan, G', u'Emily', u'Smith, M', u'Barbary, K', u'Hogg, D W', u'Brewer, B J'],
-                    'raw_authors': [u'Dan Foreman-Mackey', u'Adrian Price-Whelan', u'Geoffrey Ryan', u'Emily', u'Michael Smith', u'Kyle Barbary', u'David W. Hogg', u'Brendon J. Brewer'],
                     'keywords': [],
                     'forks': [],
                     'properties': {
