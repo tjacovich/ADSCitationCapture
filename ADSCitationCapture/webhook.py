@@ -104,5 +104,7 @@ def emit_event(ads_webhook_url, ads_webhook_auth_token, citation_change, timeout
         if not r.ok:
             logger.error("Emit event failed with status code '{}': {}".format(r.status_code, r.content))
             raise Exception("HTTP Post to '{}' failed: {}".format(ads_webhook_url, json.dumps(data)))
+        else:
+            logger.info("Emitted event (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
         return True
     return False

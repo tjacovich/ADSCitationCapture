@@ -14,7 +14,7 @@ import adsmsg
 # ============================= INITIALIZATION ==================================== #
 
 proj_home = os.path.realpath(os.path.join(os.path.dirname(__file__), '../'))
-app = app_module.ADSCitationCaptureCelery('ads-citation-capture', proj_home=proj_home)
+app = app_module.ADSCitationCaptureCelery('ads-citation-capture', proj_home=proj_home, local_config=globals().get('local_config', {}))
 logger = app.logger
 
 
@@ -33,6 +33,8 @@ app.conf.CELERY_QUEUES = (
 @app.task(queue='process-new-citation')
 def task_process_new_citation(citation_change, force=False):
     """
+    Process new citation:
+    - Retrieve metadata from doi.org
     """
     content_type = None
     is_link_alive = False
@@ -42,7 +44,7 @@ def task_process_new_citation(citation_change, force=False):
     metadata = db.get_citation_target_metadata(app, citation_change)
     citation_target_in_db = bool(metadata) # False if dict is empty
     raw_metadata = metadata.get('raw', None)
-    parsed_metadata = metadata.get('parsed', None)
+    parsed_metadata = metadata.get('parsed', {})
     if citation_target_in_db:
         status = metadata.get('status', u'DISCARDED') # "REGISTERED" if it is a software record
 
@@ -101,13 +103,16 @@ def task_process_new_citation(citation_change, force=False):
 @app.task(queue='process-updated-citation')
 def task_process_updated_citation(citation_change, force=False):
     """
-    Update citation record unless the record it is DELETED
+    Update citation record
+    Emit/forward the update only if it is REGISTERED
     """
     updated = db.update_citation(app, citation_change)
     metadata = db.get_citation_target_metadata(app, citation_change)
     parsed_metadata = metadata.get('parsed', {})
-    citation_target_bibcode = parsed_metadata.get('bibcode')
-    if updated:
+    citation_target_bibcode = parsed_metadata.get('bibcode', None)
+    status = metadata.get('status', u'DISCARDED')
+    # Emit/forward the update only if status is "REGISTERED"
+    if updated and status == u'REGISTERED':
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
@@ -122,11 +127,12 @@ def task_process_deleted_citation(citation_change, force=False):
     """
     Mark a citation as deleted
     """
-    marked_as_deleted = db.mark_citation_as_deleted(app, citation_change)
+    marked_as_deleted, previous_status = db.mark_citation_as_deleted(app, citation_change)
     metadata = db.get_citation_target_metadata(app, citation_change)
     parsed_metadata = metadata.get('parsed', {})
-    citation_target_bibcode = parsed_metadata.get('bibcode')
-    if marked_as_deleted:
+    citation_target_bibcode = parsed_metadata.get('bibcode', None)
+    # Emit/forward the update only if the previous status was "REGISTERED"
+    if marked_as_deleted and previous_status == u'REGISTERED':
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
@@ -182,7 +188,7 @@ def task_process_citation_changes(citation_changes, force=False):
                 logger.error("Ignoring updated citation (citting '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             else:
                 logger.debug("Calling 'task_process_updated_citation' with '%s'", citation_change)
-                task_process_updated_citation.delay(citation_change, force=False)
+                task_process_updated_citation.delay(citation_change, force=force)
         elif citation_change.status == adsmsg.Status.deleted:
             if not citation_in_db:
                 logger.error("Ignoring deleted citation (citting '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
@@ -202,7 +208,10 @@ def task_emit_event(citation_change, parsed_metadata):
     if is_software and is_link_alive:
         canonical_citing_bibcode = api.get_canonical_bibcode(app, citation_change.citing)
         if canonical_citing_bibcode:
-            # Citing source exists in ADS
+            # If citing source exists in ADS
+            # - Duplicate 'citation_change' to avoid changing shared memory when running the code in test mode
+            citation_change = _protobuf_to_adsmsg_citation_change(citation_change)
+            # - Use canonical citing bibcode
             citation_change.citing = canonical_citing_bibcode
             if not app.conf['TESTING_MODE']:
                 emitted = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change)
@@ -220,6 +229,9 @@ def task_emit_event(citation_change, parsed_metadata):
 def task_maintenance():
     """
     Maintenance operations
+    - Get registered citation targets
+    - For each, get their citations bibcodes and transform them to their canonical form
+    - Send to master an update with the new list of citations canonical bibcodes
     """
     registered_records = db.get_registered_citation_targets(app)
     for registered_record in registered_records:
@@ -235,9 +247,10 @@ def task_maintenance():
                                                        content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
                                                        status=adsmsg.Status.updated
                                                        )
-        parsed_metadata = db.get_citation_target_metadata(app, dummy_citation_change)['parsed']
-        logger.debug("Calling 'task_output_results' with '%s'", dummy_citation_change)
-        task_output_results.delay(dummy_citation_change, parsed_metadata, existing_citation_bibcodes)
+        parsed_metadata = db.get_citation_target_metadata(app, dummy_citation_change).get('parsed', {})
+        if parsed_metadata:
+            logger.debug("Calling 'task_output_results' with '%s'", dummy_citation_change)
+            task_output_results.delay(dummy_citation_change, parsed_metadata, existing_citation_bibcodes)
 
 
 @app.task(queue='output-results')

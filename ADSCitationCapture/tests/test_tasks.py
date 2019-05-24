@@ -47,7 +47,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -82,7 +82,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -117,7 +117,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -152,7 +152,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -187,7 +187,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -222,7 +222,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -257,7 +257,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -292,7 +292,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -327,7 +327,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -368,7 +368,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -409,7 +409,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -451,7 +451,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -492,7 +492,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -526,7 +526,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
@@ -561,7 +561,7 @@ class TestWorkers(TestBase):
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=True) as mark_citation_as_deleted, \
+            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:

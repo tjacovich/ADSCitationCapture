@@ -2,7 +2,12 @@ from psycopg2 import IntegrityError
 from dateutil.tz import tzutc
 from ADSCitationCapture.models import Citation, CitationTarget
 from adsmsg import CitationChange
+from adsputils import setup_logging
 
+# ============================= INITIALIZATION ==================================== #
+logger = setup_logging(__name__)
+
+# =============================== FUNCTIONS ======================================= #
 def store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
     """
     Stores a new citation target in the DB
@@ -22,6 +27,7 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
             # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
             logger.error("Ignoring new citation target (citting '%s', content '%s' and timestamp '%s') because it already exists in the database (another new citation may have been processed before this one): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
         else:
+            logger.info("Stored new citation target (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             stored = True
     return stored
 
@@ -45,8 +51,27 @@ def store_citation(app, citation_change, content_type, raw_metadata, parsed_meta
             # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
             logger.error("Ignoring new citation (citting '%s', content '%s' and timestamp '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
         else:
+            logger.info("Stored new citation (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             stored = True
     return stored
+
+def get_citation_target_count(app):
+    """
+    Return the number of citation targets registered in the database
+    """
+    citation_target_count = 0
+    with app.session_scope() as session:
+        citation_target_count = session.query(CitationTarget).count()
+    return citation_target_count
+
+def get_citation_count(app):
+    """
+    Return the number of citations registered in the database
+    """
+    citation_count = 0
+    with app.session_scope() as session:
+        citation_count = session.query(Citation).count()
+    return citation_count
 
 def get_registered_citation_targets(app):
     """
@@ -79,7 +104,7 @@ def get_citation_target_metadata(app, citation_change):
         citation_target_in_db = citation_target is not None
         if citation_target_in_db:
             metadata['raw'] = citation_target.raw_cited_metadata
-            metadata['parsed'] = citation_target.parsed_cited_metadata
+            metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
             metadata['status'] = citation_target.status
     return metadata
 
@@ -89,12 +114,13 @@ def get_citations_by_bibcode(app, bibcode):
     It will ignore DELETED and DISCARDED citations and citations targets.
     """
     citations = []
-    with app.session_scope() as session:
-        #bibcode = "2015zndo.....14475J"
-        citation_target = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata['bibcode'].astext == bibcode).filter_by(status="REGISTERED").first()
-        if citation_target:
-            dummy_citation_change = CitationChange(content=citation_target.content)
-            citations = get_citations(app, dummy_citation_change)
+    if bibcode is not None:
+        with app.session_scope() as session:
+            #bibcode = "2015zndo.....14475J"
+            citation_target = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata['bibcode'].astext == bibcode).filter_by(status="REGISTERED").first()
+            if citation_target:
+                dummy_citation_change = CitationChange(content=citation_target.content)
+                citations = get_citations(app, dummy_citation_change)
     return citations
 
 def get_citations(app, citation_change):
@@ -126,19 +152,17 @@ def update_citation(app, citation_change):
         citation = session.query(Citation).with_for_update().filter_by(citing=citation_change.citing, content=citation_change.content).first()
         change_timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
         if citation.timestamp < change_timestamp:
-            if citation.status in ("REGISTERED", "DISCARDED"):
-                #citation.citing = citation_change.citing # This should not change
-                #citation.content = citation_change.content # This should not change
-                citation.cited = citation_change.cited
-                citation.resolved = citation_change.resolved
-                citation.timestamp = change_timestamp
-                session.add(citation)
-                session.commit()
-                updated = True
-            else:
-                logger.error("Ignoring citation update (citting '%s', content '%s' and timestamp '%s') because the record is registered as deleted in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            #citation.citing = citation_change.citing # This should not change
+            #citation.content = citation_change.content # This should not change
+            citation.cited = citation_change.cited
+            citation.resolved = citation_change.resolved
+            citation.timestamp = change_timestamp
+            session.add(citation)
+            session.commit()
+            updated = True
+            logger.info("Updated citation (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
         else:
-            logger.error("Ignoring citation update (citting '%s', content '%s' and timestamp '%s') because received timestamp is older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Ignoring citation update (citting '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
     return updated
 
 def mark_citation_as_deleted(app, citation_change):
@@ -146,15 +170,18 @@ def mark_citation_as_deleted(app, citation_change):
     Update status to DELETED for a given citation
     """
     marked_as_deleted = False
+    previous_status = None
     with app.session_scope() as session:
         citation = session.query(Citation).with_for_update().filter_by(citing=citation_change.citing, content=citation_change.content).first()
+        previous_status = citation.status
         change_timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
         if citation.timestamp < change_timestamp:
-            citation.status = "DELETED"
+            citation.status = u"DELETED"
             citation.timestamp = change_timestamp
             session.add(citation)
             session.commit()
             marked_as_deleted = True
+            logger.info("Marked citation as deleted (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
         else:
-            logger.error("Ignoring citation deletion (citting '%s', content '%s' and timestamp '%s') because received timestamp is older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
-    return marked_as_deleted
+            logger.info("Ignoring citation deletion (citting '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+    return marked_as_deleted, previous_status

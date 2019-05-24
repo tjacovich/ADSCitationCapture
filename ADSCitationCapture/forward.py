@@ -16,6 +16,8 @@ def build_record(app, citation_change, parsed_metadata, citations):
         raise Exception("Only DOI records can be forwarded to master")
     # Extract required values
     bibcode = parsed_metadata.get('bibcode')
+    if bibcode is None:
+        raise Exception("Only records with a bibcode can be forwarded to master")
     abstract = parsed_metadata.get('abstract', u"")
     title = parsed_metadata.get('title', u"")
     keywords = parsed_metadata.get('keywords', [])

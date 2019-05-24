@@ -36,6 +36,7 @@ class DeltaComputation():
         self.table_name = RawCitation.__tablename__
         self.expanded_table_name = "expanded_" + self.table_name
         self.recreated_previous_expanded_table_name = "recreated_previous_expanded_" + self.table_name
+        self.missing_previous_expanded_table_name = "not_processed_" + self.table_name
         self.joint_table_name = CitationChanges.__tablename__
         self.schema_prefix = schema_prefix
         self.schema_name = None
@@ -68,7 +69,7 @@ class DeltaComputation():
                 self._execute_sql(drop_schema, self.schema_name)
                 raise
             if self.previous_schema_name is not None:
-                self.logger.info("Comparing table '%s.%s' with previous table '%s.%s'", self.schema_name, self.expanded_table_name, self.previous_schema_name, self.expanded_table_name)
+                self.logger.info("Comparing table '%s.%s' with recreated table from previous process '%s.%s'", self.schema_name, self.expanded_table_name, self.previous_schema_name, self.recreated_previous_expanded_table_name)
             self._join_tables()
             self._calculate_delta()
             self.logger.info("Created table '%s.%s'", self.schema_name, self.joint_table_name)
@@ -167,7 +168,7 @@ class DeltaComputation():
             missing = self._find_not_processed_records_from_previous_run()
             if missing:
                 missing_str = ",\n".join(["citing: '{}', content: '{}'".format(m[0], m[1]) for m in missing])
-                raise Exception("Some previous records were not processed yet ({} in total) probably due to slow processing or to HTTP errors (e.g., 502/503) fetching metadata: {}".format(len(missing), missing_str))
+                self.logger.error("Some previous records were not processed ({} in total) and will be re-processed: {}".format(len(missing), missing_str))
 
             # Drop old schemas (just keep last 3)
             if len(filtered_existing_schema_names) > 2:
@@ -197,8 +198,15 @@ class DeltaComputation():
         """
         # Compared reconstruction with the previous expanded raw table
         # - Do not compare cited field because it is only accepted if score is 1 (resolved)
-        discrepancies = "SELECT a.citing, a.content FROM {0}.{1} a FULL OUTER JOIN {0}.{2} b USING (citing, doi, pid, url, content, resolved, timestamp) WHERE a.id IS NULL OR b.id IS NULL ;"
-        missing = self._execute_sql(discrepancies, self.previous_schema_name, self.expanded_table_name, self.recreated_previous_expanded_table_name).fetchall()
+        drop_reconstructed_previous_expanded_table = "DROP TABLE IF EXISTS {0}.{1};"
+        self._execute_sql(drop_reconstructed_previous_expanded_table, self.previous_schema_name, self.missing_previous_expanded_table_name)
+        discrepancies = "CREATE TABLE {0}.{1} AS SELECT citing, doi, pid, url, content, resolved, timestamp, a.id AS original_id, b.id AS recreated_id FROM {0}.{2} a FULL OUTER JOIN {0}.{3} b USING (citing, doi, pid, url, content, resolved, timestamp) WHERE a.id IS NULL OR b.id IS NULL ;"
+        self._execute_sql(discrepancies, self.previous_schema_name, self.missing_previous_expanded_table_name, self.expanded_table_name, self.recreated_previous_expanded_table_name)
+
+        # Find how many records from the previous expanded table were not processed
+        not_processed = "SELECT citing, content FROM {0}.{1} WHERE recreated_id IS NULL;"
+        missing = self._execute_sql(not_processed, self.previous_schema_name, self.missing_previous_expanded_table_name).fetchall()
+
         return missing
 
     def _import(self):
@@ -338,7 +346,7 @@ class DeltaComputation():
 
     def _join_tables(self):
         """
-        Full join between the previous and the new table but keeping only NEW,
+        Full join between the previous and the new recreated table but keeping only NEW,
         DELETED and UPDATED records. Previous and new values are preserved in
         columns with names composed by a prefix "previous_" or "new_".
 
@@ -381,7 +389,7 @@ class DeltaComputation():
             self._execute_sql(joint_table_sql, self.schema_name, self.expanded_table_name, self.joint_table_name)
         else:
             joint_table_sql = \
-                    "create table {0}.{3} as \
+                    "create table {0}.{4} as \
                         select \
                             {0}.{2}.id as new_id, \
                             {0}.{2}.citing as new_citing, \
@@ -392,25 +400,25 @@ class DeltaComputation():
                             {0}.{2}.content as new_content, \
                             {0}.{2}.resolved as new_resolved, \
                             {0}.{2}.timestamp as new_timestamp, \
-                            {1}.{2}.id as previous_id, \
-                            {1}.{2}.citing as previous_citing, \
-                            {1}.{2}.cited as previous_cited, \
-                            {1}.{2}.doi as previous_doi, \
-                            {1}.{2}.pid as previous_pid, \
-                            {1}.{2}.url as previous_url, \
-                            {1}.{2}.content as previous_content, \
-                            {1}.{2}.resolved as previous_resolved, \
-                            {1}.{2}.timestamp as previous_timestamp \
-                        from {1}.{2} full join {0}.{2} \
+                            {1}.{3}.id as previous_id, \
+                            {1}.{3}.citing as previous_citing, \
+                            {1}.{3}.cited as previous_cited, \
+                            {1}.{3}.doi as previous_doi, \
+                            {1}.{3}.pid as previous_pid, \
+                            {1}.{3}.url as previous_url, \
+                            {1}.{3}.content as previous_content, \
+                            {1}.{3}.resolved as previous_resolved, \
+                            {1}.{3}.timestamp as previous_timestamp \
+                        from {1}.{3} full join {0}.{2} \
                         on \
-                            {0}.{2}.citing={1}.{2}.citing \
-                            and {0}.{2}.content={1}.{2}.content \
+                            {0}.{2}.citing={1}.{3}.citing \
+                            and {0}.{2}.content={1}.{3}.content \
                         where \
-                            ({0}.{2}.id is not null and {1}.{2}.id is null) \
-                            or ({0}.{2}.id is null and {1}.{2}.id is not null) \
-                            or ({0}.{2}.id is not null and {1}.{2}.id is not null and ({0}.{2}.cited<>{1}.{2}.cited or {0}.{2}.resolved<>{1}.{2}.resolved)) \
+                            ({0}.{2}.id is not null and {1}.{3}.id is null) \
+                            or ({0}.{2}.id is null and {1}.{3}.id is not null) \
+                            or ({0}.{2}.id is not null and {1}.{3}.id is not null and ({0}.{2}.cited<>{1}.{3}.cited or {0}.{2}.resolved<>{1}.{3}.resolved)) \
                         ;"
-            self._execute_sql(joint_table_sql, self.schema_name, self.previous_schema_name, self.expanded_table_name, self.joint_table_name)
+            self._execute_sql(joint_table_sql, self.schema_name, self.previous_schema_name, self.expanded_table_name, self.recreated_previous_expanded_table_name, self.joint_table_name)
 
         add_id_column_sql = "ALTER TABLE {0}.{1} ADD COLUMN id SERIAL PRIMARY KEY;"
         self._execute_sql(add_id_column_sql, self.schema_name, self.joint_table_name)
