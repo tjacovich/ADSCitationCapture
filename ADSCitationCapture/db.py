@@ -6,6 +6,7 @@ from adsputils import setup_logging
 
 # ============================= INITIALIZATION ==================================== #
 logger = setup_logging(__name__)
+logger.propagate = False
 
 # =============================== FUNCTIONS ======================================= #
 def store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status):

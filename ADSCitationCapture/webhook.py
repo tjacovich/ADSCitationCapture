@@ -5,6 +5,7 @@ import adsmsg
 import datetime
 
 logger = setup_logging(__name__)
+logger.propagate = False
 
 def _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url):
     now = datetime.datetime.now()

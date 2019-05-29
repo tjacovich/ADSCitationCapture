@@ -8,6 +8,7 @@ from ADSCitationCapture import tasks
 
 from adsputils import setup_logging
 logger = setup_logging('run.py')
+logger.propagate = False
 
 from ADSCitationCapture.delta_computation import DeltaComputation
 from adsputils import load_config

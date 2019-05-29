@@ -16,6 +16,7 @@ import adsmsg
 proj_home = os.path.realpath(os.path.join(os.path.dirname(__file__), '../'))
 app = app_module.ADSCitationCaptureCelery('ads-citation-capture', proj_home=proj_home, local_config=globals().get('local_config', {}))
 logger = app.logger
+logger.propagate = False
 
 
 app.conf.CELERY_QUEUES = (

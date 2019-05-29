@@ -32,6 +32,7 @@ class DeltaComputation():
         self.session = sessionmaker(bind=self.engine)()
         #
         self.logger = setup_logging(__name__)
+        self.logger.propagate = False
         #
         self.table_name = RawCitation.__tablename__
         self.expanded_table_name = "expanded_" + self.table_name
@@ -168,7 +169,8 @@ class DeltaComputation():
             missing = self._find_not_processed_records_from_previous_run()
             if missing:
                 missing_str = ",\n".join(["citing: '{}', content: '{}'".format(m[0], m[1]) for m in missing])
-                self.logger.error("Some previous records were not processed ({} in total) and will be re-processed: {}".format(len(missing), missing_str))
+                #self.logger.error("Some previous records were not processed ({} in total) and will be re-processed: {}".format(len(missing), missing_str))
+                self.logger.error("Some previous records were not processed ({} in total) and will be re-processed".format(len(missing)))
 
             # Drop old schemas (just keep last 3)
             if len(filtered_existing_schema_names) > 2:
