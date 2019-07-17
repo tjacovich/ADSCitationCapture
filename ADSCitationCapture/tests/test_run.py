@@ -17,8 +17,8 @@ class TestWorkers(TestBase):
     def setUp(self):
         TestBase.setUp(self)
         sys.path.append(self.proj_home)
-        from run import run
-        self.run = run
+        from run import process
+        self.process = process
         self.schema_prefix = "testing_citation_capture_"
 
     def tearDown(self):
@@ -38,7 +38,7 @@ class TestWorkers(TestBase):
         citation_count = db.get_citation_count(self.app)
         citation_target_count = db.get_citation_target_count(self.app)
         if citation_count != 0 or citation_target_count != 0:
-            pytest.skip("Skipped because this test assumes an empty public schema but the database already contains {} citations and {} citations targets (this is a protection against modifying an already used database)")
+            pytest.skip("Skipped because this test assumes an empty public schema but the database already contains {} citations and {} citations targets (this is a protection against modifying an already used database)".format(citation_count, citation_target_count))
         else:
             first_refids_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/sample-refids1.dat")
             os.utime(first_refids_filename, (0, 0)) # set the access and modified times to 19700101_000000
@@ -68,7 +68,7 @@ class TestWorkers(TestBase):
             i = 0
             with patch.object(tasks.task_process_citation_changes, 'delay', return_value=None) as task_process_citation_changes, \
                     patch.object(delta_computation.DeltaComputation, '_find_not_processed_records_from_previous_run', return_value=[]) as find_not_processed_records_from_previous_run:
-                self.run(first_refids_filename, schema_prefix=self.schema_prefix)
+                self.process(first_refids_filename, schema_prefix=self.schema_prefix)
                 self.assertTrue(task_process_citation_changes.called)
                 self.assertFalse(find_not_processed_records_from_previous_run.called)
 
@@ -83,7 +83,7 @@ class TestWorkers(TestBase):
             i = 0
             with patch.object(tasks.task_process_citation_changes, 'delay', return_value=None) as task_process_citation_changes, \
                     patch.object(delta_computation.DeltaComputation, '_find_not_processed_records_from_previous_run', return_value=[]) as find_not_processed_records_from_previous_run:
-                self.run(second_refids_filename, schema_prefix=self.schema_prefix)
+                self.process(second_refids_filename, schema_prefix=self.schema_prefix)
                 self.assertTrue(task_process_citation_changes.called)
                 self.assertTrue(find_not_processed_records_from_previous_run.called)
 

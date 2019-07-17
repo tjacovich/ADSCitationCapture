@@ -32,6 +32,26 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
             stored = True
     return stored
 
+def update_citation_target_metadata(app, bibcode, raw_metadata, parsed_metadata):
+    """
+    Update metadata for a citation target
+    """
+    metadata_updated = False
+    with app.session_scope() as session:
+        citation_target = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata["bibcode"].astext == bibcode).first()
+        if citation_target.raw_cited_metadata != raw_metadata and citation_target.parsed_cited_metadata != parsed_metadata:
+            if citation_target.parsed_cited_metadata.get('bibcode', None) == parsed_metadata.get('bibcode', None):
+                citation_target.raw_cited_metadata = raw_metadata
+                citation_target.parsed_cited_metadata = parsed_metadata
+                session.add(citation_target)
+                session.commit()
+                metadata_updated = True
+                logger.info("Updated metadata for citation target '%s'", bibcode)
+            else:
+                logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s' ", bibcode, parsed_metadata.get('bibcode', None))
+    return metadata_updated
+
+
 def store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
     """
     Stores a new citation in the DB
@@ -74,22 +94,65 @@ def get_citation_count(app):
         citation_count = session.query(Citation).count()
     return citation_count
 
-def get_registered_citation_targets(app):
+def _extract_key_citation_target_data(records_db):
     """
-    Return a list of dict with registered citation target
+    Convert list of CitationTarget to a list of dictionaries with key data
+    """
+    records = [
+        {
+            'bibcode': record_db.parsed_cited_metadata.get('bibcode', None),
+            'content': record_db.content,
+            'content_type': record_db.content_type,
+        }
+        for record_db in records_db
+        if record_db.parsed_cited_metadata.get('bibcode', None) is not None
+    ]
+    return records
+
+def get_citation_targets_by_bibcode(app, bibcodes, only_registered=False):
+    """
+    Return a list of dict with the requested citation targets based on their bibcode
     """
     with app.session_scope() as session:
-        registered_records_db = session.query(CitationTarget).filter_by(status='REGISTERED').all()
-        registered_records = [
-            {
-                'bibcode': record.parsed_cited_metadata.get('bibcode', None),
-                'content': record.content,
-                'content_type': record.content_type,
-            }
-            for record in registered_records_db
-            if record.parsed_cited_metadata.get('bibcode', None) is not None
-        ]
-    return registered_records
+        records_db = []
+        for bibcode in bibcodes:
+            if only_registered:
+                record_db = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata["bibcode"].astext == bibcode).filter_by(status='REGISTERED').first()
+            else:
+                record_db = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata["bibcode"].astext == bibcode).first()
+            if record_db:
+                records_db.append(record_db)
+
+        records = _extract_key_citation_target_data(records_db)
+    return records
+
+def get_citation_targets_by_doi(app, dois, only_registered=False):
+    """
+    Return a list of dict with the requested citation targets based on their DOI
+    - Records without a bibcode in the database will not be returned
+    """
+    with app.session_scope() as session:
+        if only_registered:
+            records_db = session.query(CitationTarget).filter(CitationTarget.content.in_(dois)).filter_by(status='REGISTERED').all()
+        else:
+            records_db = session.query(CitationTarget).filter(CitationTarget.content.in_(dois)).all()
+
+        records = _extract_key_citation_target_data(records_db)
+    return records
+
+def get_citation_targets(app, only_registered=False):
+    """
+    Return a list of dict with all citation targets (or only the registered ones
+    if `only_registered` is True)
+    - Records without a bibcode in the database will not be returned
+    """
+    with app.session_scope() as session:
+        if only_registered:
+            records_db = session.query(CitationTarget).filter_by(status='REGISTERED').all()
+        else:
+            records_db = session.query(CitationTarget).all()
+        records = _extract_key_citation_target_data(records_db)
+    return records
 
 def get_citation_target_metadata(app, citation_change):
     """

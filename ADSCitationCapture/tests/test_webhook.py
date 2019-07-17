@@ -34,7 +34,7 @@ class TestWorkers(TestBase):
         expected_json_body = [{
             u'RelationshipType': {
                 u'SubTypeSchema': u'DataCite',
-                u'SubType': u'Cites',
+                u'SubType': original_relationship_name,
                 u'Name': u'References'
             },
             u'Source': {
@@ -151,7 +151,7 @@ class TestWorkers(TestBase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
-    #@unittest.skip("Waiting for the concrete specification from the Zenodo team")
+    @unittest.skip("Waiting for the Zenodo team to implement deletion")
     def test_doi_deleted_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -174,7 +174,7 @@ class TestWorkers(TestBase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
-    #@unittest.skip("Waiting for the concrete specification from the Zenodo team")
+    @unittest.skip("Waiting for the Zenodo team to implement deletion")
     def test_doi_deleted_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -282,7 +282,7 @@ class TestWorkers(TestBase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
-    #@unittest.skip("Waiting for the concrete specification from the Zenodo team")
+    @unittest.skip("Waiting for the Zenodo team to implement deletion")
     def test_ascl_deleted_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -305,7 +305,7 @@ class TestWorkers(TestBase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
-    #@unittest.skip("Waiting for the concrete specification from the Zenodo team")
+    @unittest.skip("Waiting for the Zenodo team to implement deletion")
     def test_ascl_deleted_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
