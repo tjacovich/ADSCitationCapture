@@ -216,10 +216,11 @@ def task_emit_event(citation_change, parsed_metadata):
             # - Use canonical citing bibcode
             citation_change.citing = canonical_citing_bibcode
             if not app.conf['TESTING_MODE']:
-                emitted = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change)
-                webhook.dump_event(citation_change, prefix="emitted")
+                event_data = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change)
+                webhook.dump_event(citation_change, event_data=event_data, prefix="emitted")
             else:
-                emitted = webhook.dump_event(citation_change, prefix="emulated")
+                event_data = webhook.dump_event(citation_change, prefix="emulated")
+            emitted = True if event_data else False
 
     if app.conf['TESTING_MODE'] and emitted:
         logger.debug("Emitted '%s' (testing mode, not really emitted)", citation_change)

@@ -94,7 +94,7 @@ def _to_data(citation_change):
     elif citation_change.status == adsmsg.Status.deleted:
         #return _source_cites_target(citation_change, deleted=True)
         ## https://github.com/asclepias/asclepias-broker/issues/24
-        logger.error("The broker does not support deletions yet: {}".format(citation_change))
+        logger.error("The broker does not support deletions yet: citing='{}', cited='{}', content='{}'".format(citation_change.citing, citation_change.cited, citation_change.content))
         return {}
     else:
         logger.error("Citation change does not match any defined events: {}".format(citation_change))
@@ -113,8 +113,7 @@ def emit_event(ads_webhook_url, ads_webhook_auth_token, citation_change, timeout
             raise Exception("HTTP Post to '{}' failed: {}".format(ads_webhook_url, json.dumps(data)))
         else:
             logger.info("Emitted event (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
-        return True
-    return False
+    return event_data
 
 def mkdir_p(path):
     """
@@ -128,11 +127,12 @@ def mkdir_p(path):
         else:
             raise
 
-def dump_event(citation_change, prefix="emitted"):
+def dump_event(citation_change, event_data=None, prefix="emitted"):
     """
     Save the event in JSON format in the log directory
     """
-    event_data = _to_data(citation_change)
+    if event_data is None:
+        event_data = _to_data(citation_change)
     dump_created = False
     if event_data:
         try:
