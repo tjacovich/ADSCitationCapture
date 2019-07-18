@@ -34,10 +34,10 @@ Next, a full join based on `citing` and `content` fields (which supposed to be u
 
 Every `citation change` is sent to an asynchronous task for processing and they all have a timestamp that matches the last modification date from the original imported file:
 
-- NEW: metadata in datacite format will be fetched/parsed for citations to DOIs (only case that we care about given the current scope of the ASCLEPIAS project), and a new citation entry will be created in the `citation` table in the database.
-    - For records citing DOIs, the cited target is created in Solr with a list of citations that is built using the ADS API to make sure that all the bibcodes exist. Additionally, `run.py` offers a `MAINTENANCE` option to verify the citations of all the registered and detect merges/deletions via the ADS API.
+- NEW: metadata in datacite format will be fetched/parsed for citations to DOIs (only case that we care about given the current scope of the ASCLEPIAS project), and a new citation entry will be created in the `citation` table in the database. For records citing DOIs of software records:
+    - The cited target is created in Solr with a list of citations that is built using the ADS API to make sure that all the bibcodes exist. Additionally, `run.py` offers a `MAINTENANCE` option to verify the citations of all the registered and detect merges/deletions via the ADS API.
     - This will trigger a `Cites` event to Zenodo's broker, creating a relationship between the canonical version of the `citing` bibcode (we use the API to obtain the canonical if it exists) and the DOI.
-- If the citation change type is UPDATED, its respective entry in `citation` is updated.
+- If the citation change type is UPDATED, its respective entry in `citation` is updated. For records citing DOIs of software records:
     - If the citation field `resolved` is `True`, then this update will trigger a `IsIdenticalTo` event to Zenodo's broker linking the cited bibcode to the DOI.
 - If the citation change type is DELETED, its respective entry in `citation` is marked as status DELETED but the row is not actually deleted.
     - No deletions are sent to Zenodo's broker since they are not supported, but the code is ready for when there will be a specification.
@@ -265,6 +265,8 @@ Access the solr query interface via [http://localhost:8984/solr/#/collection1/qu
 
 Run unit tests via:
 
+**WARNING**: The unit tests assume the database is empty and they will insert data.
+
 ```
 py.test ADSCitationCapture/tests/
 ```
@@ -390,7 +392,7 @@ docker exec -it backoffice_rabbitmq rabbitmqctl list_queues -q -p citation_captu
 
 ## Usage
 
-- Process file (there is a `force` option that has no effect right now):
+- Process file:
 
 ```
 python run.py PROCESS refids_zenodo.dat.20180911
