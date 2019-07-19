@@ -30,16 +30,18 @@ Next, a full join based on `citing` and `content` fields (which supposed to be u
 
 - NEW: Citation that did not exist before in the pipeline database (i.e., `citing` and `content` had never been ingested before)
 - UPDATED: Citation that already exists in the database and for which the `cited` or `resolved` fields have changed. The most frequent case is when `cited` was empty and now there is a bibcode assigned, and `resolve` may become `True` for a subset of these cases.
-- DELETED: Citation that disappeared (i.e., `citing` and `content` ingested before, now do not exist in the input file). These are the case for corrected bibcodes (i.e., changed `citing`), merged records (i.e., `citing` now contains the publisher instead of the arXiv bibcode), or changes to `content` due to a better parsing of the publication source file.
+- DELETED: Citation that disappeared (i.e., `citing` and `content` ingested before, now do not exist in the input file). These are the case for corrected bibcodes (i.e., changed `citing`), merged records (i.e., `citing` now contains the publisher instead of the arXiv bibcode), changes to `content` due to a different parsing of the publication source file, deleted citations because a new version of an arXiv paper has been published without previously detected citations.
 
 Every `citation change` is sent to an asynchronous task for processing and they all have a timestamp that matches the last modification date from the original imported file:
 
-- NEW: metadata in datacite format will be fetched/parsed for citations to DOIs (only case that we care about given the current scope of the ASCLEPIAS project), and a new citation entry will be created in the `citation` table in the database. For records citing DOIs of software records:
+- NEW: Skip it if the `citing` bibcode does not exist in the system (query to ADS API). If it does exist, metadata in datacite format will be fetched/parsed for citations to DOIs (only case that we care about given the current scope of the ASCLEPIAS project), and a new citation entry will be created in the `citation` table in the database. For records citing DOIs of software records:
+    - If the ADS API returns a canonical bibcode different from the current `citing` bibcode, a `IsIdenticalTo` event is sent to Zenodo's broker linking the both bibcodes.
     - The cited target is created in Solr with a list of citations that is built using the ADS API to make sure that all the bibcodes exist. Additionally, `run.py` offers a `MAINTENANCE` option to verify the citations of all the registered and detect merges/deletions via the ADS API.
     - This will trigger a `Cites` event to Zenodo's broker, creating a relationship between the canonical version of the `citing` bibcode (we use the API to obtain the canonical if it exists) and the DOI.
-- If the citation change type is UPDATED, its respective entry in `citation` is updated. For records citing DOIs of software records:
-    - If the citation field `resolved` is `True`, then this update will trigger a `IsIdenticalTo` event to Zenodo's broker linking the cited bibcode to the DOI.
-- If the citation change type is DELETED, its respective entry in `citation` is marked as status DELETED but the row is not actually deleted.
+- UPDATED: its respective entry in `citation` is updated. For records citing DOIs of software records:
+    - If the citation field `resolved` is `True`, this update will NOT trigger a `IsIdenticalTo` event to Zenodo's broker given that the process that generates the raw input file does not have access to the required data to do a proper match.
+    - This case will not generate events to the broker.
+- DELETED: its respective entry in `citation` is marked as status DELETED but the row is not actually deleted.
     - No deletions are sent to Zenodo's broker since they are not supported, but the code is ready for when there will be a specification.
 
 The timestamp field is used to avoid race conditions (e.g., older messages are processed after newer messages), no changes will be made to the database if the timestamp of the `citation change` is older than the timestamp registered in the database.

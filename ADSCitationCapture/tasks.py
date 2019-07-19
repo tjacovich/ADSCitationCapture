@@ -38,6 +38,10 @@ def task_process_new_citation(citation_change, force=False):
     Process new citation:
     - Retrieve metadata from doi.org
     """
+    canonical_citing_bibcode = api.get_canonical_bibcode(app, citation_change.citing)
+    if canonical_citing_bibcode is None:
+        logger.error("The citing bibcode '%s' is not in the system yet, it will be skipped in this ingestion")
+        return
     content_type = None
     is_link_alive = False
     status = u"DISCARDED"
@@ -86,7 +90,12 @@ def task_process_new_citation(citation_change, force=False):
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
         if status == u"REGISTERED":
             if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
-                canonical_citing_bibcode = api.get_canonical_bibcode(app, citation_change.citing)
+                if canonical_citing_bibcode != citation_change.citing:
+                    # These two bibcodes are identical and we can signal the broker
+                    event_data = webhook.identical_bibcodes_event_data(citation_change.citing, canonical_citing_bibcode)
+                    dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
+                    logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", citation_change.citing, canonical_citing_bibcode)
+                    task_emit_event.delay(event_data, dump_prefix)
                 citation_target_bibcode = parsed_metadata.get('bibcode')
                 # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                 original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
@@ -96,8 +105,8 @@ def task_process_new_citation(citation_change, force=False):
                     citations.append(canonical_citing_bibcode)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                 task_output_results.delay(citation_change, parsed_metadata, citations)
-            logger.debug("Calling 'task_emit_event' with '%s'", citation_change)
-            task_emit_event.delay(citation_change, parsed_metadata)
+            logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
+            _emit_citation_change(citation_change, parsed_metadata)
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
@@ -121,8 +130,8 @@ def task_process_updated_citation(citation_change, force=False):
             citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
             task_output_results.delay(citation_change, parsed_metadata, citations)
-        logger.debug("Calling 'task_emit_event' with '%s'", citation_change)
-        task_emit_event.delay(citation_change, parsed_metadata)
+        logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
+        _emit_citation_change(citation_change, parsed_metadata)
 
 @app.task(queue='process-deleted-citation')
 def task_process_deleted_citation(citation_change, force=False):
@@ -141,8 +150,8 @@ def task_process_deleted_citation(citation_change, force=False):
             citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
             task_output_results.delay(citation_change, parsed_metadata, citations)
-        logger.debug("Calling 'task_emit_event' with '%s'", citation_change)
-        task_emit_event.delay(citation_change, parsed_metadata)
+        logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
+        _emit_citation_change(citation_change, parsed_metadata)
 
 def _protobuf_to_adsmsg_citation_change(pure_protobuf):
     """
@@ -198,36 +207,44 @@ def task_process_citation_changes(citation_changes, force=False):
                 logger.debug("Calling 'task_process_deleted_citation' with '%s'", citation_change)
                 task_process_deleted_citation.delay(citation_change)
 
+def _emit_citation_change(citation_change, parsed_metadata):
+    """
+    Emit citation change event if the target is a software record
+    """
+    is_link_alive = parsed_metadata and parsed_metadata.get("link_alive", False)
+    is_software = parsed_metadata and parsed_metadata.get("doctype", "").lower() == "software"
+    if is_software and is_link_alive:
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
+        logger.debug("Calling 'task_emit_event' for '%s'", citation_change)
+        task_emit_event.delay(event_data, dump_prefix)
+
 
 @app.task(queue='process-emit-event')
-def task_emit_event(citation_change, parsed_metadata):
+def task_emit_event(event_data, dump_prefix):
     """
     Emit event
     """
     emitted = False
-    is_link_alive = parsed_metadata and parsed_metadata.get("link_alive", False)
-    is_software = parsed_metadata and parsed_metadata.get("doctype", "").lower() == "software"
-    if is_software and is_link_alive:
-        canonical_citing_bibcode = api.get_canonical_bibcode(app, citation_change.citing)
-        if canonical_citing_bibcode:
-            # If citing source exists in ADS
-            # - Duplicate 'citation_change' to avoid changing shared memory when running the code in test mode
-            citation_change = _protobuf_to_adsmsg_citation_change(citation_change)
-            # - Use canonical citing bibcode
-            citation_change.citing = canonical_citing_bibcode
-            if not app.conf['TESTING_MODE']:
-                event_data = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change)
-                webhook.dump_event(citation_change, event_data=event_data, prefix="emitted")
-            else:
-                event_data = webhook.dump_event(citation_change, prefix="emulated")
-            emitted = True if event_data else False
+    relationship = event_data.get("RelationshipType", {}).get("SubType", None)
+    source_id = event_data.get("Source", {}).get("Identifier", {}).get("ID", None)
+    target_id = event_data.get("Target", {}).get("Identifier", {}).get("ID", None)
+
+    if not app.conf['TESTING_MODE']:
+        emitted = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data)
+        if isinstance(dump_prefix, basestring):
+            webhook.dump_event(event_data, prefix=os.path.join(os.path.join("emitted", relationship), dump_prefix))
+    else:
+        emitted = True
+        if isinstance(dump_prefix, basestring):
+            webhook.dump_event(event_data, prefix=os.path.join(os.path.join("emulated", relationship), dump_prefix))
 
     if app.conf['TESTING_MODE'] and emitted:
-        logger.debug("Emitted '%s' (testing mode, not really emitted)", citation_change)
+        logger.debug("Emulated emission of event due to 'testing mode' (relationship '%s', source '%s' and target '%s')", relationship, source_id, target_id)
     elif emitted:
-        logger.debug("Emitted '%s'", citation_change)
+        logger.debug("Emitted event (relationship '%s', source '%s' and target '%s')", relationship, source_id, target_id)
     else:
-        logger.debug("Not emitted '%s'", citation_change)
+        logger.debug("Non-emitted event (relationship '%s', source '%s' and target '%s')", relationship, source_id, target_id)
 
 def _remove_duplicated_dict_in_list(l):
     return [dict(t) for t in {tuple(d.items()) for d in l}]

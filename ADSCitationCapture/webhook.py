@@ -85,23 +85,42 @@ def _source_is_identical_to_target(citation_change, deleted=False):
     data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
     return data
 
-def _to_data(citation_change):
+def citation_change_to_event_data(citation_change):
     if citation_change.status == adsmsg.Status.new:
         return _source_cites_target(citation_change, deleted=False)
     elif citation_change.status == adsmsg.Status.updated and citation_change.cited != '...................' and citation_change.resolved:
-        # Only accept cited bibcode if score is 1 (resolved == True), if not the bibcode is just an unresolved attempt
-        return _source_is_identical_to_target(citation_change)
+        ### Only accept cited bibcode if score is 1 (resolved == True), if not the bibcode is just an unresolved attempt
+        ##return _source_is_identical_to_target(citation_change)
+        # Citation change shows that the process building the raw input file matched the DOI with a bibcode,
+        # but this matching should be wrong since that process does not have access to software records created by this pipeline
+        # and no event should be emitted
+        logger.warn("Ignoring citation change due to bad bibcode - DOI matching (IsIdenticalTo event will not be emitted): {}".format(citation_change))
+        return {}
     elif citation_change.status == adsmsg.Status.deleted:
-        #return _source_cites_target(citation_change, deleted=True)
-        ## https://github.com/asclepias/asclepias-broker/issues/24
+        ##return _source_cites_target(citation_change, deleted=True)
+        ### https://github.com/asclepias/asclepias-broker/issues/24
         logger.error("The broker does not support deletions yet: citing='{}', cited='{}', content='{}'".format(citation_change.citing, citation_change.cited, citation_change.content))
         return {}
     else:
-        logger.error("Citation change does not match any defined events: {}".format(citation_change))
+        logger.warn("Citation change does not match any defined events: {}".format(citation_change))
         return {}
 
-def emit_event(ads_webhook_url, ads_webhook_auth_token, citation_change, timeout=30):
-    event_data = _to_data(citation_change)
+def identical_bibcodes_event_data(source_bibcode, target_bibcode, deleted=False):
+    if deleted:
+        event_type = "relation_deleted"
+    else:
+        event_type = "relation_created"
+    original_relationship_name = "IsIdenticalTo"
+    source_bibcode = source_bibcode
+    target_id_schema = "ads"
+    target_id_url = "http://adsabs.harvard.edu/abs/{}".format(target_bibcode)
+    target_id = target_bibcode
+    data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
+    return data
+
+
+def emit_event(ads_webhook_url, ads_webhook_auth_token, event_data, timeout=30):
+    emitted = False
     if event_data:
         data = [event_data]
         headers = {}
@@ -112,8 +131,12 @@ def emit_event(ads_webhook_url, ads_webhook_auth_token, citation_change, timeout
             logger.error("Emit event failed with status code '{}': {}".format(r.status_code, r.content))
             raise Exception("HTTP Post to '{}' failed: {}".format(ads_webhook_url, json.dumps(data)))
         else:
-            logger.info("Emitted event (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
-    return event_data
+            relationship = event_data.get("RelationshipType", {}).get("SubType", None)
+            source_id = event_data.get("Source", {}).get("Identifier", {}).get("ID", None)
+            target_id = event_data.get("Target", {}).get("Identifier", {}).get("ID", None)
+            logger.info("Emitted event (relationship '%s', source '%s' and target '%s')", relationship, source_id, target_id)
+            emitted = True
+    return emitted
 
 def mkdir_p(path):
     """
@@ -127,12 +150,10 @@ def mkdir_p(path):
         else:
             raise
 
-def dump_event(citation_change, event_data=None, prefix="emitted"):
+def dump_event(event_data, prefix="emitted"):
     """
     Save the event in JSON format in the log directory
     """
-    if event_data is None:
-        event_data = _to_data(citation_change)
     dump_created = False
     if event_data:
         try:
@@ -140,13 +161,15 @@ def dump_event(citation_change, event_data=None, prefix="emitted"):
         except:
             logger.exception("Logger's target directory not found")
         else:
-            timestamp = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
-            base_dirname = os.path.join(os.path.join(logs_dirname, prefix), timestamp)
+            base_dirname = os.path.join(logs_dirname, prefix)
             now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            citing = re.sub('[^-\w\s]+', '-', citation_change.citing)
-            #cited = re.sub('[^-\w\s]+', '-', citation_change.cited)
-            content = re.sub('[^-\w\s]+', '-', citation_change.content)
-            filename = "{}_{}_{}.json".format(now, citing, content)
+            relationship = event_data.get("RelationshipType", {}).get("SubType", None)
+            source_id = event_data.get("Source", {}).get("Identifier", {}).get("ID", "")
+            target_id = event_data.get("Target", {}).get("Identifier", {}).get("ID", "")
+            source_id = re.sub('[^-\w\s]+', '-', source_id)
+            target_id = re.sub('[^-\w\s]+', '-', target_id)
+            logger.info("Dumped event (relationship '%s', source '%s' and target '%s')", relationship, source_id, target_id)
+            filename = "{}_{}_{}_{}.json".format(now, source_id, relationship, target_id)
             try:
                 if not os.path.exists(base_dirname):
                     mkdir_p(base_dirname)
