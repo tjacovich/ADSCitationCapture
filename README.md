@@ -38,6 +38,7 @@ Every `citation change` is sent to an asynchronous task for processing and they 
     - If the ADS API returns a canonical bibcode different from the current `citing` bibcode, a `IsIdenticalTo` event is sent to Zenodo's broker linking the both bibcodes.
     - The cited target is created in Solr with a list of citations that is built using the ADS API to make sure that all the bibcodes exist. Additionally, `run.py` offers a `MAINTENANCE` option to verify the citations of all the registered and detect merges/deletions via the ADS API.
     - This will trigger a `Cites` event to Zenodo's broker, creating a relationship between the canonical version of the `citing` bibcode (we use the API to obtain the canonical if it exists) and the DOI.
+    - This will trigger a `IsIdenticalTo` event to Zenodo's broker, creating a relationship between the DOI and the newly created bibcode of the record that will be send to Solr.
 - UPDATED: its respective entry in `citation` is updated. For records citing DOIs of software records:
     - If the citation field `resolved` is `True`, this update will NOT trigger a `IsIdenticalTo` event to Zenodo's broker given that the process that generates the raw input file does not have access to the required data to do a proper match.
     - This case will not generate events to the broker.
@@ -45,6 +46,8 @@ Every `citation change` is sent to an asynchronous task for processing and they 
     - No deletions are sent to Zenodo's broker since they are not supported, but the code is ready for when there will be a specification.
 
 The timestamp field is used to avoid race conditions (e.g., older messages are processed after newer messages), no changes will be made to the database if the timestamp of the `citation change` is older than the timestamp registered in the database.
+
+All the generated events are stored in the `logs/` directory and in the database.
 
 
 ## Setup
@@ -412,6 +415,9 @@ python run.py MAINTENANCE --canonical --doi 10.5281/zenodo.840393
 ```
 
 - Update metadata:
+    - It will identify as concept DOI all the records that report an empty `version_of` and a filled `versions` with at least one item (concept DOIs are basically pointers to the last release of a Zenodo record, thus publication year and authors can change with time).
+    - If the record is identified as a concept DOI, metadata updates are merged in the system (overwriting all metadata) but the bibcode will not be changed. Hence, the bibcode will have the year of the first time the record was ingested in ADS.
+    - If the bibcode changes, it generates `IsIdenticalTo` events and the old bibcode will also be listed in the alternate bibcodes/identifiers fields
 
 ```
 # All the registered citation targets
@@ -477,6 +483,12 @@ DROP SCHEMA citation_capture_20180919_153032 CASCADE;
 
 ```
 SELECT parsed_cited_metadata->'bibcode' AS bibcode, parsed_cited_metadata->'doctype' AS doctype, parsed_cited_metadata->'title' AS title, parsed_cited_metadata->'version' AS version, content FROM citation_target;
+```
+
+- Access nested JSONB fields
+
+```
+SELECT * FROM event WHERE (data ->> 'RelationshipType')::json ->> 'SubType'  = 'IsIdenticalTo';
 ```
 
 - Top registered citations

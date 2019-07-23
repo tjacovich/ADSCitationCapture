@@ -2,6 +2,7 @@ from __future__ import absolute_import, unicode_literals
 import os
 from kombu import Queue
 from google.protobuf.json_format import MessageToDict
+from datetime import datetime
 import ADSCitationCapture.app as app_module
 import ADSCitationCapture.webhook as webhook
 import ADSCitationCapture.doi as doi
@@ -40,14 +41,14 @@ def task_process_new_citation(citation_change, force=False):
     """
     canonical_citing_bibcode = api.get_canonical_bibcode(app, citation_change.citing)
     if canonical_citing_bibcode is None:
-        logger.error("The citing bibcode '%s' is not in the system yet, it will be skipped in this ingestion")
+        logger.error("The citing bibcode '%s' is not in the system yet, it will be skipped in this ingestion", citation_change.citing)
         return
     content_type = None
     is_link_alive = False
     status = u"DISCARDED"
 
     # Check if we already have the citation target in the DB
-    metadata = db.get_citation_target_metadata(app, citation_change)
+    metadata = db.get_citation_target_metadata(app, citation_change.content)
     citation_target_in_db = bool(metadata) # False if dict is empty
     raw_metadata = metadata.get('raw', None)
     parsed_metadata = metadata.get('parsed', {})
@@ -97,6 +98,11 @@ def task_process_new_citation(citation_change, force=False):
                     logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", citation_change.citing, canonical_citing_bibcode)
                     task_emit_event.delay(event_data, dump_prefix)
                 citation_target_bibcode = parsed_metadata.get('bibcode')
+                # The new bibcode and the DOI are identical
+                event_data = webhook.identical_bibcode_and_doi_event_data(citation_target_bibcode, citation_change.content)
+                dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
+                logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", citation_target_bibcode, citation_change.content)
+                task_emit_event.delay(event_data, dump_prefix)
                 # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                 original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
                 citations = api.get_canonical_bibcodes(app, original_citations)
@@ -118,7 +124,7 @@ def task_process_updated_citation(citation_change, force=False):
     Emit/forward the update only if it is REGISTERED
     """
     updated = db.update_citation(app, citation_change)
-    metadata = db.get_citation_target_metadata(app, citation_change)
+    metadata = db.get_citation_target_metadata(app, citation_change.content)
     parsed_metadata = metadata.get('parsed', {})
     citation_target_bibcode = parsed_metadata.get('bibcode', None)
     status = metadata.get('status', u'DISCARDED')
@@ -139,7 +145,7 @@ def task_process_deleted_citation(citation_change, force=False):
     Mark a citation as deleted
     """
     marked_as_deleted, previous_status = db.mark_citation_as_deleted(app, citation_change)
-    metadata = db.get_citation_target_metadata(app, citation_change)
+    metadata = db.get_citation_target_metadata(app, citation_change.content)
     parsed_metadata = metadata.get('parsed', {})
     citation_target_bibcode = parsed_metadata.get('bibcode', None)
     # Emit/forward the update only if the previous status was "REGISTERED"
@@ -231,13 +237,15 @@ def task_emit_event(event_data, dump_prefix):
     target_id = event_data.get("Target", {}).get("Identifier", {}).get("ID", None)
 
     if not app.conf['TESTING_MODE']:
+        prefix = os.path.join("emitted", relationship)
         emitted = webhook.emit_event(app.conf['ADS_WEBHOOK_URL'], app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data)
-        if isinstance(dump_prefix, basestring):
-            webhook.dump_event(event_data, prefix=os.path.join(os.path.join("emitted", relationship), dump_prefix))
     else:
+        prefix = os.path.join("emulated", relationship)
         emitted = True
-        if isinstance(dump_prefix, basestring):
-            webhook.dump_event(event_data, prefix=os.path.join(os.path.join("emulated", relationship), dump_prefix))
+    if isinstance(dump_prefix, basestring):
+        prefix = os.path.join(prefix, dump_prefix)
+    webhook.dump_event(event_data, prefix=prefix)
+    stored = db.store_event(app, event_data)
 
     if app.conf['TESTING_MODE'] and emitted:
         logger.debug("Emulated emission of event due to 'testing mode' (relationship '%s', source '%s' and target '%s')", relationship, source_id, target_id)
@@ -247,7 +255,7 @@ def task_emit_event(event_data, dump_prefix):
         logger.debug("Non-emitted event (relationship '%s', source '%s' and target '%s')", relationship, source_id, target_id)
 
 def _remove_duplicated_dict_in_list(l):
-    return [dict(t) for t in {tuple(d.items()) for d in l}]
+    return filter(lambda x: x['content'] in set([r['content'] for r in l]), l)
 
 @app.task(queue='maintenance_canonical')
 def task_maintenance_canonical(dois, bibcodes):
@@ -267,22 +275,22 @@ def task_maintenance_canonical(dois, bibcodes):
         registered_records = _remove_duplicated_dict_in_list(registered_records)
 
     for registered_record in registered_records:
-        bibcode = registered_record['bibcode']
         try:
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
-            original_citations = db.get_citations_by_bibcode(app, bibcode)
+            original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
             existing_citation_bibcodes = api.get_canonical_bibcodes(app, original_citations)
         except:
-            logger.exception("Failed API request to retreive existing citations for bibcode '{}'".format(bibcode))
+            logger.exception("Failed API request to retreive existing citations for bibcode '{}'".format(registered_record['bibcode']))
             continue
-        dummy_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+        custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
                                                        content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
-                                                       status=adsmsg.Status.updated
+                                                       status=adsmsg.Status.updated,
+                                                       timestamp=datetime.now()
                                                        )
-        parsed_metadata = db.get_citation_target_metadata(app, dummy_citation_change).get('parsed', {})
+        parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
         if parsed_metadata:
-            logger.debug("Calling 'task_output_results' with '%s'", dummy_citation_change)
-            task_output_results.delay(dummy_citation_change, parsed_metadata, existing_citation_bibcodes)
+            logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
+            task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes)
 
 @app.task(queue='maintenance_metadata')
 def task_maintenance_metadata(dois, bibcodes):
@@ -303,6 +311,7 @@ def task_maintenance_metadata(dois, bibcodes):
 
     for registered_record in registered_records:
         updated = False
+        bibcode_replaced = {}
         # Fetch DOI metadata (if HTTP request fails, an exception is raised
         # and the task will be re-queued (see app.py and adsputils))
         raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
@@ -314,22 +323,53 @@ def task_maintenance_metadata(dois, bibcodes):
             elif parsed_metadata.get('bibcode') in (None, ""):
                 logger.error("The new metadata for '%s' affected the metadata parser and it did not correctly compute a bibcode", registered_record['bibcode'])
             else:
+                # Detect concept DOIs: they have one or more versions of the software
+                # and they are not a version of something else
+                concept_doi = len(parsed_metadata.get('version_of', [])) == 0 and len(parsed_metadata.get('versions', [])) >= 1
+                different_bibcodes = registered_record['bibcode'] != parsed_metadata['bibcode']
+                if concept_doi and different_bibcodes:
+                    # Concept DOI publication date changes with newer software version
+                    # and authors can also change (i.e., first author last name initial)
+                    # but we want to respect the year in the bibcode, which corresponds
+                    # to the year of the latest release when it was first ingested
+                    # by ADS
+                    parsed_metadata['bibcode'] = registered_record['bibcode']
+                    # Temporary bugfix (some bibcodes have non-capital letter at the end):
+                    parsed_metadata['bibcode'] = parsed_metadata['bibcode'][:-1] + parsed_metadata['bibcode'][-1].upper()
+                    # Re-verify if bibcodes are still different (they could be if
+                    # name parsing has changed):
+                    different_bibcodes = registered_record['bibcode'] != parsed_metadata['bibcode']
+                if different_bibcodes:
+                    # These two bibcodes are identical and we can signal the broker
+                    event_data = webhook.identical_bibcodes_event_data(registered_record['bibcode'], parsed_metadata['bibcode'])
+                    dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d") # "%Y%m%d_%H%M%S"
+                    logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], parsed_metadata['bibcode'])
+                    task_emit_event.delay(event_data, dump_prefix)
+                    #
+                    logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'], parsed_metadata.get('bibcode', None))
+                    alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])
+                    alternate_bibcode += registered_record.get('alternate_bibcode', [])
+                    if registered_record['bibcode'] not in alternate_bibcode:
+                        alternate_bibcode.append(registered_record['bibcode'])
+                    parsed_metadata['alternate_bibcode'] = alternate_bibcode
+                    bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
                 updated = db.update_citation_target_metadata(app, registered_record['bibcode'], raw_metadata, parsed_metadata)
         if updated:
             citation_change = adsmsg.CitationChange(content=registered_record['content'],
                                                            content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
-                                                           status=adsmsg.Status.updated
+                                                           status=adsmsg.Status.updated,
+                                                           timestamp=datetime.now()
                                                            )
             if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
                 # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                 original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, parsed_metadata, citations)
+                task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
 
 
 @app.task(queue='output-results')
-def task_output_results(citation_change, parsed_metadata, citations):
+def task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced={}):
     """
     This worker will forward results to the outside
     exchange (typically an ADSMasterPipeline) to be
@@ -338,15 +378,33 @@ def task_output_results(citation_change, parsed_metadata, citations):
     :param citation_change: contains citation changes
     :return: no return
     """
+    messages = []
+    if bibcode_replaced:
+        # Bibcode was replaced, this is not a simple update
+        # we need to issue a deletion of the previous record
+        custom_citation_change = adsmsg.CitationChange(content=citation_change.content,
+                                                       content_type=citation_change.content_type,
+                                                       status=adsmsg.Status.deleted,
+                                                       timestamp=datetime.now()
+                                                       )
+        delete_parsed_metadata = parsed_metadata.copy()
+        delete_parsed_metadata['bibcode'] = bibcode_replaced['previous']
+        delete_parsed_metadata['alternate_bibcode'] = filter(lambda x: x not in (bibcode_replaced['previous'], bibcode_replaced['new']), delete_parsed_metadata.get('alternate_bibcode', []))
+        delete_record, delete_nonbib_record = forward.build_record(app, custom_citation_change, delete_parsed_metadata, citations)
+        messages.append((delete_record, delete_nonbib_record))
+    # Main message:
     record, nonbib_record = forward.build_record(app, citation_change, parsed_metadata, citations)
-    logger.debug('Will forward this record: %s', record)
-    logger.debug("Calling 'app.forward_message' with '%s'", str(record))
-    if not app.conf['CELERY_ALWAYS_EAGER']:
-        app.forward_message(record)
-    logger.debug('Will forward this record: %s', nonbib_record)
-    logger.debug("Calling 'app.forward_message' with '%s'", str(nonbib_record))
-    if not app.conf['CELERY_ALWAYS_EAGER']:
-        app.forward_message(nonbib_record)
+    messages.append((record, nonbib_record))
+
+    for record, nonbib_record in messages:
+        logger.debug('Will forward this record: %s', record)
+        logger.debug("Calling 'app.forward_message' with '%s'", str(record))
+        if not app.conf['CELERY_ALWAYS_EAGER']:
+            app.forward_message(record)
+        logger.debug('Will forward this record: %s', nonbib_record)
+        logger.debug("Calling 'app.forward_message' with '%s'", str(nonbib_record))
+        if not app.conf['CELERY_ALWAYS_EAGER']:
+            app.forward_message(nonbib_record)
 
 
 if __name__ == '__main__':

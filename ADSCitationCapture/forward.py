@@ -19,6 +19,7 @@ def build_record(app, citation_change, parsed_metadata, citations):
     bibcode = parsed_metadata.get('bibcode')
     if bibcode is None:
         raise Exception("Only records with a bibcode can be forwarded to master")
+    alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])
     abstract = parsed_metadata.get('abstract', u"")
     title = parsed_metadata.get('title', u"")
     keywords = parsed_metadata.get('keywords', [])
@@ -50,7 +51,7 @@ def build_record(app, citation_change, parsed_metadata, citations):
         'abstract': abstract,
         'ack': u'',
         'aff': [ u"-" if aff == "" else aff for aff in affiliations],
-        'alternate_bibcode': [],
+        'alternate_bibcode': alternate_bibcode,
         'alternate_title': [],
         'arxiv_class': [],
         'author': authors,
@@ -76,7 +77,7 @@ def build_record(app, citation_change, parsed_metadata, citations):
         'first_author_facet_hier': author_facet_hier[:2],
         'first_author_norm': normalized_authors[0] if n_authors > 0 else u'',
         'links_data': [u'{{"access": "", "instances": "", "title": "", "type": "electr", "url": "{}"}}'.format(app.conf['DOI_URL'] + doi)], # TODO: How is it different from nonbib?
-        'identifier': [bibcode, doi],
+        'identifier': [bibcode, doi] + alternate_bibcode,
         'esources': [u"PUB_HTML"],
         'citation': citations,
         'citation_count': n_citations,
@@ -103,7 +104,7 @@ def build_record(app, citation_change, parsed_metadata, citations):
         status = 3
     elif citation_change.status == Status.deleted:
         status = 1
-        # Only use this for deletions, otherwise Solr will complain the field does not exist
+        # Only use this field for deletions, otherwise Solr will complain the field does not exist
         # and if this key does not exist in the dict/protobuf, the message will be
         # treated as new/update by MasterPipeline
         record_dict['status'] = status

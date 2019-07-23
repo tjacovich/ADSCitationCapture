@@ -75,5 +75,13 @@ class CitationTarget(Base):
     updated = Column(UTCDateTime, onupdate=get_date)
     citations = relationship("Citation", primaryjoin="CitationTarget.content==Citation.content")
 
+class Event(Base):
+    __tablename__ = 'event'
+    __table_args__ = ({"schema": "public"})
+    id = Column(Integer, primary_key=True)
+    data = Column(JSONB)
+    created = Column(UTCDateTime, default=get_date)
+    updated = Column(UTCDateTime, onupdate=get_date)
+
 # Must be called after defining all the models
 orm.configure_mappers()

@@ -74,16 +74,16 @@ def _source_cites_target(citation_change, deleted=False):
     data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
     return data
 
-def _source_is_identical_to_target(citation_change, deleted=False):
-    if deleted:
-        event_type = "relation_deleted"
-    else:
-        event_type = "relation_created"
-    original_relationship_name = "IsIdenticalTo"
-    source_bibcode = citation_change.cited
-    target_id, target_id_schema, target_id_url = _target_elements(citation_change)
-    data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
-    return data
+#def _source_is_identical_to_target(citation_change, deleted=False):
+    #if deleted:
+        #event_type = "relation_deleted"
+    #else:
+        #event_type = "relation_created"
+    #original_relationship_name = "IsIdenticalTo"
+    #source_bibcode = citation_change.cited
+    #target_id, target_id_schema, target_id_url = _target_elements(citation_change)
+    #data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
+    #return data
 
 def citation_change_to_event_data(citation_change):
     if citation_change.status == adsmsg.Status.new:
@@ -115,6 +115,19 @@ def identical_bibcodes_event_data(source_bibcode, target_bibcode, deleted=False)
     target_id_schema = "ads"
     target_id_url = "http://adsabs.harvard.edu/abs/{}".format(target_bibcode)
     target_id = target_bibcode
+    data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
+    return data
+
+def identical_bibcode_and_doi_event_data(source_bibcode, target_doi, deleted=False):
+    if deleted:
+        event_type = "relation_deleted"
+    else:
+        event_type = "relation_created"
+    original_relationship_name = "IsIdenticalTo"
+    source_bibcode = source_bibcode
+    target_id_schema = "DOI"
+    target_id_url = "https://doi.org"
+    target_id = target_doi
     data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
     return data
 

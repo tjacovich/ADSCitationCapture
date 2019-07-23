@@ -1,6 +1,6 @@
 from psycopg2 import IntegrityError
 from dateutil.tz import tzutc
-from ADSCitationCapture.models import Citation, CitationTarget
+from ADSCitationCapture.models import Citation, CitationTarget, Event
 from adsmsg import CitationChange
 from adsputils import setup_logging
 
@@ -9,6 +9,23 @@ logger = setup_logging(__name__)
 logger.propagate = False
 
 # =============================== FUNCTIONS ======================================= #
+def store_event(app, data):
+    """
+    Stores a new event in the DB
+    """
+    stored = False
+    with app.session_scope() as session:
+        event = Event()
+        event.data = data
+        session.add(event)
+        try:
+            session.commit()
+        except:
+            logger.exception("Problem storing event '%s'", str(event))
+        else:
+            stored = True
+    return stored
+
 def store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
     """
     Stores a new citation target in the DB
@@ -40,15 +57,12 @@ def update_citation_target_metadata(app, bibcode, raw_metadata, parsed_metadata)
     with app.session_scope() as session:
         citation_target = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata["bibcode"].astext == bibcode).first()
         if citation_target.raw_cited_metadata != raw_metadata and citation_target.parsed_cited_metadata != parsed_metadata:
-            if citation_target.parsed_cited_metadata.get('bibcode', None) == parsed_metadata.get('bibcode', None):
-                citation_target.raw_cited_metadata = raw_metadata
-                citation_target.parsed_cited_metadata = parsed_metadata
-                session.add(citation_target)
-                session.commit()
-                metadata_updated = True
-                logger.info("Updated metadata for citation target '%s'", bibcode)
-            else:
-                logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s' ", bibcode, parsed_metadata.get('bibcode', None))
+            citation_target.raw_cited_metadata = raw_metadata
+            citation_target.parsed_cited_metadata = parsed_metadata
+            session.add(citation_target)
+            session.commit()
+            metadata_updated = True
+            logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", bibcode, ", ".join(parsed_metadata.get('alternate_bibcode', [])))
     return metadata_updated
 
 
@@ -101,6 +115,7 @@ def _extract_key_citation_target_data(records_db):
     records = [
         {
             'bibcode': record_db.parsed_cited_metadata.get('bibcode', None),
+            'alternate_bibcode': record_db.parsed_cited_metadata.get('alternate_bibcode', []),
             'content': record_db.content,
             'content_type': record_db.content_type,
         }
@@ -154,7 +169,7 @@ def get_citation_targets(app, only_registered=False):
         records = _extract_key_citation_target_data(records_db)
     return records
 
-def get_citation_target_metadata(app, citation_change):
+def get_citation_target_metadata(app, doi):
     """
     If the citation target already exists in the database, return the raw and
     parsed metadata together with the status of the citation target in the
@@ -164,7 +179,7 @@ def get_citation_target_metadata(app, citation_change):
     citation_in_db = False
     metadata = {}
     with app.session_scope() as session:
-        citation_target = session.query(CitationTarget).filter_by(content=citation_change.content).first()
+        citation_target = session.query(CitationTarget).filter_by(content=doi).first()
         citation_target_in_db = citation_target is not None
         if citation_target_in_db:
             metadata['raw'] = citation_target.raw_cited_metadata
