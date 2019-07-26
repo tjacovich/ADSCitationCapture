@@ -33,356 +33,583 @@ class TestWorkers(TestBase):
         citation_change.status = status
         return citation_changes
 
+
     def test_process_new_citation_changes_doi(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
         doi_id = "10.5281/zenodo.11020" # software
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertTrue(get_citation_target_metadata.called)
-                self.assertTrue(fetch_metadata.called)
-                self.assertTrue(parse_metadata.called)
-                self.assertFalse(url_is_alive.called)
-                self.assertTrue(get_canonical_bibcode.called)
-                self.assertTrue(get_canonical_bibcodes.called)
-                self.assertTrue(get_citations_by_bibcode.called)
-                self.assertTrue(store_citation_target.called)
-                self.assertTrue(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertTrue(forward_message.called)
-                self.assertTrue(store_event.called)
-                self.assertTrue(webhook_dump_event.called)
-                self.assertTrue(webhook_emit_event.called)
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value={}), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertTrue(mocked['fetch_metadata'].called)
+            self.assertTrue(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertTrue(mocked['get_canonical_bibcode'].called)
+            self.assertTrue(mocked['get_canonical_bibcodes'].called)
+            self.assertTrue(mocked['get_citations_by_bibcode'].called)
+            self.assertTrue(mocked['store_citation_target'].called)
+            self.assertTrue(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertTrue(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertTrue(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertTrue(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertTrue(mocked['store_event'].called)
+            self.assertTrue(mocked['webhook_dump_event'].called)
+            self.assertTrue(mocked['webhook_emit_event'].called)
+
 
     def test_process_updated_citation_changes_doi(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.updated)
         doi_id = "10.5281/zenodo.11020" # software
-        with patch.object(db, 'citation_already_exists', return_value=True) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertTrue(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertFalse(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
-                self.assertTrue(get_canonical_bibcodes.called)
-                self.assertTrue(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertFalse(store_citation.called)
-                self.assertTrue(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertTrue(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called)
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=True), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertFalse(mocked['get_canonical_bibcode'].called)
+            self.assertTrue(mocked['get_canonical_bibcodes'].called)
+            self.assertTrue(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertTrue(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertTrue(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertTrue(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called)
 
     def test_process_deleted_citation_changes_doi(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.deleted)
         doi_id = "10.5281/zenodo.11020" # software
-        with patch.object(db, 'citation_already_exists', return_value=True) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertTrue(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertFalse(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
-                self.assertTrue(get_canonical_bibcodes.called)
-                self.assertTrue(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertFalse(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertTrue(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertTrue(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called)
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=True), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertFalse(mocked['get_canonical_bibcode'].called)
+            self.assertTrue(mocked['get_canonical_bibcodes'].called)
+            self.assertTrue(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertTrue(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertTrue(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertTrue(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called)
 
     def test_process_new_citation_changes_doi_when_target_exists_citation_doesnt(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
         doi_id = "10.5281/zenodo.11020" # software
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertTrue(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertFalse(url_is_alive.called)
-                self.assertTrue(get_canonical_bibcode.called)
-                self.assertTrue(get_canonical_bibcodes.called)
-                self.assertTrue(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertTrue(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertTrue(forward_message.called)
-                self.assertTrue(store_event.called)
-                self.assertTrue(webhook_dump_event.called)
-                self.assertTrue(webhook_emit_event.called)
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertTrue(mocked['get_canonical_bibcode'].called)
+            self.assertTrue(mocked['get_canonical_bibcodes'].called)
+            self.assertTrue(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertTrue(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertTrue(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertTrue(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertTrue(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertTrue(mocked['store_event'].called)
+            self.assertTrue(mocked['webhook_dump_event'].called)
+            self.assertTrue(mocked['webhook_emit_event'].called)
 
     def test_process_updated_citation_changes_doi_when_target_exists_citation_doesnt(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.updated)
         doi_id = "10.5281/zenodo.11020" # software
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertFalse(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertFalse(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
-                self.assertFalse(get_canonical_bibcodes.called)
-                self.assertFalse(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertFalse(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertFalse(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called)
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertFalse(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertFalse(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called)
 
     def test_process_deleted_citation_changes_doi_when_target_exists_citation_doesnt(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.deleted)
         doi_id = "10.5281/zenodo.11020" # software
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertFalse(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertFalse(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
-                self.assertFalse(get_canonical_bibcodes.called)
-                self.assertFalse(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertFalse(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertFalse(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called)
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertFalse(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertFalse(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called)
 
     def test_process_new_citation_changes_doi_when_target_and_citation_exist(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
         doi_id = "10.5281/zenodo.11020" # software
-        with patch.object(db, 'citation_already_exists', return_value=True) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertFalse(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertFalse(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
-                self.assertFalse(get_canonical_bibcodes.called)
-                self.assertFalse(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertFalse(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertFalse(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called)
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=True), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertFalse(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertFalse(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called)
 
     def test_process_updated_citation_changes_doi_when_citation_doesnt_exist(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.updated)
         doi_id = "10.5281/zenodo.11020" # software
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertFalse(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertFalse(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
-                self.assertFalse(get_canonical_bibcodes.called)
-                self.assertFalse(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertFalse(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertFalse(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called)
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertFalse(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertFalse(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called)
 
     def test_process_deleted_citation_changes_doi_when_citation_doesnt_exist(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.deleted)
         doi_id = "10.5281/zenodo.11020" # software
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertFalse(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertFalse(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
-                self.assertFalse(get_canonical_bibcodes.called)
-                self.assertFalse(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertFalse(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertFalse(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called)
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertFalse(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertFalse(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called)
 
     def test_process_citation_changes_ascl(self):
         citation_changes = adsmsg.CitationChanges()
@@ -393,41 +620,66 @@ class TestWorkers(TestBase):
         citation_change.content_type = adsmsg.CitationChangeContentType.pid
         citation_change.resolved = False
         citation_change.status = adsmsg.Status.new
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertTrue(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertTrue(url_is_alive.called)
-                self.assertTrue(get_canonical_bibcode.called)
-                self.assertFalse(get_canonical_bibcodes.called)
-                self.assertFalse(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertFalse(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertFalse(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value={}), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=None), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value={}), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertTrue(mocked['url_is_alive'].called)
+            self.assertTrue(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
 
     def test_process_citation_changes_url(self):
         citation_changes = adsmsg.CitationChanges()
@@ -438,41 +690,66 @@ class TestWorkers(TestBase):
         citation_change.content_type = adsmsg.CitationChangeContentType.url
         citation_change.resolved = False
         citation_change.status = adsmsg.Status.new
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertTrue(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertTrue(url_is_alive.called)
-                self.assertTrue(get_canonical_bibcode.called)
-                self.assertFalse(get_canonical_bibcodes.called)
-                self.assertFalse(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertFalse(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertFalse(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value={}), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=None), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value={}), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertTrue(mocked['url_is_alive'].called)
+            self.assertTrue(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
 
 
     def test_process_citation_changes_malformed_url(self):
@@ -484,41 +761,66 @@ class TestWorkers(TestBase):
         citation_change.content_type = adsmsg.CitationChangeContentType.url
         citation_change.resolved = False
         citation_change.status = adsmsg.Status.new
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertTrue(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertTrue(url_is_alive.called)
-                self.assertTrue(get_canonical_bibcode.called)
-                self.assertFalse(get_canonical_bibcodes.called)
-                self.assertFalse(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertFalse(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertFalse(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value={}), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=None), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value={}), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertTrue(mocked['url_is_alive'].called)
+            self.assertTrue(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
 
     def test_process_citation_changes_empty(self):
         citation_changes = adsmsg.CitationChanges()
@@ -529,118 +831,193 @@ class TestWorkers(TestBase):
         citation_change.content_type = adsmsg.CitationChangeContentType.url
         citation_change.resolved = False
         citation_change.status = adsmsg.Status.new
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertTrue(get_citation_target_metadata.called)
-                self.assertFalse(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertFalse(url_is_alive.called) # Not executed because content is empty
-                self.assertTrue(get_canonical_bibcode.called)
-                self.assertFalse(get_canonical_bibcodes.called)
-                self.assertFalse(get_citations_by_bibcode.called)
-                self.assertFalse(store_citation_target.called)
-                self.assertFalse(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertFalse(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value={}), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=None), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value={}), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called) # Not executed because content is empty
+            self.assertTrue(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
 
     def test_process_new_citation_changes_doi_unparsable_http_response(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value="Unparsable response") as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertTrue(get_citation_target_metadata.called)
-                self.assertTrue(fetch_metadata.called)
-                self.assertTrue(parse_metadata.called)
-                self.assertFalse(url_is_alive.called)
-                self.assertTrue(get_canonical_bibcode.called)
-                self.assertFalse(get_canonical_bibcodes.called)
-                self.assertFalse(get_citations_by_bibcode.called)
-                self.assertTrue(store_citation_target.called)
-                self.assertTrue(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertFalse(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value={}), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value="Unparsable response"), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value={}), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertTrue(mocked['fetch_metadata'].called)
+            self.assertTrue(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertTrue(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertTrue(mocked['store_citation_target'].called)
+            self.assertTrue(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
 
 
     def test_process_new_citation_changes_doi_http_error(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
-        with patch.object(db, 'citation_already_exists', return_value=False) as citation_already_exists, \
-            patch.object(db, 'get_citation_target_metadata', return_value={}) as get_citation_target_metadata, \
-            patch.object(doi, 'fetch_metadata', return_value=None) as fetch_metadata, \
-            patch.object(doi, 'parse_metadata', return_value={}) as parse_metadata, \
-            patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
-            patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing) as get_canonical_bibcode, \
-            patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
-            patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
-            patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
-            patch.object(db, 'store_citation', return_value=True) as store_citation, \
-            patch.object(db, 'store_event', return_value=True) as store_event, \
-            patch.object(db, 'update_citation', return_value=True) as update_citation, \
-            patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
-            patch.object(db, 'get_citations', return_value=[]) as get_citations, \
-            patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
-            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
-            patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
-                tasks.task_process_citation_changes(citation_changes)
-                self.assertTrue(citation_already_exists.called)
-                self.assertTrue(get_citation_target_metadata.called)
-                self.assertTrue(fetch_metadata.called)
-                self.assertFalse(parse_metadata.called)
-                self.assertFalse(url_is_alive.called)
-                self.assertTrue(get_canonical_bibcode.called)
-                self.assertFalse(get_canonical_bibcodes.called)
-                self.assertFalse(get_citations_by_bibcode.called)
-                self.assertTrue(store_citation_target.called)
-                self.assertTrue(store_citation.called)
-                self.assertFalse(update_citation.called)
-                self.assertFalse(mark_citation_as_deleted.called)
-                self.assertFalse(get_citations.called)
-                self.assertFalse(forward_message.called)
-                self.assertFalse(store_event.called)
-                self.assertFalse(webhook_dump_event.called)
-                self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=False), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value={}), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=None), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value={}), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_citation_changes(citation_changes)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertTrue(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertTrue(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertTrue(mocked['store_citation_target'].called)
+            self.assertTrue(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
 
 
     def test_task_output_results(self):

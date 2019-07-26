@@ -1,11 +1,39 @@
 import unittest
+import contextlib
+import mock
 from sqlalchemy import create_engine
 from adsputils import load_config
 from ADSCitationCapture import app, tasks
 from ADSCitationCapture.models import Base
 
 
+
+
+
 class TestBase(unittest.TestCase):
+
+    @staticmethod
+    @contextlib.contextmanager
+    def mock_multiple_targets(mock_patches):
+        """
+        `mock_patches` is a list (or iterable) of mock.patch objects
+
+        This is required when too many patches need to be applied in a nested
+        `with` statement, since python has a hardcoded limit (~20).
+
+        Based on: https://gist.github.com/msabramo/dffa53e4f29ec2e3682e
+        """
+        mocks = {}
+
+        for mock_name, mock_patch in mock_patches.iteritems():
+            _mock = mock_patch.start()
+            mocks[mock_name] = _mock
+
+        yield mocks
+
+        for mock_name, mock_patch in mock_patches.iteritems():
+            mock_patch.stop()
+
 
     def setUp(self):
         unittest.TestCase.setUp(self)
