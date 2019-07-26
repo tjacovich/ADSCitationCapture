@@ -94,15 +94,17 @@ def task_process_new_citation(citation_change, force=False):
                 if canonical_citing_bibcode != citation_change.citing:
                     # These two bibcodes are identical and we can signal the broker
                     event_data = webhook.identical_bibcodes_event_data(citation_change.citing, canonical_citing_bibcode)
-                    dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
-                    logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", citation_change.citing, canonical_citing_bibcode)
-                    task_emit_event.delay(event_data, dump_prefix)
+                    if event_data:
+                        dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
+                        logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", citation_change.citing, canonical_citing_bibcode)
+                        task_emit_event.delay(event_data, dump_prefix)
                 citation_target_bibcode = parsed_metadata.get('bibcode')
                 # The new bibcode and the DOI are identical
                 event_data = webhook.identical_bibcode_and_doi_event_data(citation_target_bibcode, citation_change.content)
-                dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
-                logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", citation_target_bibcode, citation_change.content)
-                task_emit_event.delay(event_data, dump_prefix)
+                if event_data:
+                    dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
+                    logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", citation_target_bibcode, citation_change.content)
+                    task_emit_event.delay(event_data, dump_prefix)
                 # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                 original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
                 citations = api.get_canonical_bibcodes(app, original_citations)
@@ -221,9 +223,10 @@ def _emit_citation_change(citation_change, parsed_metadata):
     is_software = parsed_metadata and parsed_metadata.get("doctype", "").lower() == "software"
     if is_software and is_link_alive:
         event_data = webhook.citation_change_to_event_data(citation_change)
-        dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
-        logger.debug("Calling 'task_emit_event' for '%s'", citation_change)
-        task_emit_event.delay(event_data, dump_prefix)
+        if event_data:
+            dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
+            logger.debug("Calling 'task_emit_event' for '%s'", citation_change)
+            task_emit_event.delay(event_data, dump_prefix)
 
 
 @app.task(queue='process-emit-event')
@@ -342,9 +345,10 @@ def task_maintenance_metadata(dois, bibcodes):
                 if different_bibcodes:
                     # These two bibcodes are identical and we can signal the broker
                     event_data = webhook.identical_bibcodes_event_data(registered_record['bibcode'], parsed_metadata['bibcode'])
-                    dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d") # "%Y%m%d_%H%M%S"
-                    logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], parsed_metadata['bibcode'])
-                    task_emit_event.delay(event_data, dump_prefix)
+                    if event_data:
+                        dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d") # "%Y%m%d_%H%M%S"
+                        logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], parsed_metadata['bibcode'])
+                        task_emit_event.delay(event_data, dump_prefix)
                     #
                     logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'], parsed_metadata.get('bibcode', None))
                     alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])

@@ -46,10 +46,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -66,6 +68,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertTrue(forward_message.called)
+                self.assertTrue(store_event.called)
+                self.assertTrue(webhook_dump_event.called)
                 self.assertTrue(webhook_emit_event.called)
 
     def test_process_updated_citation_changes_doi(self):
@@ -81,10 +85,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -92,7 +98,7 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
-                self.assertTrue(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcode.called)
                 self.assertTrue(get_canonical_bibcodes.called)
                 self.assertTrue(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
@@ -101,7 +107,9 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertTrue(forward_message.called)
-                self.assertTrue(webhook_emit_event.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
+                self.assertFalse(webhook_emit_event.called)
 
     def test_process_deleted_citation_changes_doi(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.deleted)
@@ -116,10 +124,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -127,7 +137,7 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
-                self.assertTrue(get_canonical_bibcode.called)
+                self.assertFalse(get_canonical_bibcode.called)
                 self.assertTrue(get_canonical_bibcodes.called)
                 self.assertTrue(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
@@ -136,7 +146,9 @@ class TestWorkers(TestBase):
                 self.assertTrue(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertTrue(forward_message.called)
-                self.assertTrue(webhook_emit_event.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
+                self.assertFalse(webhook_emit_event.called)
 
     def test_process_new_citation_changes_doi_when_target_exists_citation_doesnt(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
@@ -151,10 +163,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -171,6 +185,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertTrue(forward_message.called)
+                self.assertTrue(store_event.called)
+                self.assertTrue(webhook_dump_event.called)
                 self.assertTrue(webhook_emit_event.called)
 
     def test_process_updated_citation_changes_doi_when_target_exists_citation_doesnt(self):
@@ -186,10 +202,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -206,6 +224,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertFalse(forward_message.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
                 self.assertFalse(webhook_emit_event.called)
 
     def test_process_deleted_citation_changes_doi_when_target_exists_citation_doesnt(self):
@@ -221,10 +241,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -241,6 +263,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertFalse(forward_message.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
                 self.assertFalse(webhook_emit_event.called)
 
     def test_process_new_citation_changes_doi_when_target_and_citation_exist(self):
@@ -256,10 +280,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -276,6 +302,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertFalse(forward_message.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
                 self.assertFalse(webhook_emit_event.called)
 
     def test_process_updated_citation_changes_doi_when_citation_doesnt_exist(self):
@@ -291,10 +319,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -311,6 +341,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertFalse(forward_message.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
                 self.assertFalse(webhook_emit_event.called)
 
     def test_process_deleted_citation_changes_doi_when_citation_doesnt_exist(self):
@@ -326,10 +358,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -346,6 +380,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertFalse(forward_message.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
                 self.assertFalse(webhook_emit_event.called)
 
     def test_process_citation_changes_ascl(self):
@@ -367,10 +403,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -378,7 +416,7 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertTrue(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcode.called)
                 self.assertFalse(get_canonical_bibcodes.called)
                 self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
@@ -387,6 +425,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertFalse(forward_message.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
                 self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
 
     def test_process_citation_changes_url(self):
@@ -408,10 +448,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -419,7 +461,7 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertTrue(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcode.called)
                 self.assertFalse(get_canonical_bibcodes.called)
                 self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
@@ -428,6 +470,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertFalse(forward_message.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
                 self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
 
 
@@ -450,10 +494,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -461,7 +507,7 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertTrue(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcode.called)
                 self.assertFalse(get_canonical_bibcodes.called)
                 self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
@@ -470,6 +516,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertFalse(forward_message.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
                 self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
 
     def test_process_citation_changes_empty(self):
@@ -491,10 +539,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -502,7 +552,7 @@ class TestWorkers(TestBase):
                 self.assertFalse(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called) # Not executed because content is empty
-                self.assertFalse(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcode.called)
                 self.assertFalse(get_canonical_bibcodes.called)
                 self.assertFalse(get_citations_by_bibcode.called)
                 self.assertFalse(store_citation_target.called)
@@ -511,6 +561,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertFalse(forward_message.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
                 self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
 
     def test_process_new_citation_changes_doi_unparsable_http_response(self):
@@ -525,10 +577,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -536,7 +590,7 @@ class TestWorkers(TestBase):
                 self.assertTrue(fetch_metadata.called)
                 self.assertTrue(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcode.called)
                 self.assertFalse(get_canonical_bibcodes.called)
                 self.assertFalse(get_citations_by_bibcode.called)
                 self.assertTrue(store_citation_target.called)
@@ -545,6 +599,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertFalse(forward_message.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
                 self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
 
 
@@ -560,10 +616,12 @@ class TestWorkers(TestBase):
             patch.object(db, 'get_citations_by_bibcode', return_value=[]) as get_citations_by_bibcode, \
             patch.object(db, 'store_citation_target', return_value=True) as store_citation_target, \
             patch.object(db, 'store_citation', return_value=True) as store_citation, \
+            patch.object(db, 'store_event', return_value=True) as store_event, \
             patch.object(db, 'update_citation', return_value=True) as update_citation, \
             patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')) as mark_citation_as_deleted, \
             patch.object(db, 'get_citations', return_value=[]) as get_citations, \
             patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+            patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
             patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
                 tasks.task_process_citation_changes(citation_changes)
                 self.assertTrue(citation_already_exists.called)
@@ -571,7 +629,7 @@ class TestWorkers(TestBase):
                 self.assertTrue(fetch_metadata.called)
                 self.assertFalse(parse_metadata.called)
                 self.assertFalse(url_is_alive.called)
-                self.assertFalse(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcode.called)
                 self.assertFalse(get_canonical_bibcodes.called)
                 self.assertFalse(get_citations_by_bibcode.called)
                 self.assertTrue(store_citation_target.called)
@@ -580,6 +638,8 @@ class TestWorkers(TestBase):
                 self.assertFalse(mark_citation_as_deleted.called)
                 self.assertFalse(get_citations.called)
                 self.assertFalse(forward_message.called)
+                self.assertFalse(store_event.called)
+                self.assertFalse(webhook_dump_event.called)
                 self.assertFalse(webhook_emit_event.called) # because we don't know if an URL is software
 
 

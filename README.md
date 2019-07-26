@@ -68,6 +68,8 @@ The creation of a user and a database is also required:
 docker exec -it postgres bash -c "psql -c \"CREATE ROLE citation_capture_pipeline WITH LOGIN PASSWORD 'citation_capture_pipeline';\""
 docker exec -it postgres bash -c "psql -c \"CREATE DATABASE citation_capture_pipeline;\""
 docker exec -it postgres bash -c "psql -c \"GRANT CREATE ON DATABASE citation_capture_pipeline TO citation_capture_pipeline;\""
+docker exec -it postgres bash -c "psql -c \"CREATE DATABASE citation_capture_pipeline_test;\""
+docker exec -it postgres bash -c "psql -c \"GRANT CREATE ON DATABASE citation_capture_pipeline_test TO citation_capture_pipeline;\""
 ```
 
 Copy `config.py` to `local_config.py` and modify its content to reflect your system setup. Add the following flags to `local_config.py` to convert all the asynchronous calls into synchronous, not needing a worker (nor RabbitMQ) and allowing easier debugging (e.g., `import pudb; pudb.set_trace()`):
@@ -270,7 +272,7 @@ Access the solr query interface via [http://localhost:8984/solr/#/collection1/qu
 
 Run unit tests via:
 
-**WARNING**: The unit tests assume the database is empty and they will insert data.
+**WARNING**: Unit tests will concatenate `_test` to the database string defined in the `config` file, they assume that database is empty and they will insert/delete data.
 
 ```
 py.test ADSCitationCapture/tests/

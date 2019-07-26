@@ -151,7 +151,7 @@ def emit_event(ads_webhook_url, ads_webhook_auth_token, event_data, timeout=30):
             emitted = True
     return emitted
 
-def mkdir_p(path):
+def _mkdir_p(path):
     """
     Creates a directory. Same behaviour as 'mkdir -p'.
     """
@@ -185,7 +185,7 @@ def dump_event(event_data, prefix="emitted"):
             filename = "{}_{}_{}_{}.json".format(now, source_id, relationship, target_id)
             try:
                 if not os.path.exists(base_dirname):
-                    mkdir_p(base_dirname)
+                    _mkdir_p(base_dirname)
                 json.dump(event_data, open(os.path.join(base_dirname, filename), "w"), indent=2)
             except:
                 logger.exception("Impossible to dump event")

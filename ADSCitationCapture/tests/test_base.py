@@ -1,5 +1,8 @@
 import unittest
+from sqlalchemy import create_engine
+from adsputils import load_config
 from ADSCitationCapture import app, tasks
+from ADSCitationCapture.models import Base
 
 
 class TestBase(unittest.TestCase):
@@ -8,18 +11,43 @@ class TestBase(unittest.TestCase):
         unittest.TestCase.setUp(self)
         self.proj_home = tasks.app.conf['PROJ_HOME']
         self._app = tasks.app
+        # Use a different database for unit tests since they will modify it
+        self.sqlalchemy_url = "{}_test".format(load_config().get('SQLALCHEMY_URL', 'postgres://postgres@localhost:5432/citation_capture_pipeline'))
         config = {
             "TESTING_MODE": False,
             "CELERY_ALWAYS_EAGER": False,
             "CELERY_EAGER_PROPAGATES_EXCEPTIONS": False,
+            "SQLALCHEMY_URL": self.sqlalchemy_url,
         }
         self.app = app.ADSCitationCaptureCelery('test', proj_home=self.proj_home, local_config=config)
         tasks.app = self.app # monkey-patch the app object
         self._init_mock_data()
+        try:
+            Base.metadata.create_all(bind=self.app._engine, checkfirst=True)
+        except:
+            # Database not empty!
+            raise
 
 
     def tearDown(self):
         unittest.TestCase.tearDown(self)
+        # A CASCADE drop is required because sometimes drop_all tries to delete
+        # ENUM before tables that depend on it and it raises and exception:
+        for table_name in Base.metadata.tables.keys():
+            self.app._engine.execute("DROP TABLE IF EXISTS {0} CASCADE;".format(table_name))
+        # Make sure nothing else is left behind
+        Base.metadata.drop_all(bind=self.app._engine)
+        # Reset schemas to public in case any of them was changed in table's metadata
+        # - This happens in delta_computation.py and affects subsequent tests
+        import sys, inspect
+        import sqlalchemy
+        import ADSCitationCapture.models
+        module_name = "ADSCitationCapture.models"
+        for member_name, obj in inspect.getmembers(sys.modules[module_name]):
+            if type(obj) is sqlalchemy.ext.declarative.api.DeclarativeMeta and hasattr(obj, '__table__'):
+                obj.__table__.schema = "public"
+        # Dispose of the connection pool used by this engine (closing all open connections)
+        self.app._engine.dispose()
         self.app.close_app()
         tasks.app = self._app
 

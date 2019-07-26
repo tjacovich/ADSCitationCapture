@@ -34,7 +34,7 @@ def process(refids_filename, **kwargs):
         schema_prefix = kwargs.get('schema_prefix', "citation_capture_")
 
     # Engine
-    sqlachemy_url = config.get('SQLALCHEMY_URL', 'postgres://user:password@localhost:5432/citation_capture_pipeline')
+    sqlachemy_url = kwargs.get('sqlalchemy_url', config.get('SQLALCHEMY_URL', 'postgres://user:password@localhost:5432/citation_capture_pipeline'))
     sqlalchemy_echo = config.get('SQLALCHEMY_ECHO', False)
 
     delta = DeltaComputation(sqlachemy_url, sqlalchemy_echo=sqlalchemy_echo, group_changes_in_chunks_of=1, schema_prefix=schema_prefix, force=force)
@@ -51,6 +51,7 @@ def process(refids_filename, **kwargs):
             logger.exception('Exception produced while processing citation changes')
     if diagnose:
         delta._execute_sql("drop schema {0} cascade;", delta.schema_name)
+    delta.connection.close()
 
 def maintenance_canonical(dois, bibcodes):
     """

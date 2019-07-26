@@ -113,11 +113,7 @@ class DeltaComputation():
                 prefix = "previous_" if instance.status == "DELETED" else "new_"
                 citation_change.citing = getattr(instance, prefix+"citing")
                 resolved = getattr(instance, prefix+"resolved")
-                if resolved:
-                    # Only accept cited bibcode if score is 1 (resolved)
-                    citation_change.cited = getattr(instance, prefix+"cited")
-                else:
-                    citation_change.cited = '...................'
+                citation_change.cited = getattr(instance, prefix+"cited")
                 if getattr(instance, prefix+"doi"):
                     citation_change.content_type = adsmsg.CitationChangeContentType.doi
                 elif getattr(instance, prefix+"pid"):

@@ -5,12 +5,16 @@ import pytest
 
 import unittest
 from ADSCitationCapture import app, tasks, delta_computation, db
+from ADSCitationCapture import webhook
+from ADSCitationCapture import doi
+from ADSCitationCapture import url
+from ADSCitationCapture import db
+from ADSCitationCapture import api
 from .test_base import TestBase
 from mock import patch
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import create_engine
 import tempfile
-
 
 class TestWorkers(TestBase):
 
@@ -19,20 +23,32 @@ class TestWorkers(TestBase):
         sys.path.append(self.proj_home)
         from run import process
         self.process = process
+        self.sqlalchemy_url = self.app._engine.url # Use testing database
         self.schema_prefix = "testing_citation_capture_"
 
     def tearDown(self):
-        TestBase.tearDown(self)
         # Drop testing schemas
-        engine = create_engine(self.app.conf['SQLALCHEMY_URL'], echo=False)
-        connection = engine.connect()
-        existing_schema_names = Inspector.from_engine(engine).get_schema_names()
+        existing_schema_names = Inspector.from_engine(self.app._engine).get_schema_names()
         existing_schema_names = filter(lambda x: x.startswith(self.schema_prefix), existing_schema_names)
         for schema_name in existing_schema_names:
-            connection.execute("drop schema {0} cascade;".format(schema_name))
+            self.app._engine.execute("DROP SCHEMA {0} CASCADE;".format(schema_name))
+        TestBase.tearDown(self)
+
+    def _fetch_metadata(self, base_doi_url, base_datacite_url, doi_url):
+        data = {
+            u'10.5281/zenodo.11020': u'<?xml version="1.0" encoding="utf-8"?>\n<resource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://datacite.org/schema/kernel-4" xsi:schemaLocation="http://datacite.org/schema/kernel-4 http://schema.datacite.org/meta/kernel-4.1/metadata.xsd">\n  <identifier identifierType="DOI">10.5281/ZENODO.11020</identifier>\n  <creators>\n    <creator>\n      <creatorName>Dan Foreman-Mackey</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Adrian Price-Whelan</creatorName>\n      <affiliation>Columbia University</affiliation>\n    </creator>\n    <creator>\n      <creatorName>Geoffrey Ryan</creatorName>\n      <affiliation>NYU</affiliation>\n    </creator>\n    <creator>\n      <creatorName>Emily</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Michael Smith</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Kyle Barbary</creatorName>\n    </creator>\n    <creator>\n      <creatorName>David W. Hogg</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Brendon J. Brewer</creatorName>\n      <affiliation>The University of Auckland</affiliation>\n    </creator>\n  </creators>\n  <titles>\n    <title>Triangle.Py V0.1.1</title>\n  </titles>\n  <publisher>Zenodo</publisher>\n  <publicationYear>2014</publicationYear>\n  <dates>\n    <date dateType="Issued">2014-07-24</date>\n  </dates>\n  <resourceType resourceTypeGeneral="Software"/>\n  <alternateIdentifiers>\n    <alternateIdentifier alternateIdentifierType="url">https://zenodo.org/record/11020</alternateIdentifier>\n  </alternateIdentifiers>\n  <relatedIdentifiers>\n    <relatedIdentifier relatedIdentifierType="URL" relationType="IsSupplementTo">https://github.com/dfm/triangle.py/tree/v0.1.1</relatedIdentifier>\n  </relatedIdentifiers>\n  <rightsList>\n    <rights rightsURI="info:eu-repo/semantics/openAccess">Open Access</rights>\n  </rightsList>\n  <descriptions>\n    <description descriptionType="Abstract">&lt;p&gt;This is a citable release with a better name.&lt;/p&gt;</description>\n  </descriptions>\n</resource>',
+            u'10.5281/zenodo.1049160': u'<?xml version="1.0" encoding="utf-8"?>\n<resource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://datacite.org/schema/kernel-4" xsi:schemaLocation="http://datacite.org/schema/kernel-4 http://schema.datacite.org/meta/kernel-4.1/metadata.xsd">\n  <identifier identifierType="DOI">10.5281/ZENODO.1049160</identifier>\n  <creators>\n    <creator>\n      <creatorName>Eastwood, Michael W.</creatorName>\n      <givenName>Michael W.</givenName>\n      <familyName>Eastwood</familyName>\n      <nameIdentifier nameIdentifierScheme="ORCID" schemeURI="http://orcid.org/">0000-0002-4731-6083</nameIdentifier>\n      <affiliation>Department of Astronomy, California Institute of Technology</affiliation>\n    </creator>\n  </creators>\n  <titles>\n    <title>Ttcal</title>\n  </titles>\n  <publisher>Zenodo</publisher>\n  <publicationYear>2016</publicationYear>\n  <dates>\n    <date dateType="Issued">2016-10-27</date>\n  </dates>\n  <resourceType resourceTypeGeneral="Software"/>\n  <alternateIdentifiers>\n    <alternateIdentifier alternateIdentifierType="url">https://zenodo.org/record/1049160</alternateIdentifier>\n  </alternateIdentifiers>\n  <relatedIdentifiers>\n    <relatedIdentifier relatedIdentifierType="URL" relationType="IsSupplementTo">https://github.com/mweastwood/TTCal.jl/tree/v0.3.0</relatedIdentifier>\n    <relatedIdentifier relatedIdentifierType="DOI" relationType="IsVersionOf">10.5281/zenodo.1049159</relatedIdentifier>\n  </relatedIdentifiers>\n  <version>0.3.0</version>\n  <rightsList>\n    <rights rightsURI="http://www.opensource.org/licenses/GPL-3.0">GNU General Public License 3.0</rights>\n    <rights rightsURI="info:eu-repo/semantics/openAccess">Open Access</rights>\n  </rightsList>\n  <descriptions>\n    <description descriptionType="Abstract">&lt;p&gt;TTCal is a calibration routine developed for the OVRO-LWA.&lt;/p&gt;\n\n&lt;p&gt;The standard procedure for phase calibrating a radio interferometer usually involves slewing a small number of large dishes to stare at a known point source. A point source at the phase center of the interferometer has zero phase on all baselines, so phase calibration essentially amounts to zeroing the phase on all baselines.&lt;/p&gt;\n\n&lt;p&gt;Low frequency telescopes (&amp;lt;300 MHz) tend to occupy an entirely different region of phase space. That is they are usually composed of numerous cheap dipole antennas with very broad beams (LOFAR, MWA). Furthermore, the low frequency sky is corrupted by propagation through the ionosphere. Until the field matures, the demand for a new and effective calibration technique is best met by a simple, adaptable, and relatively fast software package. This is why I wrote TTCal.&lt;/p&gt;</description>\n  </descriptions>\n</resource>',
+            u'10.5281/zenodo.11813': u'<?xml version="1.0" encoding="utf-8"?>\n<resource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://datacite.org/schema/kernel-4" xsi:schemaLocation="http://datacite.org/schema/kernel-4 http://schema.datacite.org/meta/kernel-4.1/metadata.xsd">\n  <identifier identifierType="DOI">10.5281/ZENODO.11813</identifier>\n  <creators>\n    <creator>\n      <creatorName>Newville, Matthew</creatorName>\n      <givenName>Matthew</givenName>\n      <familyName>Newville</familyName>\n      <affiliation>The University of Chicago</affiliation>\n    </creator>\n    <creator>\n      <creatorName>Stensitzki, Till</creatorName>\n      <givenName>Till</givenName>\n      <familyName>Stensitzki</familyName>\n      <affiliation>Till Stensitzki, Freie Universitat Berlin</affiliation>\n    </creator>\n    <creator>\n      <creatorName>Allen, Daniel B.</creatorName>\n      <givenName>Daniel B.</givenName>\n      <familyName>Allen</familyName>\n      <affiliation>Johns Hopkins University</affiliation>\n    </creator>\n    <creator>\n      <creatorName>Ingargiola,  Antonino</creatorName>\n      <givenName>Antonino</givenName>\n      <familyName>Ingargiola</familyName>\n      <affiliation>University of California, Los Angeles</affiliation>\n    </creator>\n  </creators>\n  <titles>\n    <title>LMFIT: Non-Linear Least-Square Minimization and Curve-Fitting for Python</title>\n  </titles>\n  <publisher>Zenodo</publisher>\n  <publicationYear>2014</publicationYear>\n  <subjects>\n    <subject>python</subject>\n    <subject>non-linear least-squares optimization</subject>\n    <subject>curve-fitting</subject>\n  </subjects>\n  <dates>\n    <date dateType="Issued">2014-09-21</date>\n  </dates>\n  <resourceType resourceTypeGeneral="Software"/>\n  <alternateIdentifiers>\n    <alternateIdentifier alternateIdentifierType="url">https://zenodo.org/record/11813</alternateIdentifier>\n  </alternateIdentifiers>\n  <relatedIdentifiers>\n    <relatedIdentifier relatedIdentifierType="DOI" relationType="IsVersionOf">10.5281/zenodo.598352</relatedIdentifier>\n    <relatedIdentifier relatedIdentifierType="URL" relationType="IsPartOf">https://zenodo.org/communities/zenodo</relatedIdentifier>\n  </relatedIdentifiers>\n  <version>0.8.0</version>\n  <rightsList>\n    <rights rightsURI="http://www.opensource.org/licenses/MIT">MIT License</rights>\n    <rights rightsURI="info:eu-repo/semantics/openAccess">Open Access</rights>\n  </rightsList>\n  <descriptions>\n    <description descriptionType="Abstract">&lt;p&gt;Lmfit provides a high-level interface to non-linear optimization and curve fitting problems for Python. Lmfit builds on Levenberg-Marquardt algorithm of scipy.optimize.leastsq(), but also supports most of the optimization method from scipy.optimize.&amp;nbsp;&amp;nbsp; It has a number of useful enhancements, including:&lt;/p&gt;\n\n&lt;ul&gt;\n\t&lt;li&gt;&amp;nbsp;Using Parameter objects instead of plain floats as variables.'
+            + u'&amp;nbsp; A Parameter has a value that can be varied in the fit, fixed, have upper and/or lower bounds.&amp;nbsp; It can even have a value that is constrained by an algebraic expression of other Parameter values.&lt;/li&gt;\n\t&lt;li&gt;Ease of changing fitting algorithms.&amp;nbsp; Once a fitting model is set up, one can change the fitting algorithm without changing the objective function.&lt;/li&gt;\n\t&lt;li&gt;Improved estimation of confidence intervals.&amp;nbsp; While scipy.optimize.leastsq() will automatically calculate uncertainties and correlations from the covariance matrix, lmfit also has functions to explicitly explore parameter space to determine confidence levels even for the most difficult cases.&lt;/li&gt;\n\t&lt;li&gt;Improved curve-fitting with the Model class.&amp;nbsp; This which extends the capabilities of scipy.optimize.curve_fit(), allowing you to turn a function&amp;nbsp;that models for your data into a python class that helps you parametrize and fit data with that model.&lt;/li&gt;\n\t&lt;li&gt;&amp;nbsp;Many pre-built models for common lineshapes are included and ready to use.&lt;/li&gt;\n&lt;/ul&gt;\n\n&lt;p&gt;The lmfit package is Free software, using an MIT license&lt;/p&gt;</description>\n  </descriptions>\n</resource>',
+            u'10.5281/zenodo.27878': u'<?xml version="1.0" encoding="utf-8"?>\n<resource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://datacite.org/schema/kernel-4" xsi:schemaLocation="http://datacite.org/schema/kernel-4 http://schema.datacite.org/meta/kernel-4.1/metadata.xsd">\n  <identifier identifierType="DOI">10.5281/ZENODO.27878</identifier>\n  <creators>\n    <creator>\n      <creatorName>Sander Dieleman</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Jan Schl\xc3\xbcter</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Colin Raffel</creatorName>\n      <affiliation>LabROSA, Columbia University</affiliation>\n    </creator>\n    <creator>\n      <creatorName>Eben Olson</creatorName>\n      <affiliation>Yale University</affiliation>\n    </creator>\n    <creator>\n      <creatorName>S\xc3\xb8ren Kaae S\xc3\xb8nderby</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Daniel Nouri</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Daniel Maturana</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Martin Thoma</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Eric Battenberg</creatorName>\n      <affiliation>Baidu Research</affiliation>\n    </creator>\n    <creator>\n      <creatorName>Jack Kelly</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Jeffrey De Fauw</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Michael Heilman</creatorName>\n    </creator>\n    <creator>\n      <creatorName>diogo149</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Brian McFee</creatorName>\n      <affiliation>Center for Data Science - NYU</affiliation>\n    </creator>\n    <creator>\n      <creatorName>Hendrik Weideman</creatorName>\n      <affiliation>Rensselaer Polytechnic Institute</affiliation>\n    </creator>\n    <creator>\n      <creatorName>takacsg84</creatorName>\n    </creator>\n    <creator>\n      <creatorName>peterderivaz</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Jon</creatorName>\n    </creator>\n    <creator>\n      <creatorName>instagibbs</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Dr. Kashif Rasul</creatorName>\n      <affiliation>SpacialDB UG</affiliation>\n    </creator>\n    <creator>\n      <creatorName>CongLiu</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Britefury</creatorName>\n    </creator>\n    <creator>\n      <creatorName>Jonas Degrave</creatorName>\n    </creator>\n  </creators>\n  <titles>\n    <title>Lasagne: First Release.</title>\n  </titles>\n  <publisher>Zenodo</publisher>\n  <publicationYear>2015</publicationYear>\n  <dates>\n    <date dateType="Issued">2015-08-13</date>\n  </dates>\n  <resourceType resourceTypeGeneral="Software"/>\n  <alternateIdentifiers>\n    <alternateIdentifier alternateIdentifierType="url">https://zenodo.org/record/27878</alternateIdentifier>\n  </alternateIdentifiers>\n  '
+            + u'<relatedIdentifiers>\n    <relatedIdentifier relatedIdentifierType="URL" relationType="IsSupplementTo">https://github.com/Lasagne/Lasagne/tree/v0.1</relatedIdentifier>\n  </relatedIdentifiers>\n  <version>v0.1</version>\n  <rightsList>\n    <rights rightsURI="info:eu-repo/semantics/openAccess">Open Access</rights>\n  </rightsList>\n  <descriptions>\n    <description descriptionType="Abstract">&lt;ul&gt;\n&lt;li&gt;\n&lt;p&gt;core contributors, in alphabetical order:&lt;/p&gt;\n\n&lt;ul&gt;\n&lt;li&gt;Eric Battenberg (@ebattenberg)&lt;/li&gt;\n&lt;li&gt;Sander Dieleman (@benanne)&lt;/li&gt;\n&lt;li&gt;Daniel Nouri (@dnouri)&lt;/li&gt;\n&lt;li&gt;Eben Olson (@ebenolson)&lt;/li&gt;\n&lt;li&gt;A\xc3\xa4ron van den Oord (@avdnoord)&lt;/li&gt;\n&lt;li&gt;Colin Raffel (@craffel)&lt;/li&gt;\n&lt;li&gt;Jan Schl\xc3\xbcter (@f0k)&lt;/li&gt;\n&lt;li&gt;S\xc3\xb8ren Kaae S\xc3\xb8nderby (@skaae)&lt;/li&gt;\n&lt;/ul&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;extra contributors, in chronological order:&lt;/p&gt;\n\n&lt;ul&gt;\n&lt;li&gt;Daniel Maturana (@dimatura): documentation, cuDNN layers, LRN&lt;/li&gt;\n&lt;li&gt;Jonas Degrave (@317070): get_all_param_values() fix&lt;/li&gt;\n&lt;li&gt;Jack Kelly (@JackKelly): help with recurrent layers&lt;/li&gt;\n&lt;li&gt;G\xc3\xa1bor Tak\xc3\xa1cs (@takacsg84): support broadcastable parameters in lasagne.updates&lt;/li&gt;\n&lt;li&gt;Diogo Moitinho de Almeida (@diogo149): MNIST example fixes&lt;/li&gt;\n&lt;li&gt;Brian McFee (@bmcfee): MaxPool2DLayer fix&lt;/li&gt;\n&lt;li&gt;Martin Thoma (@MartinThoma): documentation&lt;/li&gt;\n&lt;li&gt;Jeffrey De Fauw (@JeffreyDF): documentation, ADAM fix&lt;/li&gt;\n&lt;li&gt;Michael Heilman (@mheilman): NonlinearityLayer, lasagne.random&lt;/li&gt;\n&lt;li&gt;Gregory Sanders (@instagibbs): documentation fix&lt;/li&gt;\n&lt;li&gt;Jon Crall (@erotemic): check for non-positive input shapes&lt;/li&gt;\n&lt;li&gt;Hendrik Weideman (@hjweide): set_all_param_values() test, MaxPool2DCCLayer fix&lt;/li&gt;\n&lt;li&gt;Kashif Rasul (@kashif): ADAM simplification&lt;/li&gt;\n&lt;li&gt;Peter de Rivaz (@peterderivaz): documentation fix&lt;/li&gt;\n&lt;/ul&gt;\n&lt;/li&gt;\n&lt;/ul&gt;</description>\n  </descriptions>\n</resource>',
+        }
+        return data[doi_url]
+
+    def _get_canonical_bibcode(bibcode):
+        return bibcode
 
 
-    @unittest.skip("TODO: Broken since the pipeline reconstruct the previous expanded table")
     def test_run(self):
         # This test modifies the public schema of the database, hence do not run it
         # if we detect that data exists to avoid affecting production by mistake
@@ -44,35 +60,54 @@ class TestWorkers(TestBase):
             first_refids_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/sample-refids1.dat")
             os.utime(first_refids_filename, (0, 0)) # set the access and modified times to 19700101_000000
             expected_citation_change_from_first_file = [
-                    '\n\x131005PhRvC..71c4906H\x12\x131990PhLB..243..432G"\x1c10.1016/0370-2693(90)91409-5(\x010\x02:\x00',
-                    '\n\x131005PhRvC..71c4906H\x12\x131976NuPhB.113..395J"\x1c10.1016/0550-3213(76)90133-4(\x010\x02:\x00',
-                    '\n\x131799AnP.....2..154P\x12\x13..................."\x1910.1088/0022-3727/2/1/4220\x02:\x00',
-                    '\n\x131910GeoRu...1....1D\x12\x13..................."\x1910.2475/ajs.s2-46.137.2400\x02:\x00',
-                    '\n\x131910GeoRu...1...36M\x12\x13..................."\x1610.2475/ajs.s4-6.31.750\x02:\x00',
                     '\n\x132009arXiv0911.4940W\x12\x13...................\x18\x02"/http://github.com/b45ch1/hpsc_hanoi_2009_walter0\x02:\x00',
                     '\n\x132010arXiv1003.5943M\x12\x13...................\x18\x02" http://github.com/matsen/pplacer0\x02:\x00',
                     '\n\x132011arXiv1112.0312C\x12\x132012ascl.soft03003C\x18\x01"\rascl:1203.003(\x010\x02:\x00',
-                    '\n\x132013arXiv1310.5912S\x12\x13...................\x18\x01"\x0eascl:1208.80040\x02:\x00',
-                    '\n\x132015ApJ...815L..10L\x12\x13...................\x18\x01"\rascl:1510.0100\x02:\x00',
+                    '\n\x132013arXiv1310.5912S\x12\x132012ascl.soft.8004S\x18\x01"\x0eascl:1208.80040\x02:\x00',
+                    '\n\x132015ApJ...815L..10L\x12\x132015ascl.soft...10J\x18\x01"\rascl:1510.0100\x02:\x00',
+                    '\n\x132015arXiv151003579A\x12\x132014spi..book11020F"\x1410.5281/zenodo.110200\x02:\x00',
+                    '\n\x132015JCAP...08..043A\x12\x132014zndo.soft11020F"\x1410.5281/zenodo.11020(\x010\x02:\x00',
                     '\n\x132015MNRAS.453..483K\x12\x13...................\x18\x01"\rascl:1208.0040\x02:\x00',
-                    '\n\x132016AJ....152..123G\x12\x13...................\x18\x01"\x0eascl:1208.00420\x02:\x00'
+                    '\n\x132016AJ....152..123G\x12\x13...................\x18\x01"\x0eascl:1208.00420\x02:\x00',
+                    '\n\x132019ApJ...877L..39C\x12\x13..................."\x1610.5281/zenodo.10491600\x02:\x00',
+                    '\n\x132019arXiv190105505T\x12\x13..................."\x1410.5281/zenodo.118130\x02:\x00',
+                    '\n\x132019arXiv190105855L\x12\x13..................."\x1410.5281/zenodo.118130\x02:\x00',
                 ]
             second_refids_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/sample-refids2.dat")
             os.utime(second_refids_filename, (24*60*60, 24*60*60)) # set the access and modified times to 19700102_000000
             expected_citation_change_from_second_file = [
-                    '\n\x132015MNRAS.453..483K\x12\x13hola...............\x18\x01"\rascl:1208.004(\x010\x03:\x04\x08\x80\xa3\x05',
-                    '\n\x131800AnP.....3..113.\x12\x13..................."\x1910.1107/S00218898700059400\x02:\x04\x08\x80\xa3\x05',
-                    '\n\x131005PhRvC..71c4906H\x12\x131990PhLB..243..432G"\x1c10.1016/0370-2693(90)91409-5(\x010\x01:\x04\x08\x80\xa3\x05'
-                    '\n\x131005PhRvC..71c4906H\x12\x131976NuPhB.113..395J"\x1c10.1016/0550-3213(76)90133-4(\x010\x02:\x04\x08\x80\xa3\x05'
+                    '\n\x132015JCAP...08..043A\x12\x132014zndo.soft11020F"\x1410.5281/zenodo.110200\x03:\x04\x08\x80\xa3\x05',
+                    '\n\x132009arXiv0911.4940W\x12\x13...................\x18\x02"/http://github.com/b45ch1/hpsc_hanoi_2009_walter0\x02:\x04\x08\x80\xa3\x05',
+                    '\n\x132010arXiv1003.5943M\x12\x13...................\x18\x02" http://github.com/matsen/pplacer0\x02:\x04\x08\x80\xa3\x05',
+                    '\n\x132011arXiv1112.0312C\x12\x132012ascl.soft03003C\x18\x01"\rascl:1203.003(\x010\x02:\x04\x08\x80\xa3\x05',
+                    '\n\x132013arXiv1310.5912S\x12\x132012ascl.soft.8004S\x18\x01"\x0eascl:1208.80040\x02:\x04\x08\x80\xa3\x05',
+                    '\n\x132015ApJ...815L..10L\x12\x132015ascl.soft...10J\x18\x01"\rascl:1510.0100\x02:\x04\x08\x80\xa3\x05',
+                    '\n\x132015arXiv150902512A\x12\x132015vsr..conf27878D"\x1410.5281/zenodo.278780\x02:\x04\x08\x80\xa3\x05',
+                    '\n\x132015MNRAS.453..483K\x12\x13hola...............\x18\x01"\rascl:1208.004(\x010\x02:\x04\x08\x80\xa3\x05',
+                    '\n\x132016AJ....152..123G\x12\x13...................\x18\x01"\x0eascl:1208.00420\x02:\x04\x08\x80\xa3\x05',
+                    '\n\x132019arXiv190105855L\x12\x13..................."\x1410.5281/zenodo.118130\x01:\x04\x08\x80\xa3\x05',
                 ]
+
 
             # Process first file
             i = 0
-            with patch.object(tasks.task_process_citation_changes, 'delay', return_value=None) as task_process_citation_changes, \
-                    patch.object(delta_computation.DeltaComputation, '_find_not_processed_records_from_previous_run', return_value=[]) as find_not_processed_records_from_previous_run:
-                self.process(first_refids_filename, schema_prefix=self.schema_prefix)
+            with patch.object(tasks.task_process_citation_changes, 'delay', wraps=tasks.task_process_citation_changes.delay) as task_process_citation_changes, \
+                    patch.object(doi, 'fetch_metadata', wraps=self._fetch_metadata) as fetch_metadata, \
+                    patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+                    patch.object(api, 'get_canonical_bibcode', return_value=u"2015MNRAS.453..483K") as get_canonical_bibcode, \
+                    patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+                    patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+                    patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
+                    patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                self.process(first_refids_filename, sqlalchemy_url=self.sqlalchemy_url, schema_prefix=self.schema_prefix)
                 self.assertTrue(task_process_citation_changes.called)
-                self.assertFalse(find_not_processed_records_from_previous_run.called)
+                self.assertTrue(fetch_metadata.called)
+                self.assertTrue(url_is_alive.called)
+                self.assertTrue(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcodes.called)
+                self.assertTrue(forward_message.called)
+                self.assertTrue(webhook_dump_event.called)
+                self.assertTrue(webhook_emit_event.called)
 
                 for args in task_process_citation_changes.call_args_list:
                     citation_changes = args[0][0]
@@ -83,11 +118,23 @@ class TestWorkers(TestBase):
 
             # Process second file
             i = 0
-            with patch.object(tasks.task_process_citation_changes, 'delay', return_value=None) as task_process_citation_changes, \
-                    patch.object(delta_computation.DeltaComputation, '_find_not_processed_records_from_previous_run', return_value=[]) as find_not_processed_records_from_previous_run:
-                self.process(second_refids_filename, schema_prefix=self.schema_prefix)
+            with patch.object(tasks.task_process_citation_changes, 'delay', wraps=tasks.task_process_citation_changes.delay) as task_process_citation_changes, \
+                    patch.object(doi, 'fetch_metadata', wraps=self._fetch_metadata) as fetch_metadata, \
+                    patch.object(url, 'is_alive', return_value=True) as url_is_alive, \
+                    patch.object(api, 'get_canonical_bibcode', return_value=u"2015MNRAS.453..483K") as get_canonical_bibcode, \
+                    patch.object(api, 'get_canonical_bibcodes', return_value=[]) as get_canonical_bibcodes, \
+                    patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True) as forward_message, \
+                    patch.object(webhook, 'dump_event', return_value=True) as webhook_dump_event, \
+                    patch.object(webhook, 'emit_event', return_value=True) as webhook_emit_event:
+                self.process(second_refids_filename, sqlalchemy_url=self.sqlalchemy_url, schema_prefix=self.schema_prefix)
                 self.assertTrue(task_process_citation_changes.called)
-                self.assertTrue(find_not_processed_records_from_previous_run.called)
+                self.assertTrue(fetch_metadata.called)
+                self.assertTrue(url_is_alive.called)
+                self.assertTrue(get_canonical_bibcode.called)
+                self.assertTrue(get_canonical_bibcodes.called)
+                self.assertTrue(forward_message.called)
+                self.assertTrue(webhook_dump_event.called)
+                self.assertTrue(webhook_emit_event.called)
 
                 for args in task_process_citation_changes.call_args_list:
                     citation_changes = args[0][0]

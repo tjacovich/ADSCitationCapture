@@ -86,7 +86,8 @@ class TestWorkers(TestBase):
         expected_target_url = "https://doi.org"
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
@@ -109,7 +110,8 @@ class TestWorkers(TestBase):
         expected_target_url = "https://doi.org"
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
@@ -125,7 +127,8 @@ class TestWorkers(TestBase):
         citation_change.resolved = False
         citation_change.status = adsmsg.Status.updated
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertFalse(emitted, "Non-agreed citation change was assigned to an agreed event")
 
 
@@ -146,10 +149,9 @@ class TestWorkers(TestBase):
         expected_target_url = "https://doi.org"
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
-        self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
-        request = httpretty.last_request()
-        self._assert_request(request, expected_json_body)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
+        self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
 
     @unittest.skip("Waiting for the Zenodo team to implement deletion")
     def test_doi_deleted_citation(self):
@@ -169,7 +171,8 @@ class TestWorkers(TestBase):
         expected_target_url = "https://doi.org"
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
@@ -192,7 +195,8 @@ class TestWorkers(TestBase):
         expected_target_url = "https://doi.org"
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
@@ -216,7 +220,8 @@ class TestWorkers(TestBase):
         expected_target_url = "http://ascl.net/"
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
@@ -239,7 +244,8 @@ class TestWorkers(TestBase):
         expected_target_url = "http://ascl.net/"
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
@@ -255,7 +261,8 @@ class TestWorkers(TestBase):
         citation_change.resolved = False
         citation_change.status = adsmsg.Status.updated
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertFalse(emitted, "Non-agreed citation change was assigned to an agreed event")
 
 
@@ -277,10 +284,9 @@ class TestWorkers(TestBase):
         expected_target_url = "http://ascl.net/"
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
-        self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
-        request = httpretty.last_request()
-        self._assert_request(request, expected_json_body)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
+        self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
 
     @unittest.skip("Waiting for the Zenodo team to implement deletion")
     def test_ascl_deleted_citation(self):
@@ -300,10 +306,9 @@ class TestWorkers(TestBase):
         expected_target_url = "http://ascl.net/"
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
-        self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
-        request = httpretty.last_request()
-        self._assert_request(request, expected_json_body)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
+        self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
 
     @unittest.skip("Waiting for the Zenodo team to implement deletion")
     def test_ascl_deleted_citation_with_bibcode(self):
@@ -323,10 +328,9 @@ class TestWorkers(TestBase):
         expected_target_url = "http://ascl.net/"
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
-        self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
-        request = httpretty.last_request()
-        self._assert_request(request, expected_json_body)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
+        self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
 
 
 
@@ -349,7 +353,8 @@ class TestWorkers(TestBase):
         expected_target_url = citation_change.content
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
@@ -372,7 +377,8 @@ class TestWorkers(TestBase):
         expected_target_url = citation_change.content
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
@@ -387,7 +393,8 @@ class TestWorkers(TestBase):
         citation_change.content_type = adsmsg.CitationChangeContentType.url
         citation_change.resolved = False
         citation_change.status = adsmsg.Status.updated
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertFalse(emitted, "Non-agreed citation change was assigned to an agreed event")
 
 
@@ -409,10 +416,9 @@ class TestWorkers(TestBase):
         expected_target_url = citation_change.content
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
-        self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
-        request = httpretty.last_request()
-        self._assert_request(request, expected_json_body)
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
+        self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
 
     #def test_url_deleted_citation(self):
         #citation_changes = adsmsg.CitationChanges()
@@ -431,10 +437,9 @@ class TestWorkers(TestBase):
         #expected_target_url = citation_change.content
         #expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        #emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
-        #self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
-        #request = httpretty.last_request()
-        #self._assert_request(request, expected_json_body)
+        #event_data = webhook.citation_change_to_event_data(citation_change)
+        #emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
+        #self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
 
     #def test_url_deleted_citation_with_bibcode(self):
         #citation_changes = adsmsg.CitationChanges()
@@ -453,10 +458,9 @@ class TestWorkers(TestBase):
         #expected_target_url = citation_change.content
         #expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        #emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], citation_change, timeout=30)
-        #self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
-        #request = httpretty.last_request()
-        #self._assert_request(request, expected_json_body)
+        #event_data = webhook.citation_change_to_event_data(citation_change)
+        #emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
+        #self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
 
 if __name__ == '__main__':
     unittest.main()
