@@ -20,8 +20,26 @@ def _request_citations_page(app, bibcode, start, rows):
     headers = {}
     headers["Authorization"] = "Bearer:{}".format(app.conf['ADS_API_TOKEN'])
     url = app.conf['ADS_API_URL']+"search/query?"+params
-    r = requests.get(url, headers=headers)
-    return r.json()
+    r_json = {}
+    try:
+        r = requests.get(url, headers=headers)
+    except:
+        logger.error("Search API request failed for citations (start: %i): %s", start, bibcode)
+        raise
+    if not r.ok:
+        msg = "Search API request with error code '{}' for bibcode (start: {}): {}".format(r.status_code, start, bibcode)
+        logger.error(msg)
+        raise Exception(msg)
+    else:
+        try:
+            r_json = r.json()
+        except ValueError:
+            msg = "No JSON object could be decoded from Search API response when searching canonical bibcodes (start: {}) for: {}".format(start, bibcode)
+            logger.error(msg)
+            raise Exception(msg)
+        else:
+            return r_json
+    return r_json
 
 def request_existing_citations(app, bibcode):
     start = 0
@@ -29,7 +47,19 @@ def request_existing_citations(app, bibcode):
     existing_citation_bibcodes = []
     n_existing_citations = None
     while True:
-        answer = _request_citations_page(app, bibcode, start, rows)
+        retries = 0
+        while True:
+            try:
+                answer = _request_citations_page(app, bibcode, start, rows)
+            except:
+                if retries < 3:
+                    logger.info("Retrying Search API request for citations (start: %i): %s", start, bibcode)
+                    retries += 1
+                else:
+                    logger.exception("Failed Search API request for citations (start: %i): %s", start, bibcode)
+                    raise
+            else:
+                break
         existing_citation_bibcodes += answer['response']['docs']
         if n_existing_citations is None:
             n_existing_citations = answer['response']['numFound']
@@ -51,39 +81,55 @@ def get_canonical_bibcodes(app, bibcodes, timeout=30):
     total_n_chunks = len(bibcodes_chunks)
     # Execute multiple requests to bigquery if the list of bibcodes is longer than the accepted maximum
     for n_chunk, bibcodes_chunk in enumerate(bibcodes_chunks):
-        params = urllib.urlencode({
-                    'fl': 'bibcode',
-                    'q': '*:*',
-                    'wt': 'json',
-                    'fq':'{!bitset}',
-                    'rows': len(bibcodes_chunk),
-                })
-        headers = {}
-        headers["Authorization"] = "Bearer:{}".format(app.conf['ADS_API_TOKEN'])
-        headers["Content-Type"] = "big-query/csv"
-        url = app.conf['ADS_API_URL']+"search/bigquery?"+params
-        data = "bibcode\n" + "\n".join(bibcodes_chunk)
-        r_json = {}
-        try:
-            r = requests.post(url, headers=headers, data=data, timeout=timeout)
-        except:
-            logger.exception("BigQuery API request failed for bibcodes (chunk: %i/%i): %s", n_chunk, total_n_chunks, " ".join(bibcodes_chunk))
-            raise
-        else:
-            if not r.ok:
-                msg = "BigQuery API request with error code '{}' for bibcodes (chunk: {}/{}): {}".format(r.status_code, n_chunk, total_n_chunks, " ".join(bibcodes_chunk))
-                logger.error(msg)
-                raise Exception(msg)
-            else:
-                try:
-                    r_json = r.json()
-                except ValueError:
-                    msg = "No JSON object could be decoded from BigQuery API response when searching canonical bibcodes (chunk: {}/{}) for: {}".format(n_chunk, total_n_chunks, " ".join(bibcodes_chunk))
-                    logger.error(msg)
-                    raise Exception(msg)
+        retries = 0
+        while True:
+            try:
+                canonical_bibcodes += _get_canonical_bibcodes(app, n_chunk, total_n_chunks, bibcodes_chunk, timeout)
+            except:
+                if retries < 3:
+                    logger.info("Retrying BigQuery API request for bibcodes (chunk: %i/%i): %s", n_chunk+1, total_n_chunks, " ".join(bibcodes_chunk))
+                    retries += 1
                 else:
-                    for paper in r_json.get('response', {}).get('docs', []):
-                        canonical_bibcodes.append(paper['bibcode'])
+                    logger.exception("Failed BigQuery API request for bibcodes (chunk: %i/%i): %s", n_chunk+1, total_n_chunks, " ".join(bibcodes_chunk))
+                    raise
+            else:
+                break
+    return canonical_bibcodes
+
+def _get_canonical_bibcodes(app, n_chunk, total_n_chunks, bibcodes_chunk, timeout):
+    canonical_bibcodes = []
+    params = urllib.urlencode({
+                'fl': 'bibcode',
+                'q': '*:*',
+                'wt': 'json',
+                'fq':'{!bitset}',
+                'rows': len(bibcodes_chunk),
+            })
+    headers = {}
+    headers["Authorization"] = "Bearer:{}".format(app.conf['ADS_API_TOKEN'])
+    headers["Content-Type"] = "big-query/csv"
+    url = app.conf['ADS_API_URL']+"search/bigquery?"+params
+    r_json = {}
+    data = "bibcode\n" + "\n".join(bibcodes_chunk)
+    try:
+        r = requests.post(url, headers=headers, data=data, timeout=timeout)
+    except:
+        logger.error("BigQuery API request failed for bibcodes (chunk: %i/%i): %s", n_chunk+1, total_n_chunks, " ".join(bibcodes_chunk))
+        raise
+    if not r.ok:
+        msg = "BigQuery API request with error code '{}' for bibcodes (chunk: {}/{}): {}".format(r.status_code, n_chunk+1, total_n_chunks, " ".join(bibcodes_chunk))
+        logger.error(msg)
+        raise Exception(msg)
+    else:
+        try:
+            r_json = r.json()
+        except ValueError:
+            msg = "No JSON object could be decoded from BigQuery API response when searching canonical bibcodes (chunk: {}/{}) for: {}".format(n_chunk+1, total_n_chunks, " ".join(bibcodes_chunk))
+            logger.error(msg)
+            raise Exception(msg)
+        else:
+            for paper in r_json.get('response', {}).get('docs', []):
+                canonical_bibcodes.append(paper['bibcode'])
     return canonical_bibcodes
 
 def get_canonical_bibcode(app, bibcode, timeout=30):
