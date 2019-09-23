@@ -55,7 +55,7 @@ def _target_elements(citation_change):
         target_id_url = "https://doi.org"
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid:
         target_id_schema = "ascl"
-        target_id_url = "http://ascl.net/"
+        target_id_url = "http://ascl.net"
     elif citation_change.content_type == adsmsg.CitationChangeContentType.url:
         target_id_schema = "url"
         target_id_url = citation_change.content
