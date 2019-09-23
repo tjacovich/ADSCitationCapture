@@ -32,7 +32,7 @@ class DeltaComputation():
         self.session = sessionmaker(bind=self.engine)()
         #
         self.logger = setup_logging(__name__)
-        self.logger.propagate = False
+        #self.logger.propagate = False
         #
         self.table_name = RawCitation.__tablename__
         self.expanded_table_name = "expanded_" + self.table_name

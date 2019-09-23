@@ -8,7 +8,7 @@ from adsputils import setup_logging
 
 # ============================= INITIALIZATION ==================================== #
 logger = setup_logging(__name__)
-logger.propagate = False
+#logger.propagate = False
 
 
 # =============================== FUNCTIONS ======================================= #

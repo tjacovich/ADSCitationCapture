@@ -8,7 +8,7 @@ from adsputils import setup_logging
 
 # ============================= INITIALIZATION ==================================== #
 logger = setup_logging(__name__)
-logger.propagate = False
+#logger.propagate = False
 dc = DataCiteParser()
 zenodo_doi_re = re.compile("^10.\d{4,9}/zenodo\.([0-9]*)$", re.IGNORECASE)
 

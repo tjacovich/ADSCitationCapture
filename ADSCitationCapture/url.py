@@ -3,7 +3,7 @@ import re
 from adsputils import setup_logging
 
 logger = setup_logging(__name__)
-logger.propagate = False
+#logger.propagate = False
 
 url_regex = re.compile(
         r'^(?:http)s?://' # http:// or https://
