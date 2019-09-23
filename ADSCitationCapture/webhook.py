@@ -32,7 +32,7 @@ def _build_data(event_type, original_relationship_name, source_bibcode, target_i
         "Target": {
             "Identifier": {
                 "IDScheme": target_id_schema,
-                "IDURL": "{}/{}".format(target_id_url, target_id),
+                "IDURL": target_id_url,
                 "ID": target_id
             },
             "Type": {
@@ -52,10 +52,10 @@ def _target_elements(citation_change):
     target_id = citation_change.content
     if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
         target_id_schema = "doi"
-        target_id_url = "https://doi.org"
+        target_id_url = "https://doi.org/{}".format(target_id)
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid:
         target_id_schema = "ascl"
-        target_id_url = "http://ascl.net"
+        target_id_url = "https://ascl.net/{}".format(target_id)
     elif citation_change.content_type == adsmsg.CitationChangeContentType.url:
         target_id_schema = "url"
         target_id_url = citation_change.content
@@ -126,7 +126,7 @@ def identical_bibcode_and_doi_event_data(source_bibcode, target_doi, deleted=Fal
     original_relationship_name = "IsIdenticalTo"
     source_bibcode = source_bibcode
     target_id_schema = "doi"
-    target_id_url = "https://doi.org"
+    target_id_url = "https://doi.org/{}".format(target_doi)
     target_id = target_doi
     data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
     return data

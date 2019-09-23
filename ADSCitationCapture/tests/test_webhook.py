@@ -51,7 +51,7 @@ class TestWorkers(TestBase):
             u'Target': {
                 u'Identifier': {
                     u'IDScheme': target_id_schema,
-                    u'IDURL': "{}/{}".format(target_url, target_id),
+                    u'IDURL': target_url,
                     u'ID': target_id
                 },
                 u'Type': {
@@ -83,7 +83,7 @@ class TestWorkers(TestBase):
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
         expected_target_id_schema = u"doi"
-        expected_target_url = "https://doi.org"
+        expected_target_url = "https://doi.org/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
         event_data = webhook.citation_change_to_event_data(citation_change)
@@ -107,7 +107,7 @@ class TestWorkers(TestBase):
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
         expected_target_id_schema = u"doi"
-        expected_target_url = "https://doi.org"
+        expected_target_url = "https://doi.org/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
         event_data = webhook.citation_change_to_event_data(citation_change)
@@ -146,7 +146,7 @@ class TestWorkers(TestBase):
         expected_source_bibcode = citation_change.cited
         expected_target_id = citation_change.content
         expected_target_id_schema = u"doi"
-        expected_target_url = "https://doi.org"
+        expected_target_url = "https://doi.org/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
         event_data = webhook.citation_change_to_event_data(citation_change)
@@ -168,7 +168,7 @@ class TestWorkers(TestBase):
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
         expected_target_id_schema = u"doi"
-        expected_target_url = "https://doi.org"
+        expected_target_url = "https://doi.org/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
         event_data = webhook.citation_change_to_event_data(citation_change)
@@ -192,7 +192,7 @@ class TestWorkers(TestBase):
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
         expected_target_id_schema = u"doi"
-        expected_target_url = "https://doi.org"
+        expected_target_url = "https://doi.org/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
         event_data = webhook.citation_change_to_event_data(citation_change)
@@ -217,7 +217,7 @@ class TestWorkers(TestBase):
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
         expected_target_id_schema = u"ascl"
-        expected_target_url = "http://ascl.net"
+        expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
         event_data = webhook.citation_change_to_event_data(citation_change)
@@ -241,7 +241,7 @@ class TestWorkers(TestBase):
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
         expected_target_id_schema = u"ascl"
-        expected_target_url = "http://ascl.net"
+        expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
         event_data = webhook.citation_change_to_event_data(citation_change)
@@ -281,7 +281,7 @@ class TestWorkers(TestBase):
         expected_source_bibcode = citation_change.cited
         expected_target_id = citation_change.content
         expected_target_id_schema = u"ascl"
-        expected_target_url = "http://ascl.net"
+        expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
         event_data = webhook.citation_change_to_event_data(citation_change)
@@ -303,7 +303,7 @@ class TestWorkers(TestBase):
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
         expected_target_id_schema = u"ascl"
-        expected_target_url = "http://ascl.net"
+        expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
         event_data = webhook.citation_change_to_event_data(citation_change)
@@ -325,7 +325,7 @@ class TestWorkers(TestBase):
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
         expected_target_id_schema = u"ascl"
-        expected_target_url = "http://ascl.net"
+        expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
         event_data = webhook.citation_change_to_event_data(citation_change)
