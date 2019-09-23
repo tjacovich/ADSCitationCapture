@@ -346,7 +346,7 @@ def task_maintenance_metadata(dois, bibcodes):
                     # These two bibcodes are identical and we can signal the broker
                     event_data = webhook.identical_bibcodes_event_data(registered_record['bibcode'], parsed_metadata['bibcode'])
                     if event_data:
-                        dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d") # "%Y%m%d_%H%M%S"
+                        dump_prefix = datetime.now().strftime("%Y%m%d") # "%Y%m%d_%H%M%S"
                         logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], parsed_metadata['bibcode'])
                         task_emit_event.delay(event_data, dump_prefix)
                     #
