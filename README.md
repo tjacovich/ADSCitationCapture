@@ -94,7 +94,7 @@ pip install -r requirements.txt
 pip install -r dev-requirements.txt
 ```
 
-**NOTE** You will need postgres installed in your system for psycog2 to compile. If you installed via MacPorts, you may need to run to include `pg_config` in the PATH:
+**NOTE** You will need postgres installed in your system for psycog2 to compile (e.g., `sudo apt install libpq-dev`). If you installed via MacPorts, you may need to run to include `pg_config` in the PATH:
 
 ```
 PATH=/opt/local/lib/postgresql10/bin/:$PATH pip install -r requirements.txt

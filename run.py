@@ -69,6 +69,9 @@ def maintenance_canonical(dois, bibcodes):
 
 
 def maintenance_metadata(dois, bibcodes):
+    """
+    Refetch metadata and send updates to master (if any)
+    """
     n_requested = len(dois) + len(bibcodes)
     if n_requested == 0:
         logger.info("MAINTENANCE task: requested a metadata update for all the registered records")

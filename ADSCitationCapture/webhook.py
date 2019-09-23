@@ -32,7 +32,7 @@ def _build_data(event_type, original_relationship_name, source_bibcode, target_i
         "Target": {
             "Identifier": {
                 "IDScheme": target_id_schema,
-                "IDURL": target_id_url,
+                "IDURL": "{}/{}".format(target_id_url, target_id),
                 "ID": target_id
             },
             "Type": {
@@ -51,13 +51,13 @@ def _build_data(event_type, original_relationship_name, source_bibcode, target_i
 def _target_elements(citation_change):
     target_id = citation_change.content
     if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
-        target_id_schema = "DOI"
+        target_id_schema = "doi"
         target_id_url = "https://doi.org"
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid:
-        target_id_schema = "ASCL"
+        target_id_schema = "ascl"
         target_id_url = "http://ascl.net/"
     elif citation_change.content_type == adsmsg.CitationChangeContentType.url:
-        target_id_schema = "URL"
+        target_id_schema = "url"
         target_id_url = citation_change.content
     else:
         raise Exception("Unknown citation change data type")
@@ -125,7 +125,7 @@ def identical_bibcode_and_doi_event_data(source_bibcode, target_doi, deleted=Fal
         event_type = "relation_created"
     original_relationship_name = "IsIdenticalTo"
     source_bibcode = source_bibcode
-    target_id_schema = "DOI"
+    target_id_schema = "doi"
     target_id_url = "https://doi.org"
     target_id = target_doi
     data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
