@@ -12,13 +12,15 @@ logger = setup_logging(__name__)
 
 
 # =============================== FUNCTIONS ======================================= #
-def build_record(app, citation_change, parsed_metadata, citations):
+def build_record(app, citation_change, parsed_metadata, citations, entry_date=None):
     if citation_change.content_type != CitationChangeContentType.doi:
         raise Exception("Only DOI records can be forwarded to master")
     # Extract required values
     bibcode = parsed_metadata.get('bibcode')
     if bibcode is None:
         raise Exception("Only records with a bibcode can be forwarded to master")
+    if entry_date is None:
+        entry_date = citation_change.timestamp.ToDatetime()
     alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])
     abstract = parsed_metadata.get('abstract', u"")
     title = parsed_metadata.get('title', u"")
@@ -65,7 +67,7 @@ def build_record(app, citation_change, parsed_metadata, citations):
         'copyright': [],
         'comment': [],
         'database': [u'general', u'astronomy'],
-        'entry_date': date2solrstamp(citation_change.timestamp.ToDatetime()), # date2solrstamp(get_date()),
+        'entry_date': date2solrstamp(entry_date), # date2solrstamp(get_date()),
         'year': year,
         'date': (citation_change.timestamp.ToDatetime()+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), # TODO: Why this date has to be 30 minutes in advance? This is based on ADSImportPipeline SolrAdapter
         'doctype': doctype,

@@ -382,6 +382,7 @@ def task_output_results(citation_change, parsed_metadata, citations, bibcode_rep
     :param citation_change: contains citation changes
     :return: no return
     """
+    entry_date = db.get_citation_target_entry_date(app, citation_change.content)
     messages = []
     if bibcode_replaced:
         # Bibcode was replaced, this is not a simple update
@@ -394,10 +395,10 @@ def task_output_results(citation_change, parsed_metadata, citations, bibcode_rep
         delete_parsed_metadata = parsed_metadata.copy()
         delete_parsed_metadata['bibcode'] = bibcode_replaced['previous']
         delete_parsed_metadata['alternate_bibcode'] = filter(lambda x: x not in (bibcode_replaced['previous'], bibcode_replaced['new']), delete_parsed_metadata.get('alternate_bibcode', []))
-        delete_record, delete_nonbib_record = forward.build_record(app, custom_citation_change, delete_parsed_metadata, citations)
+        delete_record, delete_nonbib_record = forward.build_record(app, custom_citation_change, delete_parsed_metadata, citations, entry_date=entry_date)
         messages.append((delete_record, delete_nonbib_record))
     # Main message:
-    record, nonbib_record = forward.build_record(app, citation_change, parsed_metadata, citations)
+    record, nonbib_record = forward.build_record(app, citation_change, parsed_metadata, citations, entry_date=entry_date)
     messages.append((record, nonbib_record))
 
     for record, nonbib_record in messages:

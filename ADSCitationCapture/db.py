@@ -56,7 +56,7 @@ def update_citation_target_metadata(app, bibcode, raw_metadata, parsed_metadata)
     metadata_updated = False
     with app.session_scope() as session:
         citation_target = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata["bibcode"].astext == bibcode).first()
-        if citation_target.raw_cited_metadata != raw_metadata and citation_target.parsed_cited_metadata != parsed_metadata:
+        if citation_target.raw_cited_metadata != raw_metadata.decode('utf-8') and citation_target.parsed_cited_metadata != parsed_metadata:
             citation_target.raw_cited_metadata = raw_metadata
             citation_target.parsed_cited_metadata = parsed_metadata
             session.add(citation_target)
@@ -186,6 +186,20 @@ def get_citation_target_metadata(app, doi):
             metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
             metadata['status'] = citation_target.status
     return metadata
+
+def get_citation_target_entry_date(app, doi):
+    """
+    If the citation target already exists in the database, return the entry date.
+    If not, return None.
+    """
+    citation_in_db = False
+    entry_date = None
+    with app.session_scope() as session:
+        citation_target = session.query(CitationTarget).filter_by(content=doi).first()
+        citation_target_in_db = citation_target is not None
+        if citation_target_in_db:
+            entry_date = citation_target.created
+    return entry_date
 
 def get_citations_by_bibcode(app, bibcode):
     """
