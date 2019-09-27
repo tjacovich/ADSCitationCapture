@@ -4,6 +4,7 @@ import sys
 import tempfile
 import argparse
 import json
+from astropy.io import ascii
 from ADSCitationCapture import tasks, db
 
 from adsputils import setup_logging
@@ -186,10 +187,25 @@ if __name__ == '__main__':
         if not args.canonical and not args.metadata:
             maintenance_parser.error("nothing to be done since no task has been selected")
         else:
+            # Read files if provided (instead of a direct list of DOIs)
+            if len(args.dois) == 1 and os.path.exists(args.dois[0]):
+                logger.info("Reading DOIs from file '%s'", args.dois[0])
+                table = ascii.read(args.dois[0], delimiter="\t", names=('doi', 'version'))
+                dois = table['doi'].tolist()
+            else:
+                dois = args.dois
+            # Read files if provided (instead of a direct list of bibcodes)
+            if len(args.bibcodes) == 1 and os.path.exists(args.bibcodes[0]):
+                logger.info("Reading bibcodes from file '%s'", args.bibcodes[0])
+                table = ascii.read(args.bibcodes[0], delimiter="\t", names=('bibcode', 'version'))
+                bibcodes = table['bibcode'].tolist()
+            else:
+                bibcodes = args.bibcodes
+            # Process
             if args.metadata:
-                maintenance_metadata(args.dois, args.bibcodes)
+                maintenance_metadata(dois, bibcodes)
             elif args.canonical:
-                maintenance_canonical(args.dois, args.bibcodes)
+                maintenance_canonical(dois, bibcodes)
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)

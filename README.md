@@ -428,6 +428,8 @@ python run.py MAINTENANCE --metadata
 python run.py MAINTENANCE --metadata --bibcode 2017zndo....840393W
 # Specific doi (space separated list)
 python run.py MAINTENANCE --metadata --doi 10.5281/zenodo.840393
+# File containing doi and version columns (tab separated)
+python run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_updates_09232019.out
 ```
 
 # Miscellaneous
