@@ -74,13 +74,13 @@ def task_process_new_citation(citation_change, force=False):
         content_type = u"PID"
         status = None
         is_link_alive = url.is_alive(app.conf['ASCL_URL'] + citation_change.content)
-        parsed_metadata = {'link_alive': is_link_alive }
+        parsed_metadata = {'link_alive': is_link_alive, "doctype": "software" }
     elif citation_change.content_type == adsmsg.CitationChangeContentType.url \
         and citation_change.content not in ["", None]:
         content_type = u"URL"
         status = None
         is_link_alive = url.is_alive(citation_change.content)
-        parsed_metadata = {'link_alive': is_link_alive }
+        parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown" }
     else:
         logger.error("Citation change should have doi, pid or url informed: {}", citation_change)
         status = None
