@@ -79,7 +79,7 @@ def fetch_metadata(base_doi_url, base_datacite_url, doi):
     doi_endpoint = base_doi_url + doi
     try_later, record_found, content = _fetch_metadata(doi_endpoint, headers=headers, timeout=30)
 
-    if try_later or not record_found:
+    if try_later or not record_found or "<version/>" in content: # TODO: Temporary doi.org/crossref bug where version is not provided
         # Alternative source for metadata
         alt_doi_endpoint = base_datacite_url + doi
         alt_headers = {}
