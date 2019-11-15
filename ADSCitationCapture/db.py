@@ -56,7 +56,12 @@ def update_citation_target_metadata(app, bibcode, raw_metadata, parsed_metadata)
     metadata_updated = False
     with app.session_scope() as session:
         citation_target = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata["bibcode"].astext == bibcode).first()
-        if citation_target.raw_cited_metadata != raw_metadata.decode('utf-8') and citation_target.parsed_cited_metadata != parsed_metadata:
+        if type(raw_metadata) is not unicode:
+            try:
+                raw_metadata = raw_metadata.decode('utf-8')
+            except UnicodeEncodeError:
+                pass
+        if citation_target.raw_cited_metadata != raw_metadata and citation_target.parsed_cited_metadata != parsed_metadata:
             citation_target.raw_cited_metadata = raw_metadata
             citation_target.parsed_cited_metadata = parsed_metadata
             session.add(citation_target)
