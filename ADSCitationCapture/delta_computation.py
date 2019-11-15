@@ -114,13 +114,14 @@ class DeltaComputation():
                 citation_change.citing = getattr(instance, prefix+"citing")
                 resolved = getattr(instance, prefix+"resolved")
                 citation_change.cited = getattr(instance, prefix+"cited")
+                citation_change.content = getattr(instance, prefix+"content")
                 if getattr(instance, prefix+"doi"):
                     citation_change.content_type = adsmsg.CitationChangeContentType.doi
+                    citation_change.content = citation_change.content.lower() # Normalize DOI to lower case: DOI names are case insensitive (https://www.doi.org/doi_handbook/2_Numbering.html#2.4)
                 elif getattr(instance, prefix+"pid"):
                     citation_change.content_type = adsmsg.CitationChangeContentType.pid
                 elif getattr(instance, prefix+"url"):
                     citation_change.content_type = adsmsg.CitationChangeContentType.url
-                citation_change.content = getattr(instance, prefix+"content")
                 citation_change.resolved = getattr(instance, prefix+"resolved")
                 citation_change.timestamp.FromDatetime(self.last_modification_date)
                 citation_change.status = getattr(adsmsg.Status, instance.status.lower())
