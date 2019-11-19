@@ -27,6 +27,7 @@ app.conf.CELERY_QUEUES = (
     Queue('process-deleted-citation', app.exchange, routing_key='process-deleted-citation'),
     Queue('maintenance_canonical', app.exchange, routing_key='maintenance_canonical'),
     Queue('maintenance_metadata', app.exchange, routing_key='maintenance_metadata'),
+    Queue('maintenance_resend', app.exchange, routing_key='maintenance_resend'),
     Queue('output-results', app.exchange, routing_key='output-results'),
 )
 
@@ -370,6 +371,35 @@ def task_maintenance_metadata(dois, bibcodes):
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                 task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
+
+@app.task(queue='maintenance_resend')
+def task_maintenance_resend(dois, bibcodes):
+    """
+    Maintenance operation:
+    - Get all the registered citation targets (or only a subset of them if DOIs and/or bibcodes are specified)
+    - For each:
+        - Re-send to master an update with the current metadata and the current list of citations canonical bibcodes
+    """
+    n_requested = len(dois) + len(bibcodes)
+    if n_requested == 0:
+        registered_records = db.get_citation_targets(app, only_registered=True)
+    else:
+        registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_registered=True)
+        registered_records += db.get_citation_targets_by_doi(app, dois, only_registered=True)
+        registered_records = _remove_duplicated_dict_in_list(registered_records)
+
+    for registered_record in registered_records:
+        citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
+        custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                       content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                       status=adsmsg.Status.updated,
+                                                       timestamp=datetime.now()
+                                                       )
+        parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
+        if parsed_metadata:
+            logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
+            task_output_results.delay(custom_citation_change, parsed_metadata, citations)
+
 
 
 @app.task(queue='output-results')

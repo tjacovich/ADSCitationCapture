@@ -132,6 +132,12 @@ if __name__ == '__main__':
                         help='Path to the input file (e.g., refids.dat) file that contains the citation list')
     maintenance_parser = subparsers.add_parser('MAINTENANCE', help='Execute maintenance task')
     maintenance_parser.add_argument(
+                        '--resend',
+                        dest='resend',
+                        action='store_true',
+                        default=False,
+                        help='Re-send registered citations and targets to the master pipeline')
+    maintenance_parser.add_argument(
                         '--canonical',
                         dest='canonical',
                         action='store_true',
@@ -184,7 +190,7 @@ if __name__ == '__main__':
             logger.info("PROCESS task: %s", args.input_filename)
             process(args.input_filename, force=False, diagnose=False)
     elif args.action == "MAINTENANCE":
-        if not args.canonical and not args.metadata:
+        if not args.canonical and not args.metadata and not args.resend:
             maintenance_parser.error("nothing to be done since no task has been selected")
         else:
             # Read files if provided (instead of a direct list of DOIs)
@@ -206,6 +212,8 @@ if __name__ == '__main__':
                 maintenance_metadata(dois, bibcodes)
             elif args.canonical:
                 maintenance_canonical(dois, bibcodes)
+            elif args.resend:
+                maintenance_resend(dois, bibcodes)
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)
