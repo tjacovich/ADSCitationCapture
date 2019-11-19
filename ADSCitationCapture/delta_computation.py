@@ -212,6 +212,7 @@ class DeltaComputation():
         """Import from file, expand its JSON column and delete duplicates"""
         self._copy_from_file()
         self._expand_json()
+        self._normalize_doi_content()
         self._delete_dups()
 
         try:
@@ -287,6 +288,18 @@ class DeltaComputation():
                 WHERE t.dup_id > 1 \
             )"
         self._execute_sql(delete_duplicates_sql, self.schema_name, self.expanded_table_name)
+
+    def _normalize_doi_content(self):
+        """
+        Normalize DOI to lower case: DOI names are case insensitive
+        (https://www.doi.org/doi_handbook/2_Numbering.html#2.4)
+
+        The input file can have the same DOI multiple times but each with a different
+        combination of upper/lower cases.
+        """
+        normalize_doi_content_sql = \
+            "UPDATE {0}.{1} SET content=lower(content) WHERE doi = 'true';"
+        self._execute_sql(normalize_doi_content_sql, self.schema_name, self.expanded_table_name)
 
     def _compute_n_changes(self):
         """Count how many citation changes were identified"""
