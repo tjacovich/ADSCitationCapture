@@ -65,10 +65,10 @@ class TestWorkers(TestBase):
                     '\n\x132011arXiv1112.0312C\x12\x132012ascl.soft03003C\x18\x01"\rascl:1203.003(\x010\x02:\x00',
                     '\n\x132013arXiv1310.5912S\x12\x132012ascl.soft.8004S\x18\x01"\x0eascl:1208.80040\x02:\x00',
                     '\n\x132015ApJ...815L..10L\x12\x132015ascl.soft...10J\x18\x01"\rascl:1510.0100\x02:\x00',
-                    '\n\x132015arXiv151003579A\x12\x132014spi..book11020F"\x1410.5281/zenodo.110200\x02:\x00',
-                    '\n\x132015JCAP...08..043A\x12\x132014zndo.soft11020F"\x1410.5281/zenodo.11020(\x010\x02:\x00',
                     '\n\x132015MNRAS.453..483K\x12\x13...................\x18\x01"\rascl:1208.0040\x02:\x00',
                     '\n\x132016AJ....152..123G\x12\x13...................\x18\x01"\x0eascl:1208.00420\x02:\x00',
+                    '\n\x132015arXiv151003579A\x12\x132014spi..book11020F"\x1410.5281/zenodo.110200\x02:\x00',
+                    '\n\x132015JCAP...08..043A\x12\x132014zndo.soft11020F"\x1410.5281/zenodo.11020(\x010\x02:\x00',
                     '\n\x132019ApJ...877L..39C\x12\x13..................."\x1610.5281/zenodo.10491600\x02:\x00',
                     '\n\x132019arXiv190105505T\x12\x13..................."\x1410.5281/zenodo.118130\x02:\x00',
                     '\n\x132019arXiv190105855L\x12\x13..................."\x1410.5281/zenodo.118130\x02:\x00',
@@ -158,7 +158,11 @@ class TestWorkers(TestBase):
                     citation_changes = args[0][0]
                     for citation_change in citation_changes.changes:
                         #print citation_change.SerializeToString()
-                        self.assertEqual(citation_change.SerializeToString(), expected_citation_change_from_first_file[i])
+                        try:
+                            self.assertEqual(citation_change.SerializeToString(), expected_citation_change_from_first_file[i])
+                        except:
+                            import pudb
+                            pudb.set_trace()
                         i += 1
 
             # Process second file

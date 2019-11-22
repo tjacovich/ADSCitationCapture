@@ -69,7 +69,7 @@ def build_record(app, citation_change, parsed_metadata, citations, entry_date=No
         'database': [u'general', u'astronomy'],
         'entry_date': date2solrstamp(entry_date), # date2solrstamp(get_date()),
         'year': year,
-        'date': (datetime.datetime.strptime(parsed_metadata.get('pubdate'), "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), # TODO: Why this date has to be 30 minutes in advance? This is based on ADSImportPipeline SolrAdapter
+        'date': (datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), # TODO: Why this date has to be 30 minutes in advance? This is based on ADSImportPipeline SolrAdapter
         'doctype': doctype,
         'doctype_facet_hier': [u"0/Non-Article", u"1/Non-Article/Software"],
         'doi': [doi],
