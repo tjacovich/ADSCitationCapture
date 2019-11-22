@@ -99,6 +99,8 @@ def build_record(app, citation_change, parsed_metadata, citations, entry_date=No
         'publisher': source,
         'version': version
     }
+    if version is None: # Concept DOIs may not contain version
+        del record_dict['version']
     # Status
     if citation_change.status == Status.new:
         status = 2
