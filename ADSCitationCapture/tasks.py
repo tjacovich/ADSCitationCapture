@@ -28,6 +28,7 @@ app.conf.CELERY_QUEUES = (
     Queue('maintenance_canonical', app.exchange, routing_key='maintenance_canonical'),
     Queue('maintenance_metadata', app.exchange, routing_key='maintenance_metadata'),
     Queue('maintenance_resend', app.exchange, routing_key='maintenance_resend'),
+    Queue('maintenance_reevaluate', app.exchange, routing_key='maintenance_reevaluate'),
     Queue('output-results', app.exchange, routing_key='output-results'),
 )
 
@@ -272,10 +273,10 @@ def task_maintenance_canonical(dois, bibcodes):
 
     n_requested = len(dois) + len(bibcodes)
     if n_requested == 0:
-        registered_records = db.get_citation_targets(app, only_registered=True)
+        registered_records = db.get_citation_targets(app, only_status='REGISTERED')
     else:
-        registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_registered=True)
-        registered_records += db.get_citation_targets_by_doi(app, dois, only_registered=True)
+        registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
+        registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
         registered_records = _remove_duplicated_dict_in_list(registered_records)
 
     for registered_record in registered_records:
@@ -307,10 +308,10 @@ def task_maintenance_metadata(dois, bibcodes):
     """
     n_requested = len(dois) + len(bibcodes)
     if n_requested == 0:
-        registered_records = db.get_citation_targets(app, only_registered=True)
+        registered_records = db.get_citation_targets(app, only_status='REGISTERED')
     else:
-        registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_registered=True)
-        registered_records += db.get_citation_targets_by_doi(app, dois, only_registered=True)
+        registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
+        registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
         registered_records = _remove_duplicated_dict_in_list(registered_records)
 
     for registered_record in registered_records:
@@ -358,7 +359,7 @@ def task_maintenance_metadata(dois, bibcodes):
                         alternate_bibcode.append(registered_record['bibcode'])
                     parsed_metadata['alternate_bibcode'] = alternate_bibcode
                     bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
-                updated = db.update_citation_target_metadata(app, registered_record['bibcode'], raw_metadata, parsed_metadata)
+                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata)
         if updated:
             citation_change = adsmsg.CitationChange(content=registered_record['content'],
                                                            content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
@@ -382,10 +383,10 @@ def task_maintenance_resend(dois, bibcodes):
     """
     n_requested = len(dois) + len(bibcodes)
     if n_requested == 0:
-        registered_records = db.get_citation_targets(app, only_registered=True)
+        registered_records = db.get_citation_targets(app, only_status='REGISTERED')
     else:
-        registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_registered=True)
-        registered_records += db.get_citation_targets_by_doi(app, dois, only_registered=True)
+        registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
+        registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
         registered_records = _remove_duplicated_dict_in_list(registered_records)
 
     for registered_record in registered_records:
@@ -399,6 +400,55 @@ def task_maintenance_resend(dois, bibcodes):
         if parsed_metadata:
             logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
             task_output_results.delay(custom_citation_change, parsed_metadata, citations)
+
+@app.task(queue='maintenance_reevaluate')
+def task_maintenance_reevaluate(dois, bibcodes):
+    """
+    Maintenance operation:
+    - Get all the registered citation targets (or only a subset of them if DOIs and/or bibcodes are specified)
+    - For each, retreive metadata and if it is different to what we have in our database:
+        - Get the citations bibcodes and transform them to their canonical form
+        - Send to master an update with the new metadata and the current list of citations canonical bibcodes
+    """
+    n_requested = len(dois) + len(bibcodes)
+    if n_requested == 0:
+        discarded_records = db.get_citation_targets(app, only_status='DISCARDED')
+    else:
+        discarded_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='DISCARDED')
+        discarded_records += db.get_citation_targets_by_doi(app, dois, only_status='DISCARDED')
+        discarded_records = _remove_duplicated_dict_in_list(discarded_records)
+
+    for previously_discarded_record in discarded_records:
+        updated = False
+        bibcode_replaced = {}
+        # Fetch DOI metadata (if HTTP request fails, an exception is raised
+        # and the task will be re-queued (see app.py and adsputils))
+        raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], previously_discarded_record['content'])
+        if raw_metadata:
+            parsed_metadata = doi.parse_metadata(raw_metadata)
+            is_software = parsed_metadata.get('doctype', u'').lower() == "software"
+            if not is_software:
+                logger.error("Discarded '%s', it is not 'software'", previously_discarded_record['content'])
+            elif parsed_metadata.get('bibcode') in (None, ""):
+                logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", previously_discarded_record['content'])
+            else:
+                # Create citation target in the DB
+                updated = db.update_citation_target_metadata(app, previously_discarded_record['content'], raw_metadata, parsed_metadata, status='REGISTERED')
+                if updated:
+                    db.mark_all_discarded_citations_as_registered(app, previously_discarded_record['content'])
+        if updated:
+            citation_change = adsmsg.CitationChange(content=previously_discarded_record['content'],
+                                                           content_type=getattr(adsmsg.CitationChangeContentType, previously_discarded_record['content_type'].lower()),
+                                                           status=adsmsg.Status.new,
+                                                           timestamp=datetime.now()
+                                                           )
+            if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+                # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+                original_citations = db.get_citations_by_bibcode(app, parsed_metadata['bibcode'])
+                citations = api.get_canonical_bibcodes(app, original_citations)
+                logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+                task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
+
 
 
 

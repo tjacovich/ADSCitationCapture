@@ -82,6 +82,32 @@ def maintenance_metadata(dois, bibcodes):
     # Send to master updated metadata
     tasks.task_maintenance_metadata.delay(dois, bibcodes)
 
+def maintenance_resend(dois, bibcodes):
+    """
+    Re-send records to master
+    """
+    n_requested = len(dois) + len(bibcodes)
+    if n_requested == 0:
+        logger.info("MAINTENANCE task: re-sending all the registered records")
+    else:
+        logger.info("MAINTENANCE task: re-sending '{}' records".format(n_requested))
+
+    # Send to master updated metadata
+    tasks.task_maintenance_resend.delay(dois, bibcodes)
+
+def maintenance_reevaluate(dois, bibcodes):
+    """
+    Re-send records to master
+    """
+    n_requested = len(dois) + len(bibcodes)
+    if n_requested == 0:
+        logger.info("MAINTENANCE task: re-sending all the registered records")
+    else:
+        logger.info("MAINTENANCE task: re-sending '{}' records".format(n_requested))
+
+    # Send to master updated metadata
+    tasks.task_maintenance_reevaluate.delay(dois, bibcodes)
+
 def diagnose(bibcodes, json):
     citation_count = db.get_citation_count(tasks.app)
     citation_target_count = db.get_citation_target_count(tasks.app)
@@ -138,6 +164,12 @@ if __name__ == '__main__':
                         default=False,
                         help='Re-send registered citations and targets to the master pipeline')
     maintenance_parser.add_argument(
+                        '--reevaluate',
+                        dest='reevaluate',
+                        action='store_true',
+                        default=False,
+                        help='Re-evaluate discarded citation targets fetching metadata and ingesting software records')
+    maintenance_parser.add_argument(
                         '--canonical',
                         dest='canonical',
                         action='store_true',
@@ -190,7 +222,7 @@ if __name__ == '__main__':
             logger.info("PROCESS task: %s", args.input_filename)
             process(args.input_filename, force=False, diagnose=False)
     elif args.action == "MAINTENANCE":
-        if not args.canonical and not args.metadata and not args.resend:
+        if not args.canonical and not args.metadata and not args.resend and not args.reevaluate:
             maintenance_parser.error("nothing to be done since no task has been selected")
         else:
             # Read files if provided (instead of a direct list of DOIs)
@@ -214,6 +246,8 @@ if __name__ == '__main__':
                 maintenance_canonical(dois, bibcodes)
             elif args.resend:
                 maintenance_resend(dois, bibcodes)
+            elif args.reevaluate:
+                maintenance_reevaluate(dois, bibcodes)
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)
