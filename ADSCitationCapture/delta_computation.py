@@ -31,8 +31,16 @@ class DeltaComputation():
         self.connection = self.engine.connect()
         self.session = sessionmaker(bind=self.engine)()
         #
-        self.logger = setup_logging(__name__)
-        #self.logger.propagate = False
+        # - Use app logger:
+        #import logging
+        #self.logger = logging.getLogger('ads-citation-capture')
+        # - Or individual logger for this file:
+        from adsputils import setup_logging, load_config
+        proj_home = os.path.realpath(os.path.join(os.path.dirname(__file__), '../'))
+        config = load_config(proj_home=proj_home)
+        self.logger = setup_logging(__name__, proj_home=proj_home,
+                                level=config.get('LOGGING_LEVEL', 'INFO'),
+                                attach_stdout=config.get('LOG_STDOUT', False))
         #
         self.table_name = RawCitation.__tablename__
         self.expanded_table_name = "expanded_" + self.table_name

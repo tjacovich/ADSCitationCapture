@@ -1,9 +1,19 @@
+import os
 import requests
 import re
 from adsputils import setup_logging
 
-logger = setup_logging(__name__)
-#logger.propagate = False
+# ============================= INITIALIZATION ==================================== #
+# - Use app logger:
+#import logging
+#logger = logging.getLogger('ads-citation-capture')
+# - Or individual logger for this file:
+from adsputils import setup_logging, load_config
+proj_home = os.path.realpath(os.path.join(os.path.dirname(__file__), '../'))
+config = load_config(proj_home=proj_home)
+logger = setup_logging(__name__, proj_home=proj_home,
+                        level=config.get('LOGGING_LEVEL', 'INFO'),
+                        attach_stdout=config.get('LOG_STDOUT', False))
 
 url_regex = re.compile(
         r'^(?:http)s?://' # http:// or https://
@@ -13,6 +23,8 @@ url_regex = re.compile(
         r'(?::\d+)?' # optional port
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
+
+# =============================== FUNCTIONS ======================================= #
 def is_url(text):
     return True if url_regex.search(text) else False
 

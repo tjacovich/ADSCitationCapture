@@ -17,7 +17,6 @@ import adsmsg
 proj_home = os.path.realpath(os.path.join(os.path.dirname(__file__), '../'))
 app = app_module.ADSCitationCaptureCelery('ads-citation-capture', proj_home=proj_home, local_config=globals().get('local_config', {}))
 logger = app.logger
-#logger.propagate = False
 
 
 app.conf.CELERY_QUEUES = (
@@ -483,11 +482,11 @@ def task_output_results(citation_change, parsed_metadata, citations, bibcode_rep
 
     for record, nonbib_record in messages:
         logger.debug('Will forward this record: %s', record)
-        logger.debug("Calling 'app.forward_message' with '%s'", str(record))
+        logger.debug("Calling 'app.forward_message' with '%s'", str(record.toJSON()))
         if not app.conf['CELERY_ALWAYS_EAGER']:
             app.forward_message(record)
         logger.debug('Will forward this record: %s', nonbib_record)
-        logger.debug("Calling 'app.forward_message' with '%s'", str(nonbib_record))
+        logger.debug("Calling 'app.forward_message' with '%s'", str(nonbib_record.toJSON()))
         if not app.conf['CELERY_ALWAYS_EAGER']:
             app.forward_message(nonbib_record)
 
