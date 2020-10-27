@@ -126,7 +126,7 @@ def get_citation_count(app):
         citation_count = session.query(Citation).count()
     return citation_count
 
-def _extract_key_citation_target_data(records_db):
+def _extract_key_citation_target_data(records_db, disable_filter=False):
     """
     Convert list of CitationTarget to a list of dictionaries with key data
     """
@@ -138,7 +138,7 @@ def _extract_key_citation_target_data(records_db):
             'content_type': record_db.content_type,
         }
         for record_db in records_db
-        if record_db.parsed_cited_metadata.get('bibcode', None) is not None
+        if disable_filter or record_db.parsed_cited_metadata.get('bibcode', None) is not None
     ]
     return records
 
@@ -156,7 +156,11 @@ def get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED'):
             if record_db:
                 records_db.append(record_db)
 
-        records = _extract_key_citation_target_data(records_db)
+        if only_status:
+            disable_filter = only_status == 'DISCARDED'
+        else:
+            disable_filter = True
+        records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
 
 def get_citation_targets_by_doi(app, dois, only_status='REGISTERED'):
@@ -167,10 +171,12 @@ def get_citation_targets_by_doi(app, dois, only_status='REGISTERED'):
     with app.session_scope() as session:
         if only_status:
             records_db = session.query(CitationTarget).filter(CitationTarget.content.in_(dois)).filter_by(status=only_status).all()
+            disable_filter = only_status == 'DISCARDED'
         else:
             records_db = session.query(CitationTarget).filter(CitationTarget.content.in_(dois)).all()
+            disable_filter = True
 
-        records = _extract_key_citation_target_data(records_db)
+        records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
 
 def get_citation_targets(app, only_status='REGISTERED'):
@@ -181,9 +187,11 @@ def get_citation_targets(app, only_status='REGISTERED'):
     with app.session_scope() as session:
         if only_status:
             records_db = session.query(CitationTarget).filter_by(status=only_status).all()
+            disable_filter = only_status == 'DISCARDED'
         else:
             records_db = session.query(CitationTarget).all()
-        records = _extract_key_citation_target_data(records_db)
+            disable_filter = True
+        records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
 
 def get_citation_target_metadata(app, doi):
