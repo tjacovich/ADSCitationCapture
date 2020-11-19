@@ -1,4 +1,4 @@
-git+https://github.com/adsabs/adsabs-pyingest@v1.0.8
+git+https://github.com/adsabs/adsabs-pyingest@v1.0.12
 adsputils==v1.2.7
 psycopg2-binary==2.8.3
 alembic==0.9.3
