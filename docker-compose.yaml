@@ -1,0 +1,40 @@
+version: '3.1'
+services:
+  pytest_citation_capture_pipeline:
+    build: .
+    image: pytest_citation_capture_pipeline:latest
+    container_name: pytest_citation_capture_pipeline
+    volumes:
+    - ./:/app
+    networks:
+      - pytest_citation_capture_pipeline
+    stdin_open: true
+    tty: true
+    entrypoint: scripts/support/pytest.sh
+    #entrypoint: bash
+    depends_on:
+      - pytest_citation_capture_db
+    environment:
+      - SQLALCHEMY_URL='postgres://citation_capture_pipeline:citation_capture_pipeline@pytest_citation_capture_db:5432/citation_capture_pipeline'
+      # When 'True', no events are emitted to the broker via the webhook
+      - TESTING_MODE=True
+      # When 'True', it converts all the asynchronous calls into synchronous,
+      # thus no need for rabbitmq, it does not forward to master
+      # and it allows debuggers to run if needed:
+      - CELERY_ALWAYS_EAGER=True
+      - CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
+  pytest_citation_capture_db:
+    container_name: pytest_citation_capture_db
+    image: postgres:9.6
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./scripts/support/init-db.sh:/docker-entrypoint-initdb.d/initdb.sh
+    networks:
+      - pytest_citation_capture_pipeline
+networks:
+  pytest_citation_capture_pipeline:
+    driver: bridge
