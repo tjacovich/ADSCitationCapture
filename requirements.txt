@@ -9,3 +9,4 @@ astropy==2.0.14
 # Make sure 2nd level dependencies are python2 compatible:
 portalocker==1.7.1
 SQLAlchemy-Utils==0.35.0
+unidecode==0.04.21
