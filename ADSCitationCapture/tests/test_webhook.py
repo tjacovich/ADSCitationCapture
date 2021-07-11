@@ -32,36 +32,36 @@ class TestWorkers(TestBase):
 
     def _build_expected_json_body(self, event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_url):
         expected_json_body = [{
-            u'RelationshipType': {
-                u'SubTypeSchema': u'DataCite',
-                u'SubType': original_relationship_name,
-                u'Name': u'References'
+            'RelationshipType': {
+                'SubTypeSchema': 'DataCite',
+                'SubType': original_relationship_name,
+                'Name': 'References'
             },
-            u'Source': {
-                u'Identifier': {
-                    u'IDScheme': u'ads',
-                    u'IDURL': u'http://adsabs.harvard.edu/abs/{}'.format(source_bibcode),
-                    u'ID': source_bibcode
+            'Source': {
+                'Identifier': {
+                    'IDScheme': 'ads',
+                    'IDURL': 'http://adsabs.harvard.edu/abs/{}'.format(source_bibcode),
+                    'ID': source_bibcode
                 },
-                u'Type': {
-                    u'Name': u'unknown'
+                'Type': {
+                    'Name': 'unknown'
                 }
             },
-            u'LicenseURL': u'https://creativecommons.org/publicdomain/zero/1.0/',
-            u'Target': {
-                u'Identifier': {
-                    u'IDScheme': target_id_schema,
-                    u'IDURL': target_url,
-                    u'ID': target_id
+            'LicenseURL': 'https://creativecommons.org/publicdomain/zero/1.0/',
+            'Target': {
+                'Identifier': {
+                    'IDScheme': target_id_schema,
+                    'IDURL': target_url,
+                    'ID': target_id
                 },
-                u'Type': {
-                    u'Name': u'software'
+                'Type': {
+                    'Name': 'software'
                 }
             },
-            u'LinkPublicationDate': now.strftime("%Y-%m-%d"),
-            u'LinkProvider': [
+            'LinkPublicationDate': now.strftime("%Y-%m-%d"),
+            'LinkProvider': [
                 {
-                    u'Name': u'SAO/NASA Astrophysics Data System'
+                    'Name': 'SAO/NASA Astrophysics Data System'
                 }
             ]
         }]
@@ -82,7 +82,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "Cites"
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"doi"
+        expected_target_id_schema = "doi"
         expected_target_url = "https://doi.org/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -106,7 +106,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "Cites"
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"doi"
+        expected_target_id_schema = "doi"
         expected_target_url = "https://doi.org/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -145,7 +145,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "IsIdenticalTo"
         expected_source_bibcode = citation_change.cited
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"doi"
+        expected_target_id_schema = "doi"
         expected_target_url = "https://doi.org/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -167,7 +167,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "Cites"
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"doi"
+        expected_target_id_schema = "doi"
         expected_target_url = "https://doi.org/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -191,7 +191,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "Cites"
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"doi"
+        expected_target_id_schema = "doi"
         expected_target_url = "https://doi.org/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -216,7 +216,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "Cites"
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"ascl"
+        expected_target_id_schema = "ascl"
         expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -240,7 +240,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "Cites"
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"ascl"
+        expected_target_id_schema = "ascl"
         expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -280,7 +280,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "IsIdenticalTo"
         expected_source_bibcode = citation_change.cited
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"ascl"
+        expected_target_id_schema = "ascl"
         expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -302,7 +302,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "Cites"
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"ascl"
+        expected_target_id_schema = "ascl"
         expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -324,7 +324,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "Cites"
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"ascl"
+        expected_target_id_schema = "ascl"
         expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -349,7 +349,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "Cites"
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"url"
+        expected_target_id_schema = "url"
         expected_target_url = citation_change.content
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -373,7 +373,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "Cites"
         expected_source_bibcode = citation_change.citing
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"url"
+        expected_target_id_schema = "url"
         expected_target_url = citation_change.content
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
@@ -412,7 +412,7 @@ class TestWorkers(TestBase):
         expected_original_relationship_name = "IsIdenticalTo"
         expected_source_bibcode = citation_change.cited
         expected_target_id = citation_change.content
-        expected_target_id_schema = u"url"
+        expected_target_id_schema = "url"
         expected_target_url = citation_change.content
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 

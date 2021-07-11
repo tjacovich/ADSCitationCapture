@@ -1,7 +1,7 @@
-from __future__ import absolute_import, unicode_literals
+
 import os
 import requests
-import urllib
+import urllib.request, urllib.parse, urllib.error
 from adsputils import setup_logging
 
 # ============================= INITIALIZATION ==================================== #
@@ -19,7 +19,7 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 # =============================== FUNCTIONS ======================================= #
 def _request_citations_page(app, bibcode, start, rows):
-    params = urllib.urlencode({
+    params = urllib.parse.urlencode({
                 'fl': 'bibcode',
                 'q': 'citations(bibcode:{0})'.format(bibcode),
                 'start': start,
@@ -107,7 +107,7 @@ def get_canonical_bibcodes(app, bibcodes, timeout=30):
 
 def _get_canonical_bibcodes(app, n_chunk, total_n_chunks, bibcodes_chunk, timeout):
     canonical_bibcodes = []
-    params = urllib.urlencode({
+    params = urllib.parse.urlencode({
                 'fl': 'bibcode',
                 'q': '*:*',
                 'wt': 'json',

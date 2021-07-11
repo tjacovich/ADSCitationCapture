@@ -45,7 +45,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -110,7 +110,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -174,7 +174,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -238,7 +238,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -302,7 +302,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -366,7 +366,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -430,7 +430,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -494,7 +494,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -558,7 +558,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -628,7 +628,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -698,7 +698,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -769,7 +769,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -839,7 +839,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -902,7 +902,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
@@ -966,7 +966,7 @@ class TestWorkers(TestBase):
                 'store_citation': patch.object(db, 'store_citation', return_value=True), \
                 'store_event': patch.object(db, 'store_event', return_value=True), \
                 'update_citation': patch.object(db, 'update_citation', return_value=True), \
-                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, u'REGISTERED')), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
                 'get_citations': patch.object(db, 'get_citations', return_value=[]), \
                 'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \

@@ -1,4 +1,4 @@
-from __future__ import division
+
 import os
 import itertools
 import datetime
@@ -32,19 +32,19 @@ def build_record(app, citation_change, parsed_metadata, citations, entry_date=No
     if entry_date is None:
         entry_date = citation_change.timestamp.ToDatetime()
     alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])
-    abstract = parsed_metadata.get('abstract', u"")
-    title = parsed_metadata.get('title', u"")
+    abstract = parsed_metadata.get('abstract', "")
+    title = parsed_metadata.get('title', "")
     keywords = parsed_metadata.get('keywords', [])
     authors = parsed_metadata.get('authors', [])
     normalized_authors = parsed_metadata.get('normalized_authors', [])
-    affiliations = parsed_metadata.get('affiliations', [u'-']*len(authors))
+    affiliations = parsed_metadata.get('affiliations', ['-']*len(authors))
     pubdate = parsed_metadata.get('pubdate', get_date().strftime("%Y-%m-%d"))
-    source = parsed_metadata.get('source', u"Unknown")
-    version = parsed_metadata.get('version', u"")
-    doctype = parsed_metadata.get('doctype', u"software")
+    source = parsed_metadata.get('source', "Unknown")
+    version = parsed_metadata.get('version', "")
+    doctype = parsed_metadata.get('doctype', "software")
     # Clean abstract and title
-    abstract = u''.join(BeautifulSoup(abstract, features="lxml").findAll(text=True)).replace('\n', ' ').replace('\r', '')
-    title = u''.join(BeautifulSoup(title, features="lxml").findAll(text=True)).replace('\n', ' ').replace('\r', '')
+    abstract = ''.join(BeautifulSoup(abstract, features="lxml").findAll(text=True)).replace('\n', ' ').replace('\r', '')
+    title = ''.join(BeautifulSoup(title, features="lxml").findAll(text=True)).replace('\n', ' ').replace('\r', '')
     # Extract year
     year = pubdate.split("-")[0]
     # Build an author_facet_hier list with the following structure:
@@ -52,7 +52,7 @@ def build_record(app, citation_change, parsed_metadata, citations, entry_date=No
     #   "1/Blanco-Cuaresma, S/Blanco-Cuaresma, S",
     #   "0/Soubiran, C",
     #   "1/Soubiran, C/Soubiran, C",
-    author_facet_hier = list(itertools.chain.from_iterable(zip(["0/"+a for a in normalized_authors], ["1/"+a[0]+"/"+a[1] for a in zip(normalized_authors, authors)])))
+    author_facet_hier = list(itertools.chain.from_iterable(list(zip(["0/"+a for a in normalized_authors], ["1/"+a[0]+"/"+a[1] for a in zip(normalized_authors, authors)]))))
 
     # Count
     n_keywords = len(keywords)
@@ -61,8 +61,8 @@ def build_record(app, citation_change, parsed_metadata, citations, entry_date=No
     doi = citation_change.content
     record_dict = {
         'abstract': abstract,
-        'ack': u'',
-        'aff': [ u"-" if aff == "" else aff for aff in affiliations],
+        'ack': '',
+        'aff': [ "-" if aff == "" else aff for aff in affiliations],
         'alternate_bibcode': alternate_bibcode,
         'alternate_title': [],
         'arxiv_class': [],
@@ -72,34 +72,34 @@ def build_record(app, citation_change, parsed_metadata, citations, entry_date=No
         'author_facet_hier': author_facet_hier,
         'author_norm': normalized_authors,
         'bibcode': bibcode,
-        'bibstem': [u'zndo'],
-        'bibstem_facet': u'zndo',
+        'bibstem': ['zndo'],
+        'bibstem_facet': 'zndo',
         'copyright': [],
         'comment': [],
-        'database': [u'general', u'astronomy'],
+        'database': ['general', 'astronomy'],
         'entry_date': date2solrstamp(entry_date), # date2solrstamp(get_date()),
         'year': year,
         'date': (datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), # TODO: Why this date has to be 30 minutes in advance? This is based on ADSImportPipeline SolrAdapter
         'doctype': doctype,
-        'doctype_facet_hier': [u"0/Non-Article", u"1/Non-Article/Software"],
+        'doctype_facet_hier': ["0/Non-Article", "1/Non-Article/Software"],
         'doi': [doi],
         'eid': doi,
-        'email': [u'-']*n_authors,
-        'first_author': authors[0] if n_authors > 0 else u'',
+        'email': ['-']*n_authors,
+        'first_author': authors[0] if n_authors > 0 else '',
         'first_author_facet_hier': author_facet_hier[:2],
-        'first_author_norm': normalized_authors[0] if n_authors > 0 else u'',
-        'links_data': [u'{{"access": "", "instances": "", "title": "", "type": "electr", "url": "{}"}}'.format(app.conf['DOI_URL'] + doi)], # TODO: How is it different from nonbib?
+        'first_author_norm': normalized_authors[0] if n_authors > 0 else '',
+        'links_data': ['{{"access": "", "instances": "", "title": "", "type": "electr", "url": "{}"}}'.format(app.conf['DOI_URL'] + doi)], # TODO: How is it different from nonbib?
         'identifier': [bibcode, doi] + alternate_bibcode,
-        'esources': [u"PUB_HTML"],
+        'esources': ["PUB_HTML"],
         'citation': citations,
         'citation_count': n_citations,
         'citation_count_norm': n_citations/n_authors if n_authors > 0 else 0,
         'data_count': 1, # Number of elements in `links_data`
         'keyword': keywords,
         'keyword_facet': keywords,
-        'keyword_norm': [u"-"]*n_keywords,
-        'keyword_schema': [u"-"]*n_keywords,
-        'property': [u"ESOURCE", u"NONARTICLE", u"NOT REFEREED", u"PUB_OPENACCESS", u"OPENACCESS"],
+        'keyword_norm': ["-"]*n_keywords,
+        'keyword_schema': ["-"]*n_keywords,
+        'property': ["ESOURCE", "NONARTICLE", "NOT REFEREED", "PUB_OPENACCESS", "OPENACCESS"],
         'pub': source,
         'pub_raw': source,
         'pubdate': pubdate,

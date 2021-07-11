@@ -51,7 +51,7 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
         session.add(citation_target)
         try:
             session.commit()
-        except IntegrityError, e:
+        except IntegrityError as e:
             # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
             logger.error("Ignoring new citation target (citting '%s', content '%s' and timestamp '%s') because it already exists in the database (another new citation may have been processed before this one): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
         else:
@@ -66,7 +66,7 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
     metadata_updated = False
     with app.session_scope() as session:
         citation_target = session.query(CitationTarget).filter(CitationTarget.content == content).first()
-        if type(raw_metadata) is not unicode:
+        if type(raw_metadata) is not str:
             try:
                 raw_metadata = raw_metadata.decode('utf-8')
             except UnicodeEncodeError:
@@ -100,7 +100,7 @@ def store_citation(app, citation_change, content_type, raw_metadata, parsed_meta
         session.add(citation)
         try:
             session.commit()
-        except IntegrityError, e:
+        except IntegrityError as e:
             # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
             logger.error("Ignoring new citation (citting '%s', content '%s' and timestamp '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
         else:
@@ -294,7 +294,7 @@ def mark_citation_as_deleted(app, citation_change):
         previous_status = citation.status
         change_timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
         if citation.timestamp < change_timestamp:
-            citation.status = u"DELETED"
+            citation.status = "DELETED"
             citation.timestamp = change_timestamp
             session.add(citation)
             session.commit()
@@ -311,8 +311,8 @@ def mark_all_discarded_citations_as_registered(app, content):
     marked_as_registered = False
     previous_status = None
     with app.session_scope() as session:
-        citations = session.query(Citation).with_for_update().filter_by(status=u'DISCARDED', content=content).all()
+        citations = session.query(Citation).with_for_update().filter_by(status='DISCARDED', content=content).all()
         for citation in citations:
-            citation.status = u'REGISTERED'
+            citation.status = 'REGISTERED'
             session.add(citation)
         session.commit()
