@@ -105,7 +105,7 @@ def citation_change_to_event_data(citation_change):
         # Citation change shows that the process building the raw input file matched the DOI with a bibcode,
         # but this matching should be wrong since that process does not have access to software records created by this pipeline
         # and no event should be emitted
-        logger.warn("Ignoring citation change due to bad bibcode - DOI matching (IsIdenticalTo event will not be emitted): {}".format(citation_change))
+        logger.warning("Ignoring citation change due to bad bibcode - DOI matching (IsIdenticalTo event will not be emitted): {}".format(citation_change))
         return {}
     elif citation_change.status == adsmsg.Status.deleted:
         ##return _source_cites_target(citation_change, deleted=True)
@@ -113,7 +113,7 @@ def citation_change_to_event_data(citation_change):
         logger.error("The broker does not support deletions yet: citing='{}', cited='{}', content='{}'".format(citation_change.citing, citation_change.cited, citation_change.content))
         return {}
     else:
-        logger.warn("Citation change does not match any defined events: {}".format(citation_change))
+        logger.warning("Citation change does not match any defined events: {}".format(citation_change))
         return {}
 
 def identical_bibcodes_event_data(source_bibcode, target_bibcode, deleted=False):
@@ -190,8 +190,8 @@ def dump_event(event_data, prefix="emitted"):
             relationship = event_data.get("RelationshipType", {}).get("SubType", None)
             source_id = event_data.get("Source", {}).get("Identifier", {}).get("ID", "")
             target_id = event_data.get("Target", {}).get("Identifier", {}).get("ID", "")
-            source_id = re.sub('[^-\w\s]+', '-', source_id)
-            target_id = re.sub('[^-\w\s]+', '-', target_id)
+            source_id = re.sub(r'[^-\w\s]+', '-', source_id)
+            target_id = re.sub(r'[^-\w\s]+', '-', target_id)
             logger.info("Dumped event (relationship '%s', source '%s' and target '%s')", relationship, source_id, target_id)
             filename = "{}_{}_{}_{}.json".format(now, source_id, relationship, target_id)
             try:
