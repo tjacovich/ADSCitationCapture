@@ -146,7 +146,7 @@ def _build_diagnostics(bibcodes=None, json_payloads=None):
     for bibcode, json_payload in zip(bibcodes, json_payloads):
         tmp_str = '{}\t{}'.format(bibcode, json_payload)
         print(("\t{}".format(tmp_str)))
-        tmp_file.write(tmp_str+"\n")
+        tmp_file.write((tmp_str+"\n").encode('UTF-8'))
     tmp_file.close()
     os.utime(tmp_file.name, (0, 0)) # set the access and modified times to 19700101_000000
     return tmp_file.name

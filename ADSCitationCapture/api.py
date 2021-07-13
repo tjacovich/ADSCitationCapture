@@ -2,6 +2,7 @@
 import os
 import requests
 import urllib.request, urllib.parse, urllib.error
+import math
 from adsputils import setup_logging
 
 # ============================= INITIALIZATION ==================================== #
@@ -85,7 +86,7 @@ def get_canonical_bibcodes(app, bibcodes, timeout=30):
     the returned list can be smaller than the input bibcode list
     """
     chunk_size = 2000 # Max number of records supported by bigquery
-    bibcodes_chunks = [bibcodes[i * chunk_size:(i + 1) * chunk_size] for i in range((len(bibcodes) + chunk_size - 1) / chunk_size )]
+    bibcodes_chunks = [bibcodes[i * chunk_size:(i + 1) * chunk_size] for i in range(math.ceil((len(bibcodes) + chunk_size - 1) / chunk_size ))]
     canonical_bibcodes = []
     total_n_chunks = len(bibcodes_chunks)
     # Execute multiple requests to bigquery if the list of bibcodes is longer than the accepted maximum
