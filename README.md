@@ -10,7 +10,7 @@
 The Citation Capture pipeline will process an ADS Classic generated file that contains the list of identified citations to DOI/PID/URLs:
 
 ```
-python run.py PROCESS refids_zenodo.dat.20180911
+python3 run.py PROCESS refids_zenodo.dat.20180911
 ```
 
 The input file can have duplicates such as:
@@ -88,16 +88,17 @@ CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 Then, prepare the python environment:
 
 ```
-virtualenv python/
+python3 -m venv venv
 source python/bin/activate
-pip install -r requirements.txt
-pip install -r dev-requirements.txt
+pip3 install -r requirements.txt
+pip3 install -r dev-requirements.txt
 ```
 
 **NOTE** You will need postgres installed in your system for psycog2 to compile (e.g., `sudo apt install libpq-dev`). If you installed via MacPorts, you may need to run to include `pg_config` in the PATH:
 
 ```
-PATH=/opt/local/lib/postgresql10/bin/:$PATH pip install -r requirements.txt
+PATH=/opt/local/lib/postgresql10/bin/:$PATH
+pip install -r requirements.txt
 ```
 
 Initialize the database:
@@ -126,14 +127,14 @@ docker exec -it postgres bash -c "psql citation_capture_pipeline"
 Then you can run the diagnose with fake data (beware this will end up in the database):
 
 ```
-python run.py DIAGNOSE
+python3 run.py DIAGNOSE
 ```
 
 Or you can run an ingestion (input files can be found in ADS back-end servers `/proj/ads/references/links/refids_zenodo.dat`):
 
 ```
-python run.py PROCESS refids_zenodo.dat.20180911
-python run.py PROCESS refids_zenodo.dat.20180914
+python3 run.py PROCESS refids_zenodo.dat.20180911
+python3 run.py PROCESS refids_zenodo.dat.20180914
 ```
 
 If you need to dump/export/backup the database to a file:
@@ -200,10 +201,10 @@ docker exec -it rabbitmq bash -c "rabbitmqctl set_permissions -p master_pipeline
 Clone [ADSMasterPipeline](https://github.com/adsabs/ADSMasterPipeline/) and copy `config.py` to `local_config.py` and modify its content to reflect your system. Then, install dependencies:
 
 ```
-virtualenv python/
+python3 -m venv venv
 source python/bin/activate
-pip install -r requirements.txt
-pip install -r dev-requirements.txt
+pip3 install -r requirements.txt
+pip3 install -r dev-requirements.txt
 alembic upgrade head
 ```
 
@@ -216,15 +217,15 @@ celery worker -l DEBUG -A ADSCitationCapture.tasks -c 1
 When data is sent to master pipeline, it can be asked to process it (i.e., send to Solr and resolver service) with:
 
 ```
-python run.py -r s -o -f --ignore_checksums -s 1972
-python run.py -r l -o -f --ignore_checksums -s 1972
+python3 run.py -r s -o -f --ignore_checksums -s 1972
+python3 run.py -r l -o -f --ignore_checksums -s 1972
 ```
 
 A list of bibcodes can be specified to force sending them to solr/resolver service:
 
 ```
 psql10 -h localhost -p 6432 -U citation_capture_pipeline citation_capture_pipeline -c "SELECT parsed_cited_metadata->'bibcode' FROM citation_target WHERE status='REGISTERED';" > bibcodes_force_citation_capture.txt
-python run.py -f -r s -n logs/bibcodes_force_citation_capture.txt --ignore_checksums
+python3 run.py -f -r s -n logs/bibcodes_force_citation_capture.txt --ignore_checksums
 ```
 
 #### Resolver service
@@ -240,17 +241,17 @@ docker exec -it postgres bash -c "psql -c \"GRANT CREATE ON DATABASE resolver_se
 Clone [resolver-service](https://github.com/adsabs/resolver_service) and copy `config.py` to `local_config.py` and modify its content to reflect your system. Then, install dependencies:
 
 ```
-virtualenv python/
+python3 -m venv venv
 source python/bin/activate
-pip install -r requirements.txt
-pip install -r dev-requirements.txt
+pip3 install -r requirements.txt
+pip3 install -r dev-requirements.txt
 alembic upgrade head
 ```
 
 And run it (it will listen on `http://0.0.0.0:5000/`):
 
 ```
-python wsgi.py
+python3 wsgi.py
 ```
 
 #### Solr
@@ -287,14 +288,14 @@ celery worker -l DEBUG -A ADSCitationCapture.tasks -c 1
 Then you can run the diagnose with fake data (beware this will end up in the database/solr):
 
 ```
-python run.py DIAGNOSE
+python3 run.py DIAGNOSE
 ```
 
 Or you can run an ingestion (input files can be found in ADS back-end servers `/proj/ads/references/links/refids_zenodo.dat`):
 
 ```
-python run.py PROCESS refids_zenodo.dat.20180911
-python run.py PROCESS refids_zenodo.dat.20180914
+python3 run.py PROCESS refids_zenodo.dat.20180911
+python3 run.py PROCESS refids_zenodo.dat.20180914
 ```
 
 ### Production
@@ -357,7 +358,7 @@ with the commands:
 
 ```
 docker exec -it backoffice_citation_capture_pipeline bash
-python run.py PROCESS refids_zenodo_small_software_record_sample.dat
+python3 run.py PROCESS refids_zenodo_small_software_record_sample.dat
 ```
 
 which should create:
@@ -402,18 +403,18 @@ docker exec -it backoffice_rabbitmq rabbitmqctl list_queues -q -p citation_captu
 - Process file:
 
 ```
-python run.py PROCESS refids_zenodo.dat.20180911
+python3 run.py PROCESS refids_zenodo.dat.20180911
 ```
 
 - Update references to their canonical form using ADS API:
 
 ```
 # All the registered citation targets
-python run.py MAINTENANCE --canonical
+python3 run.py MAINTENANCE --canonical
 # Specific bibcode (space separated list)
-python run.py MAINTENANCE --canonical --bibcode 2017zndo....840393W
+python3 run.py MAINTENANCE --canonical --bibcode 2017zndo....840393W
 # Specific doi (space separated list)
-python run.py MAINTENANCE --canonical --doi 10.5281/zenodo.840393
+python3 run.py MAINTENANCE --canonical --doi 10.5281/zenodo.840393
 ```
 
 - Update metadata:
@@ -423,13 +424,13 @@ python run.py MAINTENANCE --canonical --doi 10.5281/zenodo.840393
 
 ```
 # All the registered citation targets
-python run.py MAINTENANCE --metadata
+python3 run.py MAINTENANCE --metadata
 # Specific bibcode (space separated list)
-python run.py MAINTENANCE --metadata --bibcode 2017zndo....840393W
+python3 run.py MAINTENANCE --metadata --bibcode 2017zndo....840393W
 # Specific doi (space separated list)
-python run.py MAINTENANCE --metadata --doi 10.5281/zenodo.840393
+python3 run.py MAINTENANCE --metadata --doi 10.5281/zenodo.840393
 # File containing doi and version columns (tab separated)
-python run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_updates_09232019.out
+python3 run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_updates_09232019.out
 ```
 
 # Miscellaneous
