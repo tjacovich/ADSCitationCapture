@@ -158,11 +158,7 @@ class TestWorkers(TestBase):
                     citation_changes = args[0][0]
                     for citation_change in citation_changes.changes:
                         #print citation_change.SerializeToString()
-                        try:
-                            self.assertEqual(citation_change.SerializeToString().decode('latin_1'), expected_citation_change_from_first_file[i])
-                        except:
-                            import pudb
-                            pudb.set_trace()
+                        self.assertEqual(citation_change.SerializeToString().decode('latin_1'), expected_citation_change_from_first_file[i])
                         i += 1
 
             # Process second file

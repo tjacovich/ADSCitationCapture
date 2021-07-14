@@ -46,7 +46,7 @@ def process(refids_filename, **kwargs):
     delta.compute(refids_filename)
     for changes in delta:
         if diagnose:
-            print(("Calling 'task_process_citation_changes' with '{}'".format(str(changes))))
+            print("Calling 'task_process_citation_changes' with '{}'".format(str(changes)))
         logger.debug("Calling 'task_process_citation_changes' with '%s'", str(changes))
         try:
             tasks.task_process_citation_changes.delay(changes, force=force)
@@ -142,10 +142,10 @@ def _build_diagnostics(bibcodes=None, json_payloads=None):
     Builds a temporary file to be used for diagnostics.
     """
     tmp_file = tempfile.NamedTemporaryFile(delete=False)
-    print(("Preparing diagnostics temporary file '{}'...".format(tmp_file.name)))
+    print("Preparing diagnostics temporary file '{}'...".format(tmp_file.name))
     for bibcode, json_payload in zip(bibcodes, json_payloads):
         tmp_str = '{}\t{}'.format(bibcode, json_payload)
-        print(("\t{}".format(tmp_str)))
+        print("\t{}".format(tmp_str))
         tmp_file.write((tmp_str+"\n").encode('UTF-8'))
     tmp_file.close()
     os.utime(tmp_file.name, (0, 0)) # set the access and modified times to 19700101_000000

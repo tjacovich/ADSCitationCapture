@@ -61,7 +61,7 @@ class TestBase(unittest.TestCase):
         unittest.TestCase.tearDown(self)
         # A CASCADE drop is required because sometimes drop_all tries to delete
         # ENUM before tables that depend on it and it raises and exception:
-        for table_name in list(Base.metadata.tables.keys()):
+        for table_name in Base.metadata.tables.keys():
             self.app._engine.execute("DROP TABLE IF EXISTS {0} CASCADE;".format(table_name))
         # Make sure nothing else is left behind
         Base.metadata.drop_all(bind=self.app._engine)

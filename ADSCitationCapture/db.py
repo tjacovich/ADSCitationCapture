@@ -66,7 +66,7 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
     metadata_updated = False
     with app.session_scope() as session:
         citation_target = session.query(CitationTarget).filter(CitationTarget.content == content).first()
-        if type(raw_metadata) is not str:
+        if type(raw_metadata) is bytes:
             try:
                 raw_metadata = raw_metadata.decode('utf-8')
             except UnicodeEncodeError:
