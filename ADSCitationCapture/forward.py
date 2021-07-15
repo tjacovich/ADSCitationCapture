@@ -52,7 +52,7 @@ def build_record(app, citation_change, parsed_metadata, citations, entry_date=No
     #   "1/Blanco-Cuaresma, S/Blanco-Cuaresma, S",
     #   "0/Soubiran, C",
     #   "1/Soubiran, C/Soubiran, C",
-    author_facet_hier = list(itertools.chain.from_iterable(list(zip(["0/"+a for a in normalized_authors], ["1/"+a[0]+"/"+a[1] for a in zip(normalized_authors, authors)]))))
+    author_facet_hier = list(itertools.chain.from_iterable(zip(["0/"+a for a in normalized_authors], ["1/"+a[0]+"/"+a[1] for a in zip(normalized_authors, authors)])))
 
     # Count
     n_keywords = len(keywords)

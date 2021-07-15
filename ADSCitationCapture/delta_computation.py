@@ -337,7 +337,7 @@ class DeltaComputation():
                             and not url \
                         );"
         n_all_fields_null = self._execute_sql(count_all_fields_null_sql, self.schema_name, self.expanded_table_name).scalar()
-        if n_all_fields_null and n_all_fields_null > 0:
+        if n_all_fields_null > 0:
             raise Exception("There is at least an entry with all doi, pid and url fields set to null")
 
         # - Only one field contains a value for doi, pid or url
@@ -351,17 +351,17 @@ class DeltaComputation():
                             or (doi and pid and url) \
                         );"
         n_too_many_fields_not_null = self._execute_sql(count_too_many_fields_not_null_sql, self.schema_name, self.expanded_table_name).scalar()
-        if n_too_many_fields_not_null and n_too_many_fields_not_null > 0:
+        if n_too_many_fields_not_null > 0:
             raise Exception("There is at least an entry with two or more doi, pid and url fields set to a value")
 
         # - No duplicates
         count_duplicates_sql = \
-                "select count(*) \
+                "select count(*) from (select count(*) \
                     from {0}.{1} \
                     group by citing, content \
-                    having count(*) > 1;"
+                    having count(*) > 1) as dups;"
         n_duplicates = self._execute_sql(count_duplicates_sql, self.schema_name, self.expanded_table_name).scalar()
-        if n_duplicates and  n_duplicates > 0:
+        if n_duplicates > 0:
             raise Exception("There are duplicate entries with the same citing, doi, pid and url fields")
 
     def _join_tables(self):

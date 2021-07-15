@@ -51,7 +51,7 @@ def _fetch_metadata(url, headers={}, timeout=30):
 
     content = None
     if not try_later and record_found:
-        content = r.content.decode('UTF-8')
+        content = r.text
     return try_later, record_found, content
 
 def _decode_datacite_content(alt_content):
