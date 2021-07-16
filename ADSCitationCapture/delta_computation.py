@@ -107,7 +107,7 @@ class DeltaComputation():
     def __iter__(self):
         return self
 
-    def next(self): # Python 3: def __next__(self)
+    def __next__(self): # Python 3: def __next__(self)
         """Iterates over the results, grouping changes in chunks"""
         if self.offset >= self.n_changes or self.n_changes == 0:
             raise StopIteration
@@ -150,12 +150,12 @@ class DeltaComputation():
 
         # Create schema if needed
         existing_schema_names = Inspector.from_engine(self.engine).get_schema_names()
-        existing_schema_names = filter(lambda x: x.startswith(self.schema_prefix), existing_schema_names)
+        existing_schema_names = [x for x in existing_schema_names if x.startswith(self.schema_prefix)]
         if self.schema_name not in existing_schema_names:
             self.connection.execute(CreateSchema(self.schema_name))
             filtered_existing_schema_names = existing_schema_names
         else:
-            filtered_existing_schema_names = filter(lambda x: x != self.schema_name, existing_schema_names)
+            filtered_existing_schema_names = [x for x in existing_schema_names if x != self.schema_name]
 
 
         # Determine previous schema name if any
@@ -356,10 +356,10 @@ class DeltaComputation():
 
         # - No duplicates
         count_duplicates_sql = \
-                "select count(*) \
+                "select count(*) from (select count(*) \
                     from {0}.{1} \
                     group by citing, content \
-                    having count(*) > 1;"
+                    having count(*) > 1) as dups;"
         n_duplicates = self._execute_sql(count_duplicates_sql, self.schema_name, self.expanded_table_name).scalar()
         if n_duplicates > 0:
             raise Exception("There are duplicate entries with the same citing, doi, pid and url fields")

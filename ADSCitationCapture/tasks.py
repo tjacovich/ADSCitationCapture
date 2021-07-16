@@ -1,4 +1,4 @@
-from __future__ import absolute_import, unicode_literals
+
 import os
 from kombu import Queue
 from google.protobuf.json_format import MessageToDict
@@ -46,7 +46,7 @@ def task_process_new_citation(citation_change, force=False):
         return
     content_type = None
     is_link_alive = False
-    status = u"DISCARDED"
+    status = "DISCARDED"
 
     # Check if we already have the citation target in the DB
     metadata = db.get_citation_target_metadata(app, citation_change.content)
@@ -54,12 +54,12 @@ def task_process_new_citation(citation_change, force=False):
     raw_metadata = metadata.get('raw', None)
     parsed_metadata = metadata.get('parsed', {})
     if citation_target_in_db:
-        status = metadata.get('status', u'DISCARDED') # "REGISTERED" if it is a software record
+        status = metadata.get('status', 'DISCARDED') # "REGISTERED" if it is a software record
 
     if citation_change.content_type == adsmsg.CitationChangeContentType.doi \
         and citation_change.content not in ["", None]:
         # Default values
-        content_type = u"DOI"
+        content_type = "DOI"
         #
         if not citation_target_in_db:
             # Fetch DOI metadata (if HTTP request fails, an exception is raised
@@ -67,18 +67,18 @@ def task_process_new_citation(citation_change, force=False):
             raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], citation_change.content)
             if raw_metadata:
                 parsed_metadata = doi.parse_metadata(raw_metadata)
-                is_software = parsed_metadata.get('doctype', u'').lower() == "software"
+                is_software = parsed_metadata.get('doctype', '').lower() == "software"
                 if parsed_metadata.get('bibcode') not in (None, "") and is_software:
-                    status = u"REGISTERED"
+                    status = "REGISTERED"
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
-        content_type = u"PID"
+        content_type = "PID"
         status = None
         is_link_alive = url.is_alive(app.conf['ASCL_URL'] + citation_change.content)
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software" }
     elif citation_change.content_type == adsmsg.CitationChangeContentType.url \
         and citation_change.content not in ["", None]:
-        content_type = u"URL"
+        content_type = "URL"
         status = None
         is_link_alive = url.is_alive(citation_change.content)
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown" }
@@ -90,7 +90,7 @@ def task_process_new_citation(citation_change, force=False):
         if not citation_target_in_db:
             # Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
-        if status == u"REGISTERED":
+        if status == "REGISTERED":
             if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
                 if canonical_citing_bibcode != citation_change.citing:
                     # These two bibcodes are identical and we can signal the broker
@@ -130,9 +130,9 @@ def task_process_updated_citation(citation_change, force=False):
     metadata = db.get_citation_target_metadata(app, citation_change.content)
     parsed_metadata = metadata.get('parsed', {})
     citation_target_bibcode = parsed_metadata.get('bibcode', None)
-    status = metadata.get('status', u'DISCARDED')
+    status = metadata.get('status', 'DISCARDED')
     # Emit/forward the update only if status is "REGISTERED"
-    if updated and status == u'REGISTERED':
+    if updated and status == 'REGISTERED':
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
@@ -152,7 +152,7 @@ def task_process_deleted_citation(citation_change, force=False):
     parsed_metadata = metadata.get('parsed', {})
     citation_target_bibcode = parsed_metadata.get('bibcode', None)
     # Emit/forward the update only if the previous status was "REGISTERED"
-    if marked_as_deleted and previous_status == u'REGISTERED':
+    if marked_as_deleted and previous_status == 'REGISTERED':
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
@@ -246,7 +246,7 @@ def task_emit_event(event_data, dump_prefix):
     else:
         prefix = os.path.join("emulated", relationship)
         emitted = True
-    if isinstance(dump_prefix, basestring):
+    if isinstance(dump_prefix, str):
         prefix = os.path.join(prefix, dump_prefix)
     webhook.dump_event(event_data, prefix=prefix)
     stored = db.store_event(app, event_data)
@@ -259,7 +259,7 @@ def task_emit_event(event_data, dump_prefix):
         logger.debug("Non-emitted event (relationship '%s', source '%s' and target '%s')", relationship, source_id, target_id)
 
 def _remove_duplicated_dict_in_list(l):
-    return filter(lambda x: x['content'] in set([r['content'] for r in l]), l)
+    return [x for x in l if x['content'] in set([r['content'] for r in l])]
 
 @app.task(queue='maintenance_canonical')
 def task_maintenance_canonical(dois, bibcodes):
@@ -321,7 +321,7 @@ def task_maintenance_metadata(dois, bibcodes):
         raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
         if raw_metadata:
             parsed_metadata = doi.parse_metadata(raw_metadata)
-            is_software = parsed_metadata.get('doctype', u'').lower() == "software"
+            is_software = parsed_metadata.get('doctype', '').lower() == "software"
             if not is_software:
                 logger.error("The new metadata for '%s' has changed its 'doctype' and it is not 'software' anymore", registered_record['bibcode'])
             elif parsed_metadata.get('bibcode') in (None, ""):
@@ -425,7 +425,7 @@ def task_maintenance_reevaluate(dois, bibcodes):
         raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], previously_discarded_record['content'])
         if raw_metadata:
             parsed_metadata = doi.parse_metadata(raw_metadata)
-            is_software = parsed_metadata.get('doctype', u'').lower() == "software"
+            is_software = parsed_metadata.get('doctype', '').lower() == "software"
             if not is_software:
                 logger.error("Discarded '%s', it is not 'software'", previously_discarded_record['content'])
             elif parsed_metadata.get('bibcode') in (None, ""):
@@ -473,7 +473,7 @@ def task_output_results(citation_change, parsed_metadata, citations, bibcode_rep
                                                        )
         delete_parsed_metadata = parsed_metadata.copy()
         delete_parsed_metadata['bibcode'] = bibcode_replaced['previous']
-        delete_parsed_metadata['alternate_bibcode'] = filter(lambda x: x not in (bibcode_replaced['previous'], bibcode_replaced['new']), delete_parsed_metadata.get('alternate_bibcode', []))
+        delete_parsed_metadata['alternate_bibcode'] = [x for x in delete_parsed_metadata.get('alternate_bibcode', []) if x not in (bibcode_replaced['previous'], bibcode_replaced['new'])]
         delete_record, delete_nonbib_record = forward.build_record(app, custom_citation_change, delete_parsed_metadata, citations, entry_date=entry_date)
         messages.append((delete_record, delete_nonbib_record))
     # Main message:

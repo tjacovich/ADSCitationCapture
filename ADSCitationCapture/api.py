@@ -1,7 +1,8 @@
-from __future__ import absolute_import, unicode_literals
+
 import os
 import requests
-import urllib
+import urllib.request, urllib.parse, urllib.error
+import math
 from adsputils import setup_logging
 
 # ============================= INITIALIZATION ==================================== #
@@ -19,7 +20,7 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 # =============================== FUNCTIONS ======================================= #
 def _request_citations_page(app, bibcode, start, rows):
-    params = urllib.urlencode({
+    params = urllib.parse.urlencode({
                 'fl': 'bibcode',
                 'q': 'citations(bibcode:{0})'.format(bibcode),
                 'start': start,
@@ -85,7 +86,7 @@ def get_canonical_bibcodes(app, bibcodes, timeout=30):
     the returned list can be smaller than the input bibcode list
     """
     chunk_size = 2000 # Max number of records supported by bigquery
-    bibcodes_chunks = [bibcodes[i * chunk_size:(i + 1) * chunk_size] for i in range((len(bibcodes) + chunk_size - 1) / chunk_size )]
+    bibcodes_chunks = [bibcodes[i * chunk_size:(i + 1) * chunk_size] for i in range(int(round(((len(bibcodes) + chunk_size - 1))) / chunk_size ))]
     canonical_bibcodes = []
     total_n_chunks = len(bibcodes_chunks)
     # Execute multiple requests to bigquery if the list of bibcodes is longer than the accepted maximum
@@ -107,7 +108,7 @@ def get_canonical_bibcodes(app, bibcodes, timeout=30):
 
 def _get_canonical_bibcodes(app, n_chunk, total_n_chunks, bibcodes_chunk, timeout):
     canonical_bibcodes = []
-    params = urllib.urlencode({
+    params = urllib.parse.urlencode({
                 'fl': 'bibcode',
                 'q': '*:*',
                 'wt': 'json',

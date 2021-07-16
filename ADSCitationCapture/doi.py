@@ -51,7 +51,7 @@ def _fetch_metadata(url, headers={}, timeout=30):
 
     content = None
     if not try_later and record_found:
-        content = r.content
+        content = r.text
     return try_later, record_found, content
 
 def _decode_datacite_content(alt_content):
@@ -142,7 +142,7 @@ def build_bibcode(metadata, doi_re, bibstem):
 
     try:
         year = str(parse(metadata.get('pubdate', "")).year)
-    except ValueError, e:
+    except ValueError as e:
         logger.error("Unknown publication year '%s' for DOI '%s'", metadata.get('pubdate'), doi)
         return bibcode
 
@@ -180,11 +180,11 @@ def _parse_metadata_zenodo_doi(raw_metadata):
     """
     try:
         parsed_metadata = dc.parse(raw_metadata)
-    except Exception, e:
+    except Exception as e:
         logger.exception("Failed parsing")
         return {}
     parsed_metadata['link_alive'] = True
-    is_software = parsed_metadata.get('doctype', u'').lower() == "software"
+    is_software = parsed_metadata.get('doctype', '').lower() == "software"
 
     if is_software:
         zenodo_bibstem = "zndo"
