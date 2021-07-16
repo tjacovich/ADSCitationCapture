@@ -54,7 +54,6 @@ class TestWorkers(TestBase):
         self.assertEqual(decoded_content, expected_decoded_content)
 
     def test_parse_metadata(self):
-        expected_bibcode = "2007zndo.....48535G"
         datacite_xml_format_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/datacite_decoded.xml")
         with open(datacite_xml_format_filename, "r") as f:
             raw_metadata = "".join(f.readlines())
@@ -72,6 +71,12 @@ class TestWorkers(TestBase):
             parsed_metadata = json.loads("".join(f.readlines()))
         zenodo_bibstem = "zndo"
         zenodo_doi_re = re.compile("^10.\d{4,9}/zenodo\.([0-9]*)$", re.IGNORECASE)
+        bibcode = doi.build_bibcode(parsed_metadata, zenodo_doi_re, zenodo_bibstem)
+        self.assertEqual(bibcode, expected_bibcode)
+
+        expected_bibcode = "2007zndo.....48535."
+        # Add forbidden bibcode character as first initial
+        parsed_metadata['normalized_authors'][0] = "4" + parsed_metadata['normalized_authors'][0]
         bibcode = doi.build_bibcode(parsed_metadata, zenodo_doi_re, zenodo_bibstem)
         self.assertEqual(bibcode, expected_bibcode)
 

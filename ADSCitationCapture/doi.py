@@ -21,6 +21,7 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 dc = DataCiteParser()
 zenodo_doi_re = re.compile("^10.\d{4,9}/zenodo\.([0-9]*)$", re.IGNORECASE)
+upper_case_az_character_re = re.compile("[A-Z]")
 
 
 # =============================== FUNCTIONS ======================================= #
@@ -147,7 +148,11 @@ def build_bibcode(metadata, doi_re, bibstem):
         return bibcode
 
     if len(metadata.get('normalized_authors', [])) >= 1 and len(metadata['normalized_authors'][0]) >= 1:
-        first_author_last_name_initial = str(metadata['normalized_authors'][0][0])
+        first_author_last_name_initial = str(metadata['normalized_authors'][0][0]).upper()
+        if upper_case_az_character_re.fullmatch(first_author_last_name_initial) is None:
+            # If the first initial of the first author's last name is not a valid A-Z character
+            # use '.' instead respecting the bibcode convention
+            first_author_last_name_initial = "."
     else:
         logger.error("Unknown first author last name initial '%s' for DOI '%s'", ";".join(metadata.get('normalized_authors', [])), doi)
         return bibcode
