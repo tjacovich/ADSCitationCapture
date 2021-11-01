@@ -89,7 +89,7 @@ Then, prepare the python environment:
 
 ```
 python3 -m venv venv
-source python/bin/activate
+source venv/bin/activate
 pip3 install -r requirements.txt
 pip3 install -r dev-requirements.txt
 ```
@@ -202,7 +202,7 @@ Clone [ADSMasterPipeline](https://github.com/adsabs/ADSMasterPipeline/) and copy
 
 ```
 python3 -m venv venv
-source python/bin/activate
+source venv/bin/activate
 pip3 install -r requirements.txt
 pip3 install -r dev-requirements.txt
 alembic upgrade head
@@ -242,7 +242,7 @@ Clone [resolver-service](https://github.com/adsabs/resolver_service) and copy `c
 
 ```
 python3 -m venv venv
-source python/bin/activate
+source venv/bin/activate
 pip3 install -r requirements.txt
 pip3 install -r dev-requirements.txt
 alembic upgrade head
