@@ -55,7 +55,7 @@ def task_process_new_citation(citation_change, force=False):
     parsed_metadata = metadata.get('parsed', {})
     if citation_target_in_db:
         status = metadata.get('status', 'DISCARDED') # "REGISTERED" if it is a software record
-
+    #Zenodo
     if citation_change.content_type == adsmsg.CitationChangeContentType.doi \
         and citation_change.content not in ["", None]:
         # Default values
@@ -70,23 +70,27 @@ def task_process_new_citation(citation_change, force=False):
                 is_software = parsed_metadata.get('doctype', '').lower() == "software"
                 if parsed_metadata.get('bibcode') not in (None, "") and is_software:
                     status = "REGISTERED"
+    #ASCL
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
         content_type = "PID"
         status = None
         is_link_alive = url.is_alive(app.conf['ASCL_URL'] + citation_change.content)
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software" }
+    
+    #URL
     elif citation_change.content_type == adsmsg.CitationChangeContentType.url \
         and citation_change.content not in ["", None]:
         content_type = "URL"
         status = None
         is_link_alive = url.is_alive(citation_change.content)
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown" }
+    
     else:
         logger.error("Citation change should have doi, pid or url informed: {}", citation_change)
         status = None
 
-    if status is not None:
+    if status is not None and content_type is "DOI":
         if not citation_target_in_db:
             # Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
