@@ -258,7 +258,13 @@ def _emit_citation_change(citation_change, parsed_metadata):
             dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
             logger.debug("Calling 'task_emit_event' for '%s'", citation_change)
             task_emit_event.delay(event_data, dump_prefix)
-
+            
+    elif status=="EMITTABLE" and is_link_alive:
+        event_data = webhook.citation_change_to_event_data(citation_change)
+        if event_data:
+            dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
+            logger.debug("Calling 'task_emit_event' for EMITTABLE citation '%s'", citation_change)
+            task_emit_event.delay(event_data, dump_prefix)
 
 @app.task(queue='process-emit-event')
 def task_emit_event(event_data, dump_prefix):
