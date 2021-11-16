@@ -18,14 +18,8 @@ depends_on = None
 
 
 def upgrade():
-    op.alter_columns('citation_target','status' type_=postgresql.ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type'),nullable=True)
-    op.alter_columns('citation_target_version','status' type_=postgresql.ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type'),nullable=True)
-    op.alter_columns('citation_version','status' type_=postgresql.ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type'),nullable=True)
-    op.alter_columns('citation','status' type_=postgresql.ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type'),nullable=True)
+    op.execute("ALTER TYPE target_status_type ADD VALUE 'EMITTABLE'")
+    op.execute("ALTER TYPE citation_status_type ADD VALUE 'EMITTABLE'")
 
 
 def downgrade():
-    op.alter_columns('citation_target','status' type_=postgresql.ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type'),nullable=True)
-    op.alter_columns('citation_target_version','status' type_=postgresql.ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type'),nullable=True)
-    op.alter_columns('citation_version','status' type_=postgresql.ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type'),nullable=True)
-    op.alter_columns('citation','status' type_=postgresql.ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type'),nullable=True)   
