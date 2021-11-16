@@ -15,6 +15,7 @@ citation_content_type = ENUM('DOI', 'PID', 'URL', name='citation_content_type')
 citation_change_type = ENUM('NEW', 'DELETED', 'UPDATED', name='citation_change_type')
     
 from adsputils import load_config
+import os
 #import pipeline configuration
 proj_home = os.path.realpath(os.path.join(os.path.dirname(__file__), '../'))
 config = load_config(proj_home=proj_home)
