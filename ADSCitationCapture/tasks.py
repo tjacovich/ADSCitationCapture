@@ -93,7 +93,7 @@ def task_process_new_citation(citation_change, force=False):
         status = None
 
     #Generates entry for Zenodo citations and notifies web broker 
-    if status is not None and not "EMITTABLE":
+    if status not in [None, "EMITTABLE"]:
         if not citation_target_in_db:
             # Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
@@ -138,7 +138,7 @@ def task_process_new_citation(citation_change, force=False):
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
     
     #Alternate call if a URL
-    elif status is "EMITTABLE":
+    elif status=="EMITTABLE":
         
         logger.debug("Reached 'call _emit_citation_change' with '%s'", citation_change)
 
@@ -252,6 +252,8 @@ def _emit_citation_change(citation_change, parsed_metadata):
     """
     is_link_alive = parsed_metadata and parsed_metadata.get("link_alive", False)
     is_software = parsed_metadata and parsed_metadata.get("doctype", "").lower() == "software"
+    is_emittable = parsed_metadata and citation_change.content_type == adsmsg.CitationChangeContentType.url 
+    
     if is_software and is_link_alive:
         event_data = webhook.citation_change_to_event_data(citation_change)
         if event_data:
@@ -259,7 +261,7 @@ def _emit_citation_change(citation_change, parsed_metadata):
             logger.debug("Calling 'task_emit_event' for '%s'", citation_change)
             task_emit_event.delay(event_data, dump_prefix)
             
-    elif status=="EMITTABLE" and is_link_alive:
+    elif is_emittable and is_link_alive:
         event_data = webhook.citation_change_to_event_data(citation_change)
         if event_data:
             dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
