@@ -139,12 +139,16 @@ def task_process_new_citation(citation_change, force=False):
     
     #Alternate call if a URL
     elif status=="EMITTABLE":
+        if not citation_target_in_db:
+            # Create citation target in the DB
+            target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
         
         logger.debug("Reached 'call _emit_citation_change' with '%s'", citation_change)
 
         #Emits citation change to broker. Will currently fail for URLs as they are not set as software
         _emit_citation_change(citation_change, parsed_metadata)
         
+        stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
         #stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)

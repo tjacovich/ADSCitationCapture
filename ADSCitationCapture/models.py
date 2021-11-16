@@ -12,21 +12,10 @@ make_versioned(user_cls=None)
 Base = declarative_base()
 
 citation_content_type = ENUM('DOI', 'PID', 'URL', name='citation_content_type')
-citation_change_type = ENUM('NEW', 'DELETED', 'UPDATED', name='citation_change_type')
-    
-from adsputils import load_config
-import os
-#import pipeline configuration
-proj_home = os.path.realpath(os.path.join(os.path.dirname(__file__), '../'))
-config = load_config(proj_home=proj_home)
-    
-#sets citation_status and target_status depending on whether urls are being passed to broker
-if config.get('URL_HOOK',False):
-    citation_status_type = ENUM('REGISTERED', 'DELETED', 'DISCARDED', 'EMITTABLE', name='citation_status_type')
-    target_status_type = ENUM('REGISTERED', 'DELETED', 'DISCARDED', 'EMITTABLE', name='target_status_type')
-else:
-    citation_status_type = ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='citation_status_type')
-    target_status_type = ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type')
+citation_change_type = ENUM('NEW', 'DELETED', 'UPDATED', name='citation_change_type')    
+citation_status_type = ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='citation_status_type')
+target_status_type = ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type')
+
         
 class RawCitation(Base):
     __tablename__ = 'raw_citation'

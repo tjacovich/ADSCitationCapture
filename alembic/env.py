@@ -25,7 +25,7 @@ if opath not in sys.path:
 from ADSCitationCapture.tasks import app
 from ADSCitationCapture import models
 
-target_metadata = model.Base.metadata
+target_metadata = models.Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
