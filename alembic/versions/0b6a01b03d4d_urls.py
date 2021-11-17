@@ -18,6 +18,7 @@ depends_on = None
 
 def upgrade():
     #Add EMITTABLE to status ENUM types
+    op.execute('COMMIT')
     op.execute("ALTER TYPE target_status_type ADD VALUE 'EMITTABLE'")
     op.execute("ALTER TYPE citation_status_type ADD VALUE 'EMITTABLE'")
 
