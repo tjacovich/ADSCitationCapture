@@ -86,7 +86,8 @@ def task_process_new_citation(citation_change, force=False):
         content_type = "URL"
         status = "EMITTABLE"
         is_link_alive = url.is_alive(citation_change.content)
-        parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown" }
+        license_info = api.get_github_metadata(citation_change.content)
+        parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
     
     else:
         logger.error("Citation change should have doi, pid or url informed: {}", citation_change)
@@ -259,14 +260,14 @@ def _emit_citation_change(citation_change, parsed_metadata):
     is_emittable = parsed_metadata and citation_change.content_type == adsmsg.CitationChangeContentType.url 
     
     if is_software and is_link_alive:
-        event_data = webhook.citation_change_to_event_data(citation_change)
+        event_data = webhook.citation_change_to_event_data(citation_change, parsed_metadata)
         if event_data:
             dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
             logger.debug("Calling 'task_emit_event' for '%s'", citation_change)
             task_emit_event.delay(event_data, dump_prefix)
             
     elif is_emittable and is_link_alive:
-        event_data = webhook.citation_change_to_event_data(citation_change)
+        event_data = webhook.citation_change_to_event_data(citation_change, parsed_metadata)
         if event_data:
             dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
             logger.debug("Calling 'task_emit_event' for EMITTABLE citation '%s'", citation_change)

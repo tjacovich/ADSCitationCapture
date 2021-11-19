@@ -22,8 +22,6 @@ ADS_API_URL = "https://ui.adsabs.harvard.edu/v1/"
 
 # When 'True', no events are emitted to the broker via the webhook
 TESTING_MODE = True
-#When 'True', all URLs are considered EMITTABLE by the webhook
-URL_HOOK = True
 # When 'True', it converts all the asynchronous calls into synchronous,
 # thus no need for rabbitmq, it does not forward to master
 # and it allows debuggers to run if needed:
