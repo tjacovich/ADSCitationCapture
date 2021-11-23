@@ -83,7 +83,10 @@ def _source_cites_target(citation_change, parsed_metadata, deleted=False):
     target_id, target_id_schema, target_id_url = _target_elements(citation_change)
     source_bibcode = citation_change.citing
     source_type = parsed_metadata.get('doctype', "").lower()
-    source_license = parsed_metadata.get('license_url',"")
+    try:
+        source_license = parsed_metadata.get('license_url',"")
+    except:
+        source_license = "https://creativecommons.org/publicdomain/zero/1.0/"
     data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url, source_type, source_license)
     return data
 
