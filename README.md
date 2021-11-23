@@ -52,6 +52,29 @@ All the generated events are stored in the `logs/` directory and in the database
 
 ## Setup
 
+### Minimal development/testing environment
+
+This setup relies on docker compose to create two containers, one with a postgres database and the other with the pipeline. To enable it, run:
+
+```
+scripts/run-pytest.sh
+```
+
+The tests will automatically run, and at the end the container will wait until the user presses CTRL+c. While waiting, the user can run in a separate terminal:
+
+```
+docker exec -it pytest_citation_capture_pipeline bash
+```
+
+To interactively re-run tests if needed.
+
+To clean everything created by the run command, this can be executed:
+
+```
+scripts/clean-pytest.sh
+```
+
+
 ### Simple development/testing environment
 
 The simple development/testing environment only requires a PostgreSQL instance. The easiest is to  run it on the local machine via docker:
