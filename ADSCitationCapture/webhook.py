@@ -32,7 +32,7 @@ def _build_data(event_type, original_relationship_name, source_bibcode, target_i
         "Source": {
             "Identifier": {
                 "IDScheme": "ads",
-                "IDURL": "http://adsabs.harvard.edu/abs/{}".format(source_bibcode),
+                "IDURL": "https://ui.adsabs.harvard.edu/abs/{}".format(source_bibcode),
                 "ID": source_bibcode
             },
             "Type": {
@@ -124,7 +124,7 @@ def identical_bibcodes_event_data(source_bibcode, target_bibcode, deleted=False)
     original_relationship_name = "IsIdenticalTo"
     source_bibcode = source_bibcode
     target_id_schema = "ads"
-    target_id_url = "http://adsabs.harvard.edu/abs/{}".format(target_bibcode)
+    target_id_url = "https://ui.adsabs.harvard.edu/abs/{}".format(target_bibcode)
     target_id = target_bibcode
     data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
     return data
