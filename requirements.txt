@@ -9,3 +9,4 @@ astropy==4.2.1
 portalocker==1.7.1
 SQLAlchemy-Utils==0.37.8
 unidecode==0.04.21
+setuptools<=56
