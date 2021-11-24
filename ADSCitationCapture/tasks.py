@@ -426,15 +426,20 @@ def task_maintenance_resend(dois, bibcodes, broker):
     n_requested = len(dois) + len(bibcodes)
     if n_requested == 0:
         registered_records = db.get_citation_targets(app, only_status='REGISTERED')
-        emittable_records = db.get_citation_targets(app, only_status='EMITTABLE')
+        if broker:
+            emittable_records = db.get_citation_targets(app, only_status='EMITTABLE')
+        else:
+            emittable_records=[]
     else:
         registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
         registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
         registered_records = _remove_duplicated_dict_in_list(registered_records)
         
-        emittable_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='EMITTABLE')
-        #emittable_records += db.get_citation_targets_by_doi(app, dois, only_status='EMITTABLE') EMITTABLE records should not have an associated DOI
-        emittable_records = _remove_duplicated_dict_in_list(emittable_records)
+        if broker:
+            emittable_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='EMITTABLE')
+            emittable_records = _remove_duplicated_dict_in_list(emittable_records)
+        else:
+            emittable_records = []
 
     for registered_record in registered_records:
         citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
@@ -471,8 +476,7 @@ def task_maintenance_resend(dois, bibcodes, broker):
                         dump_prefix = emit_citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S_resent")
                         logger.debug("Calling 'task_emit_event' for '%s'", emit_citation_change)
                         task_emit_event.delay(event_data, dump_prefix)
-                        
-    if broker:
+    if broker:                    
         for emittable_record in emittable_records:
             citations = db.get_citations_by_bibcode(app, emittable_record['bibcode'])
             custom_citation_change = adsmsg.CitationChange(content=emittable_record['content'],
