@@ -21,7 +21,7 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 
 # =============================== FUNCTIONS ======================================= #
-def _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url, source_type="software",source_license="https://creativecommons.org/publicdomain/zero/1.0/")
+def _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url, source_type="software",source_license="https://creativecommons.org/publicdomain/zero/1.0/"):
     now = datetime.datetime.now()
     data = {
         "RelationshipType": {
