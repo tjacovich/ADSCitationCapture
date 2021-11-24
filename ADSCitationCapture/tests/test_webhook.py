@@ -40,7 +40,7 @@ class TestWorkers(TestBase):
             'Source': {
                 'Identifier': {
                     'IDScheme': 'ads',
-                    'IDURL': 'http://adsabs.harvard.edu/abs/{}'.format(source_bibcode),
+                    'IDURL': 'https://ui.adsabs.harvard.edu/abs/{}'.format(source_bibcode),
                     'ID': source_bibcode
                 },
                 'Type': {

@@ -416,12 +416,12 @@ def task_maintenance_metadata(dois, bibcodes):
                 task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
 
 @app.task(queue='maintenance_resend')
-def task_maintenance_resend(dois, bibcodes):
+def task_maintenance_resend(dois, bibcodes, broker):
     """
     Maintenance operation:
     - Get all the registered citation targets (or only a subset of them if DOIs and/or bibcodes are specified)
     - For each:
-        - Re-send to master an update with the current metadata and the current list of citations canonical bibcodes
+        - Re-send to master (or broker) an update with the current metadata and the current list of citations canonical bibcodes
     """
     n_requested = len(dois) + len(bibcodes)
     if n_requested == 0:
@@ -440,8 +440,32 @@ def task_maintenance_resend(dois, bibcodes):
                                                        )
         parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
         if parsed_metadata:
-            logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-            task_output_results.delay(custom_citation_change, parsed_metadata, citations)
+            if not broker:
+                # Only update master
+                logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
+                task_output_results.delay(custom_citation_change, parsed_metadata, citations)
+            else:
+                # Only re-emit to the broker
+                # Signal that the target bibcode and the DOI are identical
+                event_data = webhook.identical_bibcode_and_doi_event_data(registered_record['bibcode'], registered_record['content'])
+                if event_data:
+                    dump_prefix = custom_citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S_resent")
+                    logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], registered_record['content'])
+                    task_emit_event.delay(event_data, dump_prefix)
+                # And for each citing bibcode to the target DOI
+                for citing_bibcode in citations:
+                    emit_citation_change = adsmsg.CitationChange(citing=citing_bibcode,
+                                                                   content=registered_record['content'],
+                                                                   content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                                   status=adsmsg.Status.new,
+                                                                   timestamp=datetime.now()
+                                                                   )
+                    # Signal that the citing bibcode cites the DOI
+                    event_data = webhook.citation_change_to_event_data(emit_citation_change)
+                    if event_data:
+                        dump_prefix = emit_citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S_resent")
+                        logger.debug("Calling 'task_emit_event' for '%s'", emit_citation_change)
+                        task_emit_event.delay(event_data, dump_prefix)
 
 @app.task(queue='maintenance_reevaluate')
 def task_maintenance_reevaluate(dois, bibcodes):

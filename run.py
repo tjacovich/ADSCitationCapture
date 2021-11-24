@@ -86,7 +86,7 @@ def maintenance_metadata(dois, bibcodes):
     # Send to master updated metadata
     tasks.task_maintenance_metadata.delay(dois, bibcodes)
 
-def maintenance_resend(dois, bibcodes):
+def maintenance_resend(dois, bibcodes, broker=False):
     """
     Re-send records to master
     """
@@ -97,7 +97,7 @@ def maintenance_resend(dois, bibcodes):
         logger.info("MAINTENANCE task: re-sending '{}' records".format(n_requested))
 
     # Send to master updated metadata
-    tasks.task_maintenance_resend.delay(dois, bibcodes)
+    tasks.task_maintenance_resend.delay(dois, bibcodes, broker)
 
 def maintenance_reevaluate(dois, bibcodes):
     """
@@ -168,6 +168,12 @@ if __name__ == '__main__':
                         default=False,
                         help='Re-send registered citations and targets to the master pipeline')
     maintenance_parser.add_argument(
+                        '--resend-broker',
+                        dest='resend_broker',
+                        action='store_true',
+                        default=False,
+                        help='Re-send registered citations and targets to the broker')
+    maintenance_parser.add_argument(
                         '--reevaluate',
                         dest='reevaluate',
                         action='store_true',
@@ -226,7 +232,7 @@ if __name__ == '__main__':
             logger.info("PROCESS task: %s", args.input_filename)
             process(args.input_filename, force=False, diagnose=False)
     elif args.action == "MAINTENANCE":
-        if not args.canonical and not args.metadata and not args.resend and not args.reevaluate:
+        if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not args.reevaluate:
             maintenance_parser.error("nothing to be done since no task has been selected")
         else:
             # Read files if provided (instead of a direct list of DOIs)
@@ -249,7 +255,9 @@ if __name__ == '__main__':
             elif args.canonical:
                 maintenance_canonical(dois, bibcodes)
             elif args.resend:
-                maintenance_resend(dois, bibcodes)
+                maintenance_resend(dois, bibcodes, broker=False)
+            elif args.resend_broker:
+                maintenance_resend(dois, bibcodes, broker=True)
             elif args.reevaluate:
                 maintenance_reevaluate(dois, bibcodes)
     elif args.action == "DIAGNOSE":
