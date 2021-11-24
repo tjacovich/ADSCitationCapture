@@ -175,11 +175,11 @@ def get_github_metadata(citation_url):
             logger.error(msg)
             return {'license_name': license_name, 'license_url': license_url}
        
-        github_api="https://api.github.com/repos/{}/{}".format(path[1],path[2])
+        github_api="https://api.github.com/repos/{}/{}/license".format(path[1],path[2])
         try:
             git_return=requests.get(github_api)
             json_return=git_return.json()
-            license_name=json_return["license"]['spdx_id']
+            license_name=json_return["license"]['key']
             license_url=json_return["license"]["url"]
             
         except:
