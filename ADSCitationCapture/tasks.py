@@ -426,10 +426,15 @@ def task_maintenance_resend(dois, bibcodes, broker):
     n_requested = len(dois) + len(bibcodes)
     if n_requested == 0:
         registered_records = db.get_citation_targets(app, only_status='REGISTERED')
+        emittable_records = db.get_citation_targets(app, only_status='EMITTABLE')
     else:
         registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
         registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
         registered_records = _remove_duplicated_dict_in_list(registered_records)
+        
+        emittable_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='EMITTABLE')
+        #emittable_records += db.get_citation_targets_by_doi(app, dois, only_status='EMITTABLE') EMITTABLE records should not have an associated DOI
+        emittable_records = _remove_duplicated_dict_in_list(emittable_records)
 
     for registered_record in registered_records:
         citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
@@ -460,6 +465,31 @@ def task_maintenance_resend(dois, bibcodes, broker):
                                                                    status=adsmsg.Status.new,
                                                                    timestamp=datetime.now()
                                                                    )
+                    # Signal that the citing bibcode cites the DOI
+                    event_data = webhook.citation_change_to_event_data(emit_citation_change)
+                    if event_data:
+                        dump_prefix = emit_citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S_resent")
+                        logger.debug("Calling 'task_emit_event' for '%s'", emit_citation_change)
+                        task_emit_event.delay(event_data, dump_prefix)
+                        
+    if broker:
+        for emittable_record in emittable_records:
+            citations = db.get_citations_by_bibcode(app, emittable_record['bibcode'])
+            custom_citation_change = adsmsg.CitationChange(content=emittable_record['content'],
+                                                        content_type=getattr(adsmsg.CitationChangeContentType, emittable_record['content_type'].lower()),
+                                                        status=adsmsg.Status.updated,
+                                                        timestamp=datetime.now()
+                                                        )
+            parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
+            if parsed_metadata:
+                # And for each citing bibcode to the target DOI
+                for citing_bibcode in citations:
+                    emit_citation_change = adsmsg.CitationChange(citing=citing_bibcode,
+                                                                content=emittable_record['content'],
+                                                                content_type=getattr(adsmsg.CitationChangeContentType, emittable_record['content_type'].lower()),
+                                                                status=adsmsg.Status.new,
+                                                                timestamp=datetime.now()
+                                                                )
                     # Signal that the citing bibcode cites the DOI
                     event_data = webhook.citation_change_to_event_data(emit_citation_change)
                     if event_data:
