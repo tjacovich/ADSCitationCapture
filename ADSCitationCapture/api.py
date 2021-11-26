@@ -184,12 +184,12 @@ def get_github_metadata(citation_url):
             
         except:
             msg="Request to {} failed with status code: {}".format(github_api,git_return.status_code)
-            logger.err(msg)
+            logger.error(msg)
             return {'license_name': license_name, 'license_url': license_url}
 
     else:
         msg="URL:{} is not a github repository returning default license info.".format(citation_url)
-        logger.err(msg)
+        logger.error(msg)
         license_name="Public Domain Zero"
         license_url="https://creativecommons.org/publicdomain/zero/1.0/"
         return {'license_name': license_name, 'license_url': license_url}
