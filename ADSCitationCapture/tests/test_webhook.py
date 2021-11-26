@@ -195,14 +195,14 @@ class TestWorkers(TestBase):
         expected_target_url = "https://doi.org/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        event_data = webhook.citation_change_to_event_data(citation_change)
+        event_data = webhook.citation_change_to_event_data(citation_change,expected_json_body)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
     ### ASCL
-    #@unittest.skip("Waiting for the concrete specification from the Zenodo team")
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_ascl_new_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -220,13 +220,13 @@ class TestWorkers(TestBase):
         expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        event_data = webhook.citation_change_to_event_data(citation_change)
+        event_data = webhook.citation_change_to_event_data(citation_change,expected_json_body)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
-    #@unittest.skip("Waiting for the concrete specification from the Zenodo team")
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_ascl_new_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -244,13 +244,13 @@ class TestWorkers(TestBase):
         expected_target_url = "https://ascl.net/{}".format(expected_target_id)
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        event_data = webhook.citation_change_to_event_data(citation_change)
+        event_data = webhook.citation_change_to_event_data(citation_change,expected_json_body)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
-    #@unittest.skip("Waiting for the concrete specification from the Zenodo team")
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_ascl_updated_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -266,7 +266,7 @@ class TestWorkers(TestBase):
         self.assertFalse(emitted, "Non-agreed citation change was assigned to an agreed event")
 
 
-    #@unittest.skip("Waiting for the concrete specification from the Zenodo team")
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_ascl_updated_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -352,14 +352,16 @@ class TestWorkers(TestBase):
         expected_target_id_schema = "url"
         expected_target_url = citation_change.content
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
-
-        event_data = webhook.citation_change_to_event_data(citation_change)
+        is_link_alive = True
+        license_info = {'license_url': 'https://creativecommons.org/publicdomain/zero/1.0/'}
+        parsed_metadata = {'link_alive': is_link_alive, "doctype": "software", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+        event_data = webhook.citation_change_to_event_data(citation_change,parsed_metadata)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
-    #@unittest.skip("Waiting for the concrete specification from the Zenodo team")
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_url_new_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -383,7 +385,7 @@ class TestWorkers(TestBase):
         request = httpretty.last_request()
         self._assert_request(request, expected_json_body)
 
-    #@unittest.skip("Waiting for the concrete specification from the Zenodo team")
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_url_updated_citation(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -398,7 +400,7 @@ class TestWorkers(TestBase):
         self.assertFalse(emitted, "Non-agreed citation change was assigned to an agreed event")
 
 
-    #@unittest.skip("Waiting for the concrete specification from the Zenodo team")
+    @unittest.skip("Waiting for the concrete specification from the Zenodo team")
     def test_url_updated_citation_with_bibcode(self):
         citation_changes = adsmsg.CitationChanges()
         citation_change = citation_changes.changes.add()
@@ -416,7 +418,7 @@ class TestWorkers(TestBase):
         expected_target_url = citation_change.content
         expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
 
-        event_data = webhook.citation_change_to_event_data(citation_change)
+        event_data = webhook.citation_change_to_event_data(citation_change,expected_json_body)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
 
