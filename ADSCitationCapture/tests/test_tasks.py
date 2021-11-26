@@ -729,8 +729,8 @@ class TestWorkers(TestBase):
             self.assertTrue(mocked['get_canonical_bibcode'].called)
             self.assertFalse(mocked['get_canonical_bibcodes'].called)
             self.assertFalse(mocked['get_citations_by_bibcode'].called)
-            self.assertFalse(mocked['store_citation_target'].called)
-            self.assertFalse(mocked['store_citation'].called)
+            self.assertTrue(mocked['store_citation_target'].called)
+            self.assertTrue(mocked['store_citation'].called)
             self.assertFalse(mocked['update_citation'].called)
             self.assertFalse(mocked['mark_citation_as_deleted'].called)
             self.assertFalse(mocked['get_citations'].called)
@@ -744,12 +744,12 @@ class TestWorkers(TestBase):
             self.assertFalse(mocked['request_existing_citations'].called)
             self.assertFalse(mocked['build_bibcode'].called)
             self.assertFalse(mocked['is_url'].called)
-            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertTrue(mocked['citation_change_to_event_data'].called)
             self.assertFalse(mocked['identical_bibcodes_event_data'].called)
             self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
-            self.assertFalse(mocked['store_event'].called)
-            self.assertFalse(mocked['webhook_dump_event'].called)
-            self.assertFalse(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
+            self.assertTrue(mocked['store_event'].called)
+            self.assertTrue(mocked['webhook_dump_event'].called)
+            self.assertTrue(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
 
 
     def test_process_citation_changes_malformed_url(self):
@@ -800,8 +800,8 @@ class TestWorkers(TestBase):
             self.assertTrue(mocked['get_canonical_bibcode'].called)
             self.assertFalse(mocked['get_canonical_bibcodes'].called)
             self.assertFalse(mocked['get_citations_by_bibcode'].called)
-            self.assertFalse(mocked['store_citation_target'].called)
-            self.assertFalse(mocked['store_citation'].called)
+            self.assertTrue(mocked['store_citation_target'].called)
+            self.assertTrue(mocked['store_citation'].called)
             self.assertFalse(mocked['update_citation'].called)
             self.assertFalse(mocked['mark_citation_as_deleted'].called)
             self.assertFalse(mocked['get_citations'].called)
@@ -815,12 +815,12 @@ class TestWorkers(TestBase):
             self.assertFalse(mocked['request_existing_citations'].called)
             self.assertFalse(mocked['build_bibcode'].called)
             self.assertFalse(mocked['is_url'].called)
-            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertTrue(mocked['citation_change_to_event_data'].called)
             self.assertFalse(mocked['identical_bibcodes_event_data'].called)
             self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
-            self.assertFalse(mocked['store_event'].called)
-            self.assertFalse(mocked['webhook_dump_event'].called)
-            self.assertFalse(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
+            self.assertTrue(mocked['store_event'].called)
+            self.assertTrue(mocked['webhook_dump_event'].called)
+            self.assertTrue(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
 
     def test_process_citation_changes_empty(self):
         citation_changes = adsmsg.CitationChanges()
