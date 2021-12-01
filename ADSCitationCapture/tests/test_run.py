@@ -2,7 +2,7 @@ import sys
 import os
 import json
 import pytest
-
+import pudb
 import unittest
 from ADSCitationCapture import app, tasks, delta_computation, db
 from ADSCitationCapture import webhook
@@ -76,9 +76,9 @@ class TestWorkers(TestBase):
             second_refids_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/sample-refids2.dat")
             os.utime(second_refids_filename, (24*60*60, 24*60*60)) # set the access and modified times to 19700102_000000
             expected_citation_change_from_second_file = [
+                    '\n\x132009arXiv0911.4940W\x12\x13...................\x18\x02"/http://github.com/b45ch1/hpsc_hanoi_2009_walter(\x010\x03:\x04\x08\x80£\x05',
+                    #'\n\x132010arXiv1003.5943M\x12\x13...................\x18\x02" http://github.com/matsen/pplacer0\x02:\x04\x08\x80\xa3\x05',
                     '\n\x132015JCAP...08..043A\x12\x132014zndo.soft11020F"\x1410.5281/zenodo.110200\x03:\x04\x08\x80\xa3\x05',
-                    '\n\x132009arXiv0911.4940W\x12\x13...................\x18\x02"/http://github.com/b45ch1/hpsc_hanoi_2009_walter0\x02:\x04\x08\x80\xa3\x05',
-                    '\n\x132010arXiv1003.5943M\x12\x13...................\x18\x02" http://github.com/matsen/pplacer0\x02:\x04\x08\x80\xa3\x05',
                     '\n\x132011arXiv1112.0312C\x12\x132012ascl.soft03003C\x18\x01"\rascl:1203.003(\x010\x02:\x04\x08\x80\xa3\x05',
                     '\n\x132013arXiv1310.5912S\x12\x132012ascl.soft.8004S\x18\x01"\x0eascl:1208.80040\x02:\x04\x08\x80\xa3\x05',
                     '\n\x132015ApJ...815L..10L\x12\x132015ascl.soft...10J\x18\x01"\rascl:1510.0100\x02:\x04\x08\x80\xa3\x05',
@@ -152,12 +152,11 @@ class TestWorkers(TestBase):
                 self.assertTrue(mocked['store_event'].called)
                 self.assertTrue(mocked['webhook_dump_event'].called)
                 self.assertTrue(mocked['webhook_emit_event'].called)
-
-
+                
                 for args in mocked['task_process_citation_changes'].call_args_list:
                     citation_changes = args[0][0]
                     for citation_change in citation_changes.changes:
-                        #print citation_change.SerializeToString()
+                        print(citation_change.SerializeToString())
                         self.assertEqual(citation_change.SerializeToString().decode('latin_1'), expected_citation_change_from_first_file[i])
                         i += 1
 
@@ -228,7 +227,7 @@ class TestWorkers(TestBase):
                 for args in mocked['task_process_citation_changes'].call_args_list:
                     citation_changes = args[0][0]
                     for citation_change in citation_changes.changes:
-                        #print citation_change.SerializeToString()
+                        #print(citation_change.SerializeToString())
                         self.assertEqual(citation_change.SerializeToString().decode('latin_1'), expected_citation_change_from_second_file[i])
                         i += 1
 
