@@ -30,7 +30,7 @@ class TestWorkers(TestBase):
         self.assertEqual(json_body, expected_json_body, "The request body does not have the expected values.")
 
 
-    def _build_expected_json_body(self, event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_url):
+    def _build_expected_json_body(self, event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_url,source_type,source_license):
         expected_json_body = [{
             'RelationshipType': {
                 'SubTypeSchema': 'DataCite',
@@ -47,7 +47,7 @@ class TestWorkers(TestBase):
                     'Name': 'unknown'
                 }
             },
-            'LicenseURL': 'https://creativecommons.org/publicdomain/zero/1.0/',
+            'LicenseURL': source_license,
             'Target': {
                 'Identifier': {
                     'IDScheme': target_id_schema,
@@ -55,7 +55,7 @@ class TestWorkers(TestBase):
                     'ID': target_id
                 },
                 'Type': {
-                    'Name': 'software'
+                    'Name': source_type
                 }
             },
             'LinkPublicationDate': now.strftime("%Y-%m-%d"),
@@ -84,10 +84,10 @@ class TestWorkers(TestBase):
         expected_target_id = citation_change.content
         expected_target_id_schema = "doi"
         expected_target_url = "https://doi.org/{}".format(expected_target_id)
-        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
         is_link_alive = True
         license_info = {'license_url': 'https://creativecommons.org/publicdomain/zero/1.0/'}
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url,parsed_metadata.get('doctype',None),parsed_metadata.get('license_url',None))
         event_data = webhook.citation_change_to_event_data(citation_change,parsed_metadata)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
@@ -110,10 +110,10 @@ class TestWorkers(TestBase):
         expected_target_id = citation_change.content
         expected_target_id_schema = "doi"
         expected_target_url = "https://doi.org/{}".format(expected_target_id)
-        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
         is_link_alive = True
         license_info = {'license_url': 'https://creativecommons.org/publicdomain/zero/1.0/'}
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url,parsed_metadata.get('doctype',None),parsed_metadata.get('license_url',None))
         event_data = webhook.citation_change_to_event_data(citation_change,parsed_metadata)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
@@ -153,10 +153,10 @@ class TestWorkers(TestBase):
         expected_target_id = citation_change.content
         expected_target_id_schema = "doi"
         expected_target_url = "https://doi.org/{}".format(expected_target_id)
-        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
         is_link_alive = True
         license_info = {'license_url': 'https://creativecommons.org/publicdomain/zero/1.0/'}
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url,parsed_metadata.get('doctype',None),parsed_metadata.get('license_url',None))
         event_data = webhook.citation_change_to_event_data(citation_change,parsed_metadata)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
@@ -226,10 +226,10 @@ class TestWorkers(TestBase):
         expected_target_id = citation_change.content
         expected_target_id_schema = "ascl"
         expected_target_url = "https://ascl.net/{}".format(expected_target_id)
-        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
         is_link_alive = True
         license_info = {'license_url': 'https://creativecommons.org/publicdomain/zero/1.0/'}
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url,parsed_metadata.get('doctype',None),parsed_metadata.get('license_url',None))
         event_data = webhook.citation_change_to_event_data(citation_change,parsed_metadata)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
@@ -252,10 +252,10 @@ class TestWorkers(TestBase):
         expected_target_id = citation_change.content
         expected_target_id_schema = "ascl"
         expected_target_url = "https://ascl.net/{}".format(expected_target_id)
-        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
         is_link_alive = True
         license_info = {'license_url': 'https://creativecommons.org/publicdomain/zero/1.0/'}
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url,parsed_metadata.get('doctype',None),parsed_metadata.get('license_url',None))
         event_data = webhook.citation_change_to_event_data(citation_change,parsed_metadata)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
@@ -296,10 +296,10 @@ class TestWorkers(TestBase):
         expected_target_id = citation_change.content
         expected_target_id_schema = "ascl"
         expected_target_url = "https://ascl.net/{}".format(expected_target_id)
-        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
         is_link_alive = True
         license_info = {'license_url': 'https://creativecommons.org/publicdomain/zero/1.0/'}
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url,parsed_metadata.get('doctype',None),parsed_metadata.get('license_url',None))
         event_data = webhook.citation_change_to_event_data(citation_change,parsed_metadata)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
@@ -320,8 +320,7 @@ class TestWorkers(TestBase):
         expected_target_id = citation_change.content
         expected_target_id_schema = "ascl"
         expected_target_url = "https://ascl.net/{}".format(expected_target_id)
-        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
-
+        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url,parsed_metadata.get('doctype',None),parsed_metadata.get('license_url',None))
         event_data = webhook.citation_change_to_event_data(citation_change)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
@@ -367,10 +366,10 @@ class TestWorkers(TestBase):
         expected_target_id = citation_change.content
         expected_target_id_schema = "url"
         expected_target_url = citation_change.content
-        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
         is_link_alive = True
         license_info = {'license_url': 'https://creativecommons.org/publicdomain/zero/1.0/'}
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url,parsed_metadata.get('doctype',None),parsed_metadata.get('license_url',None))
         event_data = webhook.citation_change_to_event_data(citation_change,parsed_metadata)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
@@ -393,10 +392,10 @@ class TestWorkers(TestBase):
         expected_target_id = citation_change.content
         expected_target_id_schema = "url"
         expected_target_url = citation_change.content
-        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
         is_link_alive = True
         license_info = {'license_url': 'https://creativecommons.org/publicdomain/zero/1.0/'}
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url,parsed_metadata.get('doctype',None),parsed_metadata.get('license_url',None))
         event_data = webhook.citation_change_to_event_data(citation_change,parsed_metadata)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertTrue(emitted, "Agreed citation change was NOT assigned to an agreed event")
@@ -437,10 +436,10 @@ class TestWorkers(TestBase):
         expected_target_id = citation_change.content
         expected_target_id_schema = "url"
         expected_target_url = citation_change.content
-        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url)
         is_link_alive = True
         license_info = {'license_url': 'https://creativecommons.org/publicdomain/zero/1.0/'}
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+        expected_json_body = self._build_expected_json_body(expected_event_type, expected_original_relationship_name, expected_source_bibcode, expected_target_id, expected_target_id_schema, expected_target_url,parsed_metadata.get('doctype',None),parsed_metadata.get('license_url',None))
         event_data = webhook.citation_change_to_event_data(citation_change,parsed_metadata)
         emitted = webhook.emit_event(self.app.conf['ADS_WEBHOOK_URL'], self.app.conf['ADS_WEBHOOK_AUTH_TOKEN'], event_data, timeout=30)
         self.assertFalse(emitted, "Agreed citation change was NOT assigned to an agreed event")
