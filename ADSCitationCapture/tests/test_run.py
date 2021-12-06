@@ -2,7 +2,6 @@ import sys
 import os
 import json
 import pytest
-import pudb
 import unittest
 from ADSCitationCapture import app, tasks, delta_computation, db
 from ADSCitationCapture import webhook
