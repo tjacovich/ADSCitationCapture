@@ -86,7 +86,11 @@ def task_process_new_citation(citation_change, force=False):
         content_type = "URL"
         status = "EMITTABLE"
         is_link_alive = url.is_alive(citation_change.content)
-        license_info = api.get_github_metadata(citation_change.content)
+        #If link is alive, attempt to get license info from github. Else return empty license.
+        if is_link_alive:
+            license_info = api.get_github_metadata(citation_change.content)
+        else:
+            license_info = {'license_name': None, 'license_url': None}
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
     
     else:
