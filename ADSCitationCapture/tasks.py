@@ -63,7 +63,6 @@ def task_process_new_citation(citation_change, force=False):
         and citation_change.content not in ["", None]:
         # Default values
         content_type = "DOI"
-        #
         if not citation_target_in_db:
             # Fetch DOI metadata (if HTTP request fails, an exception is raised
             # and the task will be re-queued (see app.py and adsputils))
@@ -73,8 +72,8 @@ def task_process_new_citation(citation_change, force=False):
                 is_software = parsed_metadata.get('doctype', '').lower() == "software"
                 if parsed_metadata.get('bibcode') not in (None, "") and is_software:
                     status = "REGISTERED"
-
-    #ASCL
+                    all_versions_doi = doi.fetch_all_versions_doi(parsed_metadata)
+                    
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
         content_type = "PID"

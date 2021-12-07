@@ -198,3 +198,19 @@ def _parse_metadata_zenodo_doi(raw_metadata):
             parsed_metadata['bibcode'] = bibcode
     return parsed_metadata
 
+def fetch_all_versions_doi(parsed_metadata):  
+    """
+    Takes zenodo parsed metadata and fetches DOI for all versions of zenodo repository
+    """
+    return _fetch_core_doi(parsed_metadata)
+
+def _fetch_all_versions_doi(parsed_metadata):
+    """
+    Takes zenodo parsed metadata and fetches DOI for all versions of zenodo repository
+    """
+    if parsed_metadata.get('version_of',None) not in (None,""):   
+        return parsed_metadata.get('version_of',None)
+    elif parsed_metadata.get('versions',None) not in (None, ""):
+        return parsed_metada.get('properties')['DOI']
+    else:
+        return None
