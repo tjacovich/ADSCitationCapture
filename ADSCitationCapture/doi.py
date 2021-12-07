@@ -202,15 +202,17 @@ def fetch_all_versions_doi(parsed_metadata):
     """
     Takes zenodo parsed metadata and fetches DOI for all versions of zenodo repository
     """
-    return _fetch_core_doi(parsed_metadata)
+    return _fetch_all_versions_doi(parsed_metadata)
 
 def _fetch_all_versions_doi(parsed_metadata):
     """
-    Takes zenodo parsed metadata and fetches DOI for all versions of zenodo repository
+    Takes zenodo parsed metadata and fetches DOI for base repository as well as DOI for all versions.
     """
-    if parsed_metadata.get('version_of',None) not in (None,""):   
-        return parsed_metadata.get('version_of',None)
+    if parsed_metadata.get('version_of',None) not in (None,""):
+        raw_metadata = fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata.get('version_of',None))
+        parsed_all_version = parse_metadata(raw_metadata)
+        return parsed_metadata.get('version_of',None), parsed_metadata.get('versions',None)
     elif parsed_metadata.get('versions',None) not in (None, ""):
-        return parsed_metada.get('properties')['DOI']
+        return parsed_metada.get('properties')['DOI'], parsed_metadata.get('versions',None)
     else:
-        return None
+        return None, None
