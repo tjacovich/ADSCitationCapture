@@ -211,8 +211,8 @@ def _fetch_all_versions_doi(parsed_metadata):
     if parsed_metadata.get('version_of',None) not in (None,""):
         raw_metadata = fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata.get('version_of',None))
         parsed_all_version = parse_metadata(raw_metadata)
-        return parsed_metadata.get('version_of',None), parsed_metadata.get('versions',None)
+        return {'all_doi': parsed_metadata.get('version_of',None), 'versions': parsed_metadata.get('versions',None)}
     elif parsed_metadata.get('versions',None) not in (None, ""):
-        return parsed_metada.get('properties')['DOI'], parsed_metadata.get('versions',None)
+        return {'all_doi': parsed_metada.get('properties')['DOI'], 'versions': parsed_metadata.get('versions',None)}
     else:
-        return None, None
+        return {'all_doi': None, 'versions': None}
