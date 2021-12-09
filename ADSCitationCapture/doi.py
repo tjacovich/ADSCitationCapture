@@ -216,3 +216,20 @@ def _fetch_all_versions_doi(parsed_metadata):
         return {'all_doi': parsed_metada.get('properties')['DOI'], 'versions': parsed_metadata.get('versions',None)}
     else:
         return {'all_doi': None, 'versions': None}
+
+def get_bibcodes_from_metadata(dois):
+    """
+    Takes a dictionary of DOIs and returns the bibcodes for all available.
+    """
+    bibcodes={}
+    for doi in dois:
+        bibcodes.__setitem__(doi,_get_bibcodes_from_metadata(doi))
+    return bibcodes
+
+def _get_bibcodes_from_metadata(doi):
+    """
+    Takes a DOI and returns the related bibcode from the metadata.
+    """
+    raw_metadata = fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata.get('version_of',None))
+    parsed_metadata = parse_metadata(raw_metadata)
+    return parsed_metada.get('bibcode',None)
