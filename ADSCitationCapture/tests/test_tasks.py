@@ -8,7 +8,6 @@ from ADSCitationCapture import url
 from ADSCitationCapture import db
 from ADSCitationCapture import api
 from .test_base import TestBase
-
 import unittest
 from ADSCitationCapture import app, tasks
 from mock import patch
@@ -32,7 +31,6 @@ class TestWorkers(TestBase):
         citation_change.resolved = False
         citation_change.status = status
         return citation_changes
-
 
     def test_process_new_citation_changes_doi(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)

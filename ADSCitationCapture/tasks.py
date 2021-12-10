@@ -1,4 +1,3 @@
-
 import os
 from kombu import Queue
 from google.protobuf.json_format import MessageToDict
@@ -72,8 +71,8 @@ def task_process_new_citation(citation_change, force=False):
                 is_software = parsed_metadata.get('doctype', '').lower() == "software"
                 if parsed_metadata.get('bibcode') not in (None, "") and is_software:
                     status = "REGISTERED"
-                    all_versions_doi = doi.fetch_all_versions_doi(parsed_metadata)
-                    
+                    all_versions_doi = doi.fetch_all_versions_doi(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata)
+
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
         content_type = "PID"

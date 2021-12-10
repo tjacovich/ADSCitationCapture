@@ -198,22 +198,34 @@ def _parse_metadata_zenodo_doi(raw_metadata):
             parsed_metadata['bibcode'] = bibcode
     return parsed_metadata
 
-def fetch_all_versions_doi(parsed_metadata):  
+def fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):  
     """
     Takes zenodo parsed metadata and fetches DOI for all versions of zenodo repository
     """
-    return _fetch_all_versions_doi(parsed_metadata)
+    return _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata)
 
-def _fetch_all_versions_doi(parsed_metadata):
+def _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):
     """
     Takes zenodo parsed metadata and fetches DOI for base repository as well as DOI for all versions.
     """
-    if parsed_metadata.get('version_of',None) not in (None,""):
-        raw_metadata = fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata.get('version_of',None))
-        parsed_all_version = parse_metadata(raw_metadata)
-        return {'all_doi': parsed_metadata.get('version_of',None), 'versions': parsed_metadata.get('versions',None)}
-    elif parsed_metadata.get('versions',None) not in (None, ""):
-        return {'all_doi': parsed_metada.get('properties')['DOI'], 'versions': parsed_metadata.get('versions',None)}
+    if parsed_metadata.get('version_of',None) not in (None,"",[]):
+        try:
+            raw_metadata = fetch_metadata(base_doi_url, base_datacite_url, parsed_metadata.get('version_of',None)[0])
+            parsed_all_version = parse_metadata(raw_metadata)
+            return {'all_doi': parsed_metadata.get('version_of',None)[0], 'versions': parsed_all_version.get('versions',None)}
+         
+        except Exception as e:
+            logger.exception("Failed to fetch metadata with Exception: {}".format(e))
+            return {'all_doi': None, 'versions': None}
+        
+    elif parsed_metadata.get('versions',None) not in (None, [],""):
+        try:
+            return {'all_doi': parsed_metada.get('properties')['DOI'][0], 'versions': parsed_metadata.get('versions',None)}
+        
+        except Exception as e:
+            logger.exception("Attempt to return versions failed with Exception: {}".format(e))
+            return {'all_doi': None, 'versions': None}
+
     else:
         return {'all_doi': None, 'versions': None}
 
