@@ -208,9 +208,10 @@ def _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):
     """
     Takes zenodo parsed metadata and fetches DOI for base repository as well as DOI for all versions.
     """
+
     if parsed_metadata.get('version_of',None) not in (None,"",[]):
         try:
-            raw_metadata = fetch_metadata(base_doi_url, base_datacite_url, parsed_metadata.get('version_of',None)[0])
+            raw_metadata = fetch_metadata(base_doi_url, base_datacite_url, parsed_metadata.get('version_of')[0])
             parsed_all_version = parse_metadata(raw_metadata)
             return {'all_doi': parsed_metadata.get('version_of',None)[0], 'versions': parsed_all_version.get('versions',None)}
          
