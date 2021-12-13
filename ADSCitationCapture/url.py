@@ -1,5 +1,6 @@
 import os
 import requests
+import urllib.request, urllib.parse, urllib.error
 import re
 from adsputils import setup_logging
 
@@ -37,3 +38,14 @@ def is_alive(url):
             raise
         return request.ok
     return False
+
+def is_github(url):
+    try:
+        domain=urllib.parse.urlparse(url).hostname
+    except:
+        domain=None
+        msg="Failed to recover hostname from {}".format(url)
+        logger.exception(msg)
+        raise
+    return True if domain.endswith("github.com") else False
+    
