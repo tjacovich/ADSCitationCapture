@@ -41,10 +41,9 @@ def is_alive(url):
 
 def is_github(url):
     try:
-        domain=urllib.parse.urlparse(url).hostname
+        domain = urllib.parse.urlparse(url).hostname
     except:
-        domain=None
-        msg="Failed to recover hostname from {}".format(url)
+        msg = "Failed to recover hostname from {}".format(url)
         logger.exception(msg)
         raise
     return True if domain.endswith("github.com") else False
