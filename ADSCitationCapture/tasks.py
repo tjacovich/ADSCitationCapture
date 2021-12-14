@@ -73,9 +73,11 @@ def task_process_new_citation(citation_change, force=False):
                     status = "REGISTERED"
                     try:
                         all_versions_doi = doi.fetch_all_versions_doi(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata)
-                        has_verions = True
                     except:
-                        logger.error("Unable to recover related versions for {}",citation_change)                     
+                        logger.error("Unable to recover related versions for {}",citation_change)
+                        all_versions_doi = None
+            if all_versions doi not in (None, ""):
+                db_versions = db.get_associated_works(app, all_versions_doi)
 
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:

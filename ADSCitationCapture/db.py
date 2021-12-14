@@ -206,6 +206,11 @@ def _get_citation_targets_session(session, only_status='REGISTERED'):
     records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
 
+def get_associated_works(app, all_versions_doi, only_status='REGISTERED'):
+    dois=all_versions_doi['versions']
+    return get_citation_targets_by_doi(app,dois, only_status)
+    
+
 def get_citation_targets(app, only_status='REGISTERED'):
     """
     Return a list of dict with all citation targets (or only the registered ones)

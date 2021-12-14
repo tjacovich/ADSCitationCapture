@@ -230,7 +230,7 @@ def _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):
     else:
         return {'all_doi': None, 'versions': None}
 
-def get_bibcodes_from_metadata(dois):
+def get_version_citation_from_metadata(dois):
     """
     Takes a dictionary of DOIs and returns the bibcodes for all available.
     """
