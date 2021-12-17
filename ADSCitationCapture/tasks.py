@@ -795,7 +795,7 @@ def task_maintenance_reevaluate(dois, bibcodes):
                     task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
 
 @app.task(queue='output-results')
-def task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced={}):
+def task_output_results(citation_change, parsed_metadata, citations, db_versions=[''], bibcode_replaced={}):
     """
     This worker will forward results to the outside
     exchange (typically an ADSMasterPipeline) to be
@@ -820,7 +820,7 @@ def task_output_results(citation_change, parsed_metadata, citations, bibcode_rep
         delete_record, delete_nonbib_record = forward.build_record(app, custom_citation_change, delete_parsed_metadata, citations, entry_date=entry_date)
         messages.append((delete_record, delete_nonbib_record))
     # Main message:
-    record, nonbib_record = forward.build_record(app, citation_change, parsed_metadata, citations, entry_date=entry_date)
+    record, nonbib_record = forward.build_record(app, citation_change, parsed_metadata, citations, db_versions, entry_date=entry_date)
     messages.append((record, nonbib_record))
 
     for record, nonbib_record in messages:

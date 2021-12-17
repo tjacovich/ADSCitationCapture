@@ -22,7 +22,7 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 
 # =============================== FUNCTIONS ======================================= #
-def build_record(app, citation_change, parsed_metadata, citations, entry_date=None):
+def build_record(app, citation_change, parsed_metadata, citations, db_versions, entry_date=None):
     if citation_change.content_type != CitationChangeContentType.doi:
         raise Exception("Only DOI records can be forwarded to master")
     # Extract required values
@@ -125,11 +125,11 @@ def build_record(app, citation_change, parsed_metadata, citations, entry_date=No
     else:
         status = 0 # active
     record = DenormalizedRecord(**record_dict)
-    nonbib_record = _build_nonbib_record(app, citation_change, record, status)
+    nonbib_record = _build_nonbib_record(app, citation_change, record, db_versions, status)
     return record, nonbib_record
 
 
-def _build_nonbib_record(app, citation_change, record, status):
+def _build_nonbib_record(app, citation_change, record, db_versions, status):
     doi = citation_change.content
     nonbib_record_dict = {
         'status': status,
