@@ -210,18 +210,23 @@ def _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):
     """
 
     if parsed_metadata.get('version_of',None) not in (None,"",[]):
+    #check if target is a software version and not the base doi.
         try:
+            #try to recover the base doi for the target
             raw_metadata = fetch_metadata(base_doi_url, base_datacite_url, parsed_metadata.get('version_of')[0])
             parsed_all_version = parse_metadata(raw_metadata)
-            return {'all_doi': parsed_metadata.get('version_of',None)[0], 'versions': parsed_all_version.get('versions',None)}
+            #return dois for all versions of the target software and the base doi.
+            return {'all_doi': parsed_metadata.get('version_of',None)[0], 'versions': parsed_all_version.get('versions',None)+parsed_metadata.get('version_of',None)}
          
         except Exception as e:
             logger.exception("Failed to fetch metadata with Exception: {}".format(e))
             return {'all_doi': None, 'versions': None}
         
     elif parsed_metadata.get('versions',None) not in (None, [],""):
+        #If citation is to base doi for software.
         try:
-            return {'all_doi': parsed_metada.get('properties')['DOI'][0], 'versions': parsed_metadata.get('versions',None)}
+            #return all versions including the base doi.
+            return {'all_doi': parsed_metada.get('properties')['DOI'][0], 'versions': parsed_metadata.get('versions',None)+parsed_metadata.get('version_of',None)}
         
         except Exception as e:
             logger.exception("Attempt to return versions failed with Exception: {}".format(e))

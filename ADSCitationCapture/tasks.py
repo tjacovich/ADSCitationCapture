@@ -80,7 +80,7 @@ def task_process_new_citation(citation_change, force=False):
                         
                 #fetch additional versions from db if they exist.
                 if all_versions_doi not in (None, ""):
-                    db_versions = db.get_associated_works_by_doi(app, all_versions_doi)
+                    db_versions = db.get_associated_works_by_doi(app, all_versions_doi['versions'])
 
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
