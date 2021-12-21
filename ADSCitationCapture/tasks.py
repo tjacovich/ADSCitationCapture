@@ -217,27 +217,28 @@ def task_process_updated_citation(citation_change, force=False):
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
         _emit_citation_change(citation_change, parsed_metadata)
         
-@app.task(queue='process-updated-citation')
-def task_process_updated_associated_works(citation_change, associated_versions, force=False):
+@app.task(queue='process-updated-associated-works')
+def task_process_updated_associated_works(target_doi, associated_versions, force=False):
     """
     Update citation record
     Emit/forward the update only if it is REGISTERED
     """
-    updated = db.update_citation(app, citation_change)
+    #updated = db.update_citation(app, citation_change)
+    citation_change=db.get_citation_targets_by_doi(app,target_doi)[0]
     metadata = db.get_citation_target_metadata(app, citation_change.content)
     parsed_metadata = metadata.get('parsed', {})
     citation_target_bibcode = parsed_metadata.get('bibcode', None)
     status = metadata.get('status', 'DISCARDED')
     # Emit/forward the update only if status is "REGISTERED"
-    if updated and status == 'REGISTERED':
+    if status == 'REGISTERED':# and updated:
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-            task_output_results.delay(citation_change, parsed_metadata, citations)
-        logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
-        _emit_citation_change(citation_change, parsed_metadata)
+            task_output_results.delay(citation_change, parsed_metadata, citations, associated_versions)
+        # logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
+        # _emit_citation_change(citation_change, parsed_metadata)
 
 @app.task(queue='process-deleted-citation')
 def task_process_deleted_citation(citation_change, force=False):
