@@ -80,7 +80,9 @@ def task_process_new_citation(citation_change, force=False):
                         
                 #fetch additional versions from db if they exist.
                 if all_versions_doi not in (None, ""):
-                    db_versions = db.get_associated_works_by_doi(app, all_versions_doi['versions'])
+                    #return bibcodes of versions in database and then append new citation target bibcode because it will not be in the db yet.
+                    db_version_bibcodes = [parsed_metadata.get('bibcode')]
+                    db_version_bibcodes.extend(db.get_associated_works_by_doi(app, all_versions_doi))
 
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
@@ -143,8 +145,7 @@ def task_process_new_citation(citation_change, force=False):
                     citations.append(canonical_citing_bibcode)
 
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, parsed_metadata, citations)
-
+                task_output_results.delay(citation_change, parsed_metadata, citations, db_version_bibcodes)
             logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
 
             _emit_citation_change(citation_change, parsed_metadata)
@@ -196,6 +197,28 @@ def task_process_github_urls(citation_change, metadata):
 
 @app.task(queue='process-updated-citation')
 def task_process_updated_citation(citation_change, force=False):
+    """
+    Update citation record
+    Emit/forward the update only if it is REGISTERED
+    """
+    updated = db.update_citation(app, citation_change)
+    metadata = db.get_citation_target_metadata(app, citation_change.content)
+    parsed_metadata = metadata.get('parsed', {})
+    citation_target_bibcode = parsed_metadata.get('bibcode', None)
+    status = metadata.get('status', 'DISCARDED')
+    # Emit/forward the update only if status is "REGISTERED"
+    if updated and status == 'REGISTERED':
+        if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+            # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+            original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
+            citations = api.get_canonical_bibcodes(app, original_citations)
+            logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+            task_output_results.delay(citation_change, parsed_metadata, citations)
+        logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
+        _emit_citation_change(citation_change, parsed_metadata)
+        
+@app.task(queue='process-updated-citation')
+def task_process_updated_associated_works(citation_change, associated_versions, force=False):
     """
     Update citation record
     Emit/forward the update only if it is REGISTERED
