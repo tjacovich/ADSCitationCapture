@@ -80,9 +80,17 @@ def task_process_new_citation(citation_change, force=False):
                         
                 #fetch additional versions from db if they exist.
                 if all_versions_doi not in (None, ""):
-                    #return bibcodes of versions in database and then append new citation target bibcode because it will not be in the db yet.
-                    db_version_bibcodes = [parsed_metadata.get('bibcode')]
-                    db_version_bibcodes.extend(db.get_associated_works_by_doi(app, all_versions_doi))
+                    versions_in_db=db.get_associated_works_by_doi(app, all_versions_doi)
+                    associated_version_bibcodes=['']
+                    #Only add bibcodes if there are versions in db, otherwise leave as null.
+                    if bool(versions_in_db):
+                        #adds the new citation target bibcode because it will not be in the db yet, 
+                        # and then appends the versions already in the db.
+                        associated_version_bibcodes = [parsed_metadata.get('bibcode')]
+                        associated_version_bibcodes.extend(versions_in_db)
+                        for doi in versions_in_db:
+                            #update associated works for all versions in db
+                            task_process_updated_associated_works(doi,associated_version_bibcodes)
 
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
@@ -145,7 +153,7 @@ def task_process_new_citation(citation_change, force=False):
                     citations.append(canonical_citing_bibcode)
 
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, parsed_metadata, citations, db_version_bibcodes)
+                task_output_results.delay(citation_change, parsed_metadata, citations, associated_version_bibcodes)
             logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
 
             _emit_citation_change(citation_change, parsed_metadata)
@@ -220,26 +228,25 @@ def task_process_updated_citation(citation_change, force=False):
 @app.task(queue='process-updated-associated-works')
 def task_process_updated_associated_works(target_doi, associated_versions, force=False):
     """
-    Update citation record
-    Emit/forward the update only if it is REGISTERED
+    Update associated works in citation record
+    Do not emit to broker as changes to associated works are not propagated
     """
-    #updated = db.update_citation(app, citation_change)
+    #check if associated works is not empty
+    updated = bool(associated_versions)
     citation_change=db.get_citation_targets_by_doi(app,target_doi)[0]
     metadata = db.get_citation_target_metadata(app, citation_change.content)
     parsed_metadata = metadata.get('parsed', {})
     citation_target_bibcode = parsed_metadata.get('bibcode', None)
     status = metadata.get('status', 'DISCARDED')
-    # Emit/forward the update only if status is "REGISTERED"
-    if status == 'REGISTERED':# and updated:
+    #Forward the update only if status is "REGISTERED" and associated works is not None.
+    if status == 'REGISTERED' and updated:
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
             task_output_results.delay(citation_change, parsed_metadata, citations, associated_versions)
-        # logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
-        # _emit_citation_change(citation_change, parsed_metadata)
-
+       
 @app.task(queue='process-deleted-citation')
 def task_process_deleted_citation(citation_change, force=False):
     """
