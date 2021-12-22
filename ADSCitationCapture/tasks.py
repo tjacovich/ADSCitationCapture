@@ -78,19 +78,19 @@ def task_process_new_citation(citation_change, force=False):
                         logger.error("Unable to recover related versions for {}",citation_change)
                         all_versions_doi = None
                         
-                #fetch additional versions from db if they exist.
-                if all_versions_doi not in (None, ""):
-                    versions_in_db=db.get_associated_works_by_doi(app, all_versions_doi)
-                    associated_version_bibcodes=['']
-                    #Only add bibcodes if there are versions in db, otherwise leave as null.
-                    if bool(versions_in_db):
-                        #adds the new citation target bibcode because it will not be in the db yet, 
-                        # and then appends the versions already in the db.
-                        associated_version_bibcodes = [parsed_metadata.get('bibcode')]
-                        associated_version_bibcodes.extend(versions_in_db)
-                        for doi in versions_in_db:
-                            #update associated works for all versions in db
-                            task_process_updated_associated_works(doi,associated_version_bibcodes)
+                    #fetch additional versions from db if they exist.
+                    if all_versions_doi not in (None, ""):
+                        versions_in_db=db.get_associated_works_by_doi(app, all_versions_doi)
+                        associated_version_bibcodes=['']
+                        #Only add bibcodes if there are versions in db, otherwise leave as null.
+                        if bool(versions_in_db):
+                            #adds the new citation target bibcode because it will not be in the db yet, 
+                            # and then appends the versions already in the db.
+                            associated_version_bibcodes = [parsed_metadata.get('bibcode')]
+                            associated_version_bibcodes.extend(versions_in_db)
+                            for dois in versions_in_db:
+                                #update associated works for all versions in db
+                                task_process_updated_associated_works(dois,associated_version_bibcodes)
 
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
