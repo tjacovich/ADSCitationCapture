@@ -201,7 +201,7 @@ def task_process_github_urls(citation_change, metadata):
             _emit_citation_change(citation_change, parsed_metadata)
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
-        stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
+        stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status, associated_version_bibcodes)
 
 @app.task(queue='process-updated-citation')
 def task_process_updated_citation(citation_change, force=False):
@@ -246,6 +246,7 @@ def task_process_updated_associated_works(target_doi, associated_versions, force
             citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
             task_output_results.delay(citation_change, parsed_metadata, citations, associated_versions)
+            db.update_citation_target_metadata(app,citation_change.content,metadata,parsed_metadata,status,associated_versions)
        
 @app.task(queue='process-deleted-citation')
 def task_process_deleted_citation(citation_change, force=False):
