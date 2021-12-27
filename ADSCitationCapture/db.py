@@ -36,7 +36,7 @@ def store_event(app, data):
             stored = True
     return stored
 
-def store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
+def store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status, associated):
     """
     Stores a new citation target in the DB
     """
@@ -50,6 +50,7 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
         citation_target.curated_metadata = {}
         citation_target.status = status
         citation_target.bibcode = parsed_metadata.get("bibcode", None)
+        citation_target.associated_works = associated
         session.add(citation_target)
         try:
             session.commit()

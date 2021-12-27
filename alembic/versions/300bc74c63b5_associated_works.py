@@ -17,8 +17,11 @@ depends_on = None
 
 
 def upgrade():
-    pass
+    op.add_column('citation_target',sa.Column('associated_works', String()))
+    op.add_column('citation_target_version',sa.Column('associated_works', String()))
+
 
 
 def downgrade():
-    pass
+    op.drop_column('citation_target','associated_works')
+    op.drop_column('citation_target_version','associated_works')

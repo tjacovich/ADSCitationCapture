@@ -74,6 +74,7 @@ class CitationTarget(Base):
     parsed_cited_metadata = Column(JSONB)
     curated_metadata = Column(JSONB)
     status = Column(target_status_type)
+    associated_works = Column(Text())
     created = Column(UTCDateTime, default=get_date)
     updated = Column(UTCDateTime, onupdate=get_date)
     citations = relationship("Citation", primaryjoin="CitationTarget.content==Citation.content")
