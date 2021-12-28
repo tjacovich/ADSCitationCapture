@@ -62,6 +62,7 @@ def task_process_new_citation(citation_change, force=False):
         and citation_change.content not in ["", None]:
         # Default values
         content_type = "DOI"
+        associated_version_bibcodes = None
         if not citation_target_in_db:
             # Fetch DOI metadata (if HTTP request fails, an exception is raised
             # and the task will be re-queued (see app.py and adsputils))
@@ -77,11 +78,9 @@ def task_process_new_citation(citation_change, force=False):
                     except:
                         logger.error("Unable to recover related versions for {}",citation_change)
                         all_versions_doi = None
-                        
                     #fetch additional versions from db if they exist.
                     if all_versions_doi not in (None, ""):
                         versions_in_db=db.get_associated_works_by_doi(app, all_versions_doi)
-                        associated_version_bibcodes=['']
                         #Only add bibcodes if there are versions in db, otherwise leave as null.
                         if bool(versions_in_db):
                             #adds the new citation target bibcode because it will not be in the db yet, 
@@ -201,7 +200,7 @@ def task_process_github_urls(citation_change, metadata):
             _emit_citation_change(citation_change, parsed_metadata)
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
-        stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status, associated_version_bibcodes)
+        stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
 
 @app.task(queue='process-updated-citation')
 def task_process_updated_citation(citation_change, force=False):

@@ -17,8 +17,8 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('citation_target',sa.Column('associated_works', String()))
-    op.add_column('citation_target_version',sa.Column('associated_works', String()))
+    op.add_column('citation_target',sa.Column('associated_works', sa.Text()))
+    op.add_column('citation_target_version',sa.Column('associated_works', sa.Text()))
 
 
 
