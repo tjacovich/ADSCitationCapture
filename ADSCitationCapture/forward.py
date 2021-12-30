@@ -139,9 +139,10 @@ def _build_nonbib_record(app, citation_change, record, db_versions, status):
         'data': [],
         'data_links_rows': [
             {'link_type': 'ESOURCE', 'link_sub_type': 'PUB_HTML',
-                     'url': [app.conf['DOI_URL'] + doi], 'title': [''], 'item_count':0}, # `item_count` only used for DATA and not ESOURCES
-            {'link_type': 'ASSOCIATED', 
-                     'url': db_versions, 'title': ['']},
+                     'url': [app.conf['DOI_URL'] + doi], 'title': [''], 'item_count':0},], # `item_count` only used for DATA and not ESOURCES
+        'data_links_rows': [  
+            {'link_type': 'ASSOCIATED', 'link_sub_type': '', 
+                     'url': db_versions, 'title': [''], 'item_count':0},
         ],
         'citation_count_norm': record.citation_count_norm,
         'grants': [],

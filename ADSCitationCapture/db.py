@@ -4,7 +4,7 @@ from dateutil.tz import tzutc
 from ADSCitationCapture.models import Citation, CitationTarget, Event
 from adsmsg import CitationChange
 from adsputils import setup_logging
-
+import pudb
 # ============================= INITIALIZATION ==================================== #
 # - Use app logger:
 #import logging
@@ -213,8 +213,11 @@ def get_associated_works(app, all_versions_doi, only_status='REGISTERED'):
     
 def get_associated_works_by_doi(app, all_versions_doi, only_status='REGISTERED'):
     dois=all_versions_doi['versions']
-    return [records['bibcode'] for records in get_citation_targets_by_doi(app, dois, only_status)]
-
+    try:
+        return [records['bibcode'] for records in get_citation_targets_by_doi(app, dois, only_status)]
+    except:
+        logger.info('No associated works for {} in database', dois[0])
+        return [None]
 def get_citation_targets(app, only_status='REGISTERED'):
     """
     Return a list of dict with all citation targets (or only the registered ones)

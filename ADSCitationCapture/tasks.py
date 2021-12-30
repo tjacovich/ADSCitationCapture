@@ -62,7 +62,7 @@ def task_process_new_citation(citation_change, force=False):
         and citation_change.content not in ["", None]:
         # Default values
         content_type = "DOI"
-        associated_version_bibcodes = None
+        associated_version_bibcodes = ['']
         if not citation_target_in_db:
             # Fetch DOI metadata (if HTTP request fails, an exception is raised
             # and the task will be re-queued (see app.py and adsputils))
@@ -79,17 +79,19 @@ def task_process_new_citation(citation_change, force=False):
                         logger.error("Unable to recover related versions for {}",citation_change)
                         all_versions_doi = None
                     #fetch additional versions from db if they exist.
-                    if all_versions_doi not in (None, ""):
+                    if all_versions_doi['versions'] not in (None, ''):
                         versions_in_db=db.get_associated_works_by_doi(app, all_versions_doi)
-                        #Only add bibcodes if there are versions in db, otherwise leave as null.
-                        if bool(versions_in_db):
+                        #Only add bibcodes if there are versions in db, otherwise leave as None.
+                        if versions_in_db not in ([""], [''], [None], None):
+                            logger.info("Found {} versions in database", versions_in_db)
                             #adds the new citation target bibcode because it will not be in the db yet, 
                             # and then appends the versions already in the db.
                             associated_version_bibcodes = [parsed_metadata.get('bibcode')]
                             associated_version_bibcodes.extend(versions_in_db)
                             for dois in versions_in_db:
                                 #update associated works for all versions in db
-                                task_process_updated_associated_works(dois,associated_version_bibcodes)
+                                logger.debug('Calling task process_updated_associated_works')
+                                task_process_updated_associated_works.delay(dois,associated_version_bibcodes)
 
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
@@ -225,21 +227,21 @@ def task_process_updated_citation(citation_change, force=False):
         _emit_citation_change(citation_change, parsed_metadata)
         
 @app.task(queue='process-updated-associated-works')
-def task_process_updated_associated_works(target_doi, associated_versions, force=False):
+def task_process_updated_associated_works(target_bibcode, associated_versions, force=False):
     """
     Update associated works in citation record
     Do not emit to broker as changes to associated works are not propagated
     """
     #check if associated works is not empty
     updated = bool(associated_versions)
-    citation_change=db.get_citation_targets_by_doi(app,target_doi)[0]
-    metadata = db.get_citation_target_metadata(app, citation_change.content)
+    citation_change=db.get_citation_targets_by_bibcode(app,[target_bibcode])[0]
+    metadata = db.get_citation_target_metadata(app, citation_change['content'])
     parsed_metadata = metadata.get('parsed', {})
     citation_target_bibcode = parsed_metadata.get('bibcode', None)
     status = metadata.get('status', 'DISCARDED')
     #Forward the update only if status is "REGISTERED" and associated works is not None.
     if status == 'REGISTERED' and updated:
-        if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+        if citation_change['content_type'] == adsmsg.CitationChangeContentType.doi:
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
