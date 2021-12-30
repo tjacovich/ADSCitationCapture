@@ -4,7 +4,7 @@ from dateutil.tz import tzutc
 from ADSCitationCapture.models import Citation, CitationTarget, Event
 from adsmsg import CitationChange
 from adsputils import setup_logging
-import pudb
+
 # ============================= INITIALIZATION ==================================== #
 # - Use app logger:
 #import logging
