@@ -826,6 +826,45 @@ def task_maintenance_reevaluate(dois, bibcodes):
                     citations = api.get_canonical_bibcodes(app, original_citations)
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                     task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
+        raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], previously_discarded_record['content'])
+
+@app.task(queue='maintenance_associated_works')
+def task_maintenance_reevaluate_associated_works(dois, bibcodes):
+    """
+    Maintenance operation:
+    - Get all the registered citation targets (or only a subset of them if DOIs and/or bibcodes are specified)
+    - For each, retreive metadata and:
+        - Get associated works from metadata.
+        - Determine which associated works are currently in the db.
+        - Send updates to master with the added associated works.
+    """
+    n_requested = len(dois) + len(bibcodes)
+    if n_requested == 0:
+        registered_records = db.get_citation_targets(app, only_status='REGISTERED')
+    else:
+        registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
+        registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
+        registered_records = _remove_duplicated_dict_in_list(registered_records)
+
+    for registered_record in registered_records:
+        citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
+        custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                       content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                       status=adsmsg.Status.updated,
+                                                       timestamp=datetime.now()
+                                                       )
+        raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], previously_discarded_record['content'])
+        if raw_metadata:
+            parsed_metadata = doi.parse_metadata(raw_metadata)
+            is_software = parsed_metadata.get('doctype', '').lower() == "software"
+            if not is_software:
+                logger.error("Discarded '%s', it is not 'software'", previously_discarded_record['content'])
+            elif parsed_metadata.get('bibcode') in (None, ""):
+                logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", previously_discarded_record['content'])
+            else:
+                logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
+                task_output_results.delay(custom_citation_change, parsed_metadata, citations)
+          
 
 @app.task(queue='output-results')
 def task_output_results(citation_change, parsed_metadata, citations, db_versions=[''], bibcode_replaced={}):
