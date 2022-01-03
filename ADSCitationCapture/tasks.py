@@ -23,10 +23,12 @@ app.conf.CELERY_QUEUES = (
     Queue('process-new-citation', app.exchange, routing_key='process-new-citation'),
     Queue('process-updated-citation', app.exchange, routing_key='process-updated-citation'),
     Queue('process-deleted-citation', app.exchange, routing_key='process-deleted-citation'),
+    Queue('process-updated-association-works', app.exchange, routing_key='process-updated-associated-works'),
     Queue('maintenance_canonical', app.exchange, routing_key='maintenance_canonical'),
     Queue('maintenance_metadata', app.exchange, routing_key='maintenance_metadata'),
     Queue('maintenance_resend', app.exchange, routing_key='maintenance_resend'),
     Queue('maintenance_reevaluate', app.exchange, routing_key='maintenance_reevaluate'),
+    Queue('maintenance_associated_works', app.exchange, routing_key='maintenance_associated_works'),
     Queue('output-results', app.exchange, routing_key='output-results'),
 )
 
@@ -858,13 +860,29 @@ def task_maintenance_reevaluate_associated_works(dois, bibcodes):
             parsed_metadata = doi.parse_metadata(raw_metadata)
             is_software = parsed_metadata.get('doctype', '').lower() == "software"
             if not is_software:
-                logger.error("Discarded '%s', it is not 'software'", previously_discarded_record['content'])
+                logger.error("Discarded '%s', it is not 'software'", registered_record['content'])
             elif parsed_metadata.get('bibcode') in (None, ""):
                 logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", previously_discarded_record['content'])
             else:
                 logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                task_output_results.delay(custom_citation_change, parsed_metadata, citations)
-          
+                    #Check for additional versions
+                try:
+                    all_versions_doi = doi.fetch_all_versions_doi(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata)
+                except:
+                    logger.error("Unable to recover related versions for {}",citation_change)
+                    all_versions_doi = None
+                #fetch additional versions from db if they exist.
+                if all_versions_doi['versions'] not in (None, ''):
+                    versions_in_db=db.get_associated_works_by_doi(app, all_versions_doi)
+                    #Only add bibcodes if there are versions in db, otherwise leave as None.
+                    if versions_in_db not in ([""], [''], [None], None):
+                        logger.info("Found {} versions in database", versions_in_db)
+                        #adds the new citation target bibcode because it will not be in the db yet, 
+                        # and then appends the versions already in the db.
+                        associated_version_bibcodes = [parsed_metadata.get('bibcode')]
+                        associated_version_bibcodes.extend(versions_in_db)
+                        task_output_results.delay(custom_citation_change, parsed_metadata, citations, associated_version_bibcodes)
+    
 
 @app.task(queue='output-results')
 def task_output_results(citation_change, parsed_metadata, citations, db_versions=[''], bibcode_replaced={}):
