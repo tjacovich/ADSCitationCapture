@@ -855,21 +855,21 @@ def task_maintenance_reevaluate_associated_works(dois, bibcodes):
                                                        status=adsmsg.Status.updated,
                                                        timestamp=datetime.now()
                                                        )
-        raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], previously_discarded_record['content'])
+        raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
         if raw_metadata:
             parsed_metadata = doi.parse_metadata(raw_metadata)
             is_software = parsed_metadata.get('doctype', '').lower() == "software"
             if not is_software:
                 logger.error("Discarded '%s', it is not 'software'", registered_record['content'])
             elif parsed_metadata.get('bibcode') in (None, ""):
-                logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", previously_discarded_record['content'])
+                logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", registered_record['content'])
             else:
                 logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
                     #Check for additional versions
                 try:
                     all_versions_doi = doi.fetch_all_versions_doi(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata)
                 except:
-                    logger.error("Unable to recover related versions for {}",citation_change)
+                    logger.error("Unable to recover related versions for {}",custom_citation_change)
                     all_versions_doi = None
                 #fetch additional versions from db if they exist.
                 if all_versions_doi['versions'] not in (None, ''):
@@ -881,6 +881,7 @@ def task_maintenance_reevaluate_associated_works(dois, bibcodes):
                         # and then appends the versions already in the db.
                         associated_version_bibcodes = [parsed_metadata.get('bibcode')]
                         associated_version_bibcodes.extend(versions_in_db)
+                        db.update_citation_target_metadata(app,custom_citation_change.content,metadata,parsed_metadata,status,associated_version_bibcodes)
                         task_output_results.delay(custom_citation_change, parsed_metadata, citations, associated_version_bibcodes)
     
 
