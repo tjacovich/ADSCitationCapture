@@ -111,7 +111,9 @@ def maintenance_reevaluate(dois, bibcodes):
 
     # Send to master updated metadata
     tasks.task_maintenance_reevaluate.delay(dois, bibcodes)
-
+def maintenance_curation(filename):
+    
+    
 def diagnose(bibcodes, json):
     citation_count = db.get_citation_count(tasks.app)
     citation_target_count = db.get_citation_target_count(tasks.app)
@@ -260,6 +262,8 @@ if __name__ == '__main__':
                 maintenance_resend(dois, bibcodes, broker=True)
             elif args.reevaluate:
                 maintenance_reevaluate(dois, bibcodes)
+            elif args.curation:
+                maintenance_curation(args.input_filename)
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)
