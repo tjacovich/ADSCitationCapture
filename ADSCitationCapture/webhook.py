@@ -21,7 +21,7 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 
 # =============================== FUNCTIONS ======================================= #
-def _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url):
+def _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url, source_type="software",source_license="https://creativecommons.org/publicdomain/zero/1.0/"):
     now = datetime.datetime.now()
     data = {
         "RelationshipType": {
@@ -39,7 +39,7 @@ def _build_data(event_type, original_relationship_name, source_bibcode, target_i
                 "Name": "unknown"
             }
         },
-        "LicenseURL": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "LicenseURL": source_license,
         "Target": {
             "Identifier": {
                 "IDScheme": target_id_schema,
@@ -47,7 +47,7 @@ def _build_data(event_type, original_relationship_name, source_bibcode, target_i
                 "ID": target_id
             },
             "Type": {
-                "Name": "software"
+                "Name": source_type 
             }
         },
         "LinkPublicationDate": now.strftime("%Y-%m-%d"),
@@ -74,7 +74,7 @@ def _target_elements(citation_change):
         raise Exception("Unknown citation change data type")
     return target_id, target_id_schema, target_id_url
 
-def _source_cites_target(citation_change, deleted=False):
+def _source_cites_target(citation_change, parsed_metadata, deleted=False):
     if deleted:
         event_type = "relation_deleted"
     else:
@@ -82,7 +82,12 @@ def _source_cites_target(citation_change, deleted=False):
     original_relationship_name = "Cites"
     target_id, target_id_schema, target_id_url = _target_elements(citation_change)
     source_bibcode = citation_change.citing
-    data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
+    source_type = parsed_metadata.get('doctype', "").lower()
+    try:
+        source_license = parsed_metadata.get('license_url',"")
+    except:
+        source_license = "https://creativecommons.org/publicdomain/zero/1.0/"
+    data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url, source_type, source_license)
     return data
 
 #def _source_is_identical_to_target(citation_change, deleted=False):
@@ -96,9 +101,9 @@ def _source_cites_target(citation_change, deleted=False):
     #data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url)
     #return data
 
-def citation_change_to_event_data(citation_change):
+def citation_change_to_event_data(citation_change, parsed_metadata):
     if citation_change.status == adsmsg.Status.new:
-        return _source_cites_target(citation_change, deleted=False)
+        return _source_cites_target(citation_change, parsed_metadata, deleted=False)
     elif citation_change.status == adsmsg.Status.updated and citation_change.cited != '...................' and citation_change.resolved:
         ### Only accept cited bibcode if score is 1 (resolved == True), if not the bibcode is just an unresolved attempt
         ##return _source_is_identical_to_target(citation_change)

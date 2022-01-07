@@ -1,6 +1,7 @@
 
 import os
 import requests
+import ADSCitationCapture.url as url
 import urllib.request, urllib.parse, urllib.error
 import math
 from adsputils import setup_logging
@@ -151,3 +152,38 @@ def get_canonical_bibcode(app, bibcode, timeout=30):
         return None
     else:
         return canonical[0]
+
+def get_github_metadata(citation_url):
+    """
+    Retrieve License and related metadata from GitHub API
+    """
+    license_name = None
+    license_url = None
+    
+    if url.is_github(citation_url):
+
+        try:
+            path = urllib.parse.urlparse(citation_url).path.split("/")
+            
+        except:
+            msg = "Failed to parse :{}".format(citation_url)
+            logger.error(msg)
+       
+        github_api = "https://api.github.com/repos/{}/{}/license".format(path[1],path[2])
+        try:
+            git_return = requests.get(github_api)
+            json_return = git_return.json()
+            license_name = json_return["license"]['key']
+            license_url = json_return["license"]["url"]
+            
+        except:
+            msg = "Request to {} failed with status code: {}".format(github_api,git_return.status_code)
+            logger.error(msg)
+
+    else:
+        msg = "URL:{} is not a github repository returning default license info.".format(citation_url)
+        logger.error(msg)
+        
+    return {'license_name': license_name, 'license_url': license_url}
+
+

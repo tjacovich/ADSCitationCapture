@@ -9,5 +9,5 @@
 2011arXiv1112.0312C	{"cited":"2012ascl.soft03003C","citing":"2011arXiv1112.0312C","pid":"ascl:1203.003","score":"1","source":"/proj/ads/references/resolved/AUTHOR/2012/0605.pairs.result:89"}
 2013arXiv1310.5912S	{"cited":"2012ascl.soft.8004S","citing":"2013arXiv1310.5912S","pid":"ascl:1208.8004","score":"5","source":"/proj/ads/references/resolved/arXiv/1310/5912.raw.result:50"}
 2015ApJ...815L..10L	{"cited":"2015ascl.soft...10J","citing":"2015ApJ...815L..10L","pid":"ascl:1510.010","score":"5","source":"/proj/ads/references/resolved/ApJL/0815/iss1.iop.xml.result:255"}
-2009arXiv0911.4940W	{"cited":"...................","citing":"2009arXiv0911.4940W","score":"0","source":"/proj/ads/references/resolved/arXiv/0911/4940.raw.result:12","url":"http://github.com/b45ch1/hpsc_hanoi_2009_walter"}
+2009arXiv0911.4940W	{"cited":"...................","citing":"2009arXiv0911.4940W","score":"1","source":"/proj/ads/references/resolved/arXiv/0911/4940.raw.result:12","url":"http://github.com/b45ch1/hpsc_hanoi_2009_walter"}
 2010arXiv1003.5943M	{"cited":"...................","citing":"2010arXiv1003.5943M","score":"0","source":"/proj/ads/references/resolved/arXiv/1003/5943.raw.result:71","url":"http://github.com/matsen/pplacer"}

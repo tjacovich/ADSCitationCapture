@@ -198,7 +198,7 @@ class DeltaComputation():
         """
         To be run after `_reconstruct_previous_expanded_raw_data`. It compares
         the reconstructed previous expanded raw data with the real previous
-        expanded raw data. If all the records were processed, these twot tables
+        expanded raw data. If all the records were processed, these two tables
         should be identical.
         It returns a list of tuples, each tuple has two elements (citing and content)
         for all the missing citations.
