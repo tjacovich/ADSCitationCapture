@@ -170,6 +170,12 @@ if __name__ == '__main__':
                         default=False,
                         help='Re-send registered citations and targets to the master pipeline')
     maintenance_parser.add_argument(
+                        '--curation',
+                        dest='curation',
+                        action='store_true',
+                        default=False,
+                        help='Manually edit Citation Capture generated citation metadata for specific entries.')
+    maintenance_parser.add_argument(
                         '--resend-broker',
                         dest='resend_broker',
                         action='store_true',
