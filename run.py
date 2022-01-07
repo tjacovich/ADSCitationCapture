@@ -287,6 +287,12 @@ if __name__ == '__main__':
                         default=False,
                         help='Re-evaluate discarded citation targets fetching metadata and ingesting software records')
     maintenance_parser.add_argument(
+                        '--eval-associated',
+                        dest='eval_associated',
+                        action='store_true',
+                        default=False,
+                        help='Re-evaluate citation targets to determine associated works in already in database.')
+    maintenance_parser.add_argument(
                         '--canonical',
                         dest='canonical',
                         action='store_true',
