@@ -12,10 +12,11 @@ make_versioned(user_cls=None)
 Base = declarative_base()
 
 citation_content_type = ENUM('DOI', 'PID', 'URL', name='citation_content_type')
-citation_change_type = ENUM('NEW', 'DELETED', 'UPDATED', name='citation_change_type')
-citation_status_type = ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='citation_status_type')
-target_status_type = ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type')
+citation_change_type = ENUM('NEW', 'DELETED', 'UPDATED', name='citation_change_type')    
+citation_status_type = ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='citation_status_type')
+target_status_type = ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type')
 
+        
 class RawCitation(Base):
     __tablename__ = 'raw_citation'
     __table_args__ = ({"schema": "public"})

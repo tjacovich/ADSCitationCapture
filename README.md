@@ -1,5 +1,5 @@
-[![Waffle.io - Columns and their card count](https://badge.waffle.io/adsabs/ADSCitationCapture.svg?columns=all)](https://waffle.io/adsabs/ADSCitationCapture)
-[![Build Status](https://travis-ci.org/adsabs/ADSCitationCapture.svg?branch=master)](https://travis-ci.org/adsabs/ADSCitationCapture)
+<!---[![Waffle.io - Columns and their card count](https://badge.waffle.io/adsabs/ADSCitationCapture.svg?columns=all)](https://waffle.io/adsabs/ADSCitationCapture)--->
+[![Build Status](https://github.com/adsabs/ADSCitationCapture/actions/workflows/python_actions.yml/badge.svg)](https://github.com/adsabs/ADSCitationCapture/)
 [![Coverage Status](https://coveralls.io/repos/adsabs/ADSCitationCapture/badge.svg)](https://coveralls.io/r/adsabs/ADSCitationCapture)
 [![Code Climate](https://codeclimate.com/github/adsabs/ADSCitationCapture/badges/gpa.svg)](https://codeclimate.com/github/adsabs/ADSCitationCapture)
 [![Issue Count](https://codeclimate.com/github/adsabs/ADSCitationCapture/badges/issue_count.svg)](https://codeclimate.com/github/adsabs/ADSCitationCapture)
@@ -112,7 +112,7 @@ Then, prepare the python environment:
 
 ```
 python3 -m venv venv
-source python/bin/activate
+source venv/bin/activate
 pip3 install -r requirements.txt
 pip3 install -r dev-requirements.txt
 ```
@@ -225,7 +225,7 @@ Clone [ADSMasterPipeline](https://github.com/adsabs/ADSMasterPipeline/) and copy
 
 ```
 python3 -m venv venv
-source python/bin/activate
+source venv/bin/activate
 pip3 install -r requirements.txt
 pip3 install -r dev-requirements.txt
 alembic upgrade head
@@ -265,7 +265,7 @@ Clone [resolver-service](https://github.com/adsabs/resolver_service) and copy `c
 
 ```
 python3 -m venv venv
-source python/bin/activate
+source venv/bin/activate
 pip3 install -r requirements.txt
 pip3 install -r dev-requirements.txt
 alembic upgrade head
