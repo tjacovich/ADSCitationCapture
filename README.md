@@ -284,9 +284,9 @@ Download the compiled version of montysolr and run it:
 
 ```
 https://github.com/romanchyla/montysolr/releases
-wget -c https://github.com/romanchyla/montysolr/releases/download/v63.1.0.36/montysolr.zip
+wget -c https://github.com/romanchyla/montysolr/releases/download/v77.1.1.4/montysolr.zip
 unzip montysolr.zip
-cd montysolr/
+cd montysolr/ (In Linux, unzip may not create the containing folder and instead unzip the contents into the current directory.)
 bash bin/solr start -f -p 8984
 ```
 
