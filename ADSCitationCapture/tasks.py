@@ -423,29 +423,38 @@ def task_maintenance_metadata(dois, bibcodes):
 def task_maintenance_curation(dois, bibcodes, curated_entries):
     """
     Maintenance operation:
-    - Get all the registered citation targets for the set specified in curated_entries
+    - Get all the registered citation targets for the entries specified in curated_entries
     - For each, retreive metadata and if it is different to what we have in our database:
         - Get the citations bibcodes and transform them to their canonical form
         - Replace the retrieved metadata for values specified in curated_entries
         - Send to master an update with the new metadata and the current list of citations canonical bibcodes
     """
 
-    registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
-    registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
-    registered_records = _remove_duplicated_dict_in_list(registered_records)
+    # registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
+    # registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
+    # registered_records = _remove_duplicated_dict_in_list(registered_records)
 
-    for registered_record in registered_records:
+    for curated_entry in curated_entries:
         updated = False
         bibcode_replaced = {}
+        #First try and retrieve entry by bibcode.
+        try:
+        if curated_entry.get('bibcode'):
+            registered_record = db.get_citation_targets_by_bibcode(app, curated_entry.get('bibcode'), only_status='REGISTERED')   
+        #if no bibcode specified, try by doi.
+        elif curated_entry.get('doi'):
+            registered_record = db.get_citation_targets_by_doi(app, curated_entry.get('doi'), only_status='REGISTERED')   
+        #report error
+        else:
+            logger.error('Unable retrieve entry for {} from database. Please check input file.'.format(curated_entry))
+
         # Fetch DOI metadata (if HTTP request fails, an exception is raised
         # and the task will be re-queued (see app.py and adsputils))
         raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
         if raw_metadata:
             parsed_metadata = doi.parse_metadata(raw_metadata)
             is_software = parsed_metadata.get('doctype', '').lower() == "software"
-            #get curated metadata for record from curated_entries
-            curated_metadata = list(filter(lambda entry: entry.get('bibcode') is parsed_metadata.get('bicode') or entry.get('doi') is parsed_metadata.get('doi'),curated_entries))[0]
-            
+                        
             if not is_software:
                 logger.error("The new metadata for '%s' has changed its 'doctype' and it is not 'software' anymore", registered_record['bibcode'])
             elif parsed_metadata.get('bibcode') in (None, ""):
@@ -483,16 +492,14 @@ def task_maintenance_curation(dois, bibcodes, curated_entries):
                     parsed_metadata['alternate_bibcode'] = alternate_bibcode
                     bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
                 
-                #check if curated_metadata exists
-                if curated_metadata:
-                    #cycle through keys and set values for parsed metadata according to curated_metadata.
-                    for key in curated_metadata.keys():
-                        if key not ['bibcode','doi']:
-                            try:
-                                parsed_metadata[key] = curated_metadata[key]
-                            except:
-                                logger.error("Failed setting {} for {}.".format(key,parsed_metadata.get('bibcode')))
-                
+                #cycle through keys and set values for parsed metadata according to curated_metadata.
+                for key in curated_metadata.keys():
+                    if key not in ['bibcode','doi']:
+                        try:
+                            parsed_metadata[key] = curated_metadata[key]
+                        except:
+                            logger.error("Failed setting {} for {}.".format(key,parsed_metadata.get('bibcode')))
+            
                 updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata)
 
         if updated:
