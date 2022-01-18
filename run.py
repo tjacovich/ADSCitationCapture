@@ -72,7 +72,6 @@ def maintenance_canonical(dois, bibcodes):
     # Send to master updated citation bibcodes in their canonical form
     tasks.task_maintenance_canonical.delay(dois, bibcodes)
 
-
 def maintenance_metadata(dois, bibcodes):
     """
     Refetch metadata and send updates to master (if any)
@@ -111,8 +110,32 @@ def maintenance_reevaluate(dois, bibcodes):
 
     # Send to master updated metadata
     tasks.task_maintenance_reevaluate.delay(dois, bibcodes)
-def maintenance_curation(filename):
-    
+
+def maintenance_curation(filename=None):
+    """
+    Refetch metadata and update any manually curated values.
+    """
+    #checks if file is specificed
+    if filename not None:
+        try:
+            with open(filename) as f:
+                #convert file lines to list of dicts, 1 dict per entry.
+                curated_entries = [json.loads(entry[0]) for entry in f.readlines()]
+            #collect bibcodes from entries if available.
+            bibcodes = list(filter(lambda entry: entry.get('bibcode', None) not None, curated_entries))
+            #collect dois if no bibcode is available.
+            dois = list(filter(lambda entry: (entry.get('doi', None) not None and entry.get('bibcode',None) is None), curated_entries))
+        
+            n_requested = len(dois) + len(bibcodes)
+
+            logger.info("MAINTENANCE task: requested a metadata update for '{}' records".format(n_requested))
+
+            # Update metadata and forward to master
+            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries)
+        except:
+            logger.error("Unable to parse file: {}. Please check each entry is properly formatted.".format(filename))
+    else:
+        logger.error("MAINTENANCE task: manual curation failed. Please specify a file containing the modified citations.")
     
 def diagnose(bibcodes, json):
     citation_count = db.get_citation_count(tasks.app)

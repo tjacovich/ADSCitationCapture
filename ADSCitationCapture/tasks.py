@@ -420,7 +420,7 @@ def task_maintenance_metadata(dois, bibcodes):
                 task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
 
 @app.task(queue='maintenance_metadata')
-def task_maintenance_curation(dois, bibcodes):
+def task_maintenance_curation(dois, bibcodes, curated_entries):
     """
     Maintenance operation:
     - Get all the registered citation targets (or only a subset of them if DOIs and/or bibcodes are specified)
@@ -428,13 +428,10 @@ def task_maintenance_curation(dois, bibcodes):
         - Get the citations bibcodes and transform them to their canonical form
         - Send to master an update with the new metadata and the current list of citations canonical bibcodes
     """
-    n_requested = len(dois) + len(bibcodes)
-    if n_requested == 0:
-        registered_records = db.get_citation_targets(app, only_status='REGISTERED')
-    else:
-        registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
-        registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
-        registered_records = _remove_duplicated_dict_in_list(registered_records)
+
+    registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
+    registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
+    registered_records = _remove_duplicated_dict_in_list(registered_records)
 
     for registered_record in registered_records:
         updated = False
