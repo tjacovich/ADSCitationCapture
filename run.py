@@ -116,15 +116,15 @@ def maintenance_curation(filename=None):
     Refetch metadata and update any manually curated values.
     """
     #checks if file is specificed
-    if filename not None:
+    if filename is not None:
         try:
             with open(filename) as f:
                 #convert file lines to list of dicts, 1 dict per entry.
                 curated_entries = [json.loads(entry[0]) for entry in f.readlines()]
             #collect bibcodes from entries if available.
-            bibcodes = list(filter(lambda entry: entry.get('bibcode', None) not None, curated_entries))
+            bibcodes = list(filter(lambda entry:(entry.get('bibcode', None) is not None), curated_entries))
             #collect dois if no bibcode is available.
-            dois = list(filter(lambda entry: (entry.get('doi', None) not None and entry.get('bibcode', None) is None), curated_entries))
+            dois = list(filter(lambda entry:(entry.get('doi', None) is not None and entry.get('bibcode', None) is None), curated_entries))
         
             n_requested = len(dois) + len(bibcodes)
 

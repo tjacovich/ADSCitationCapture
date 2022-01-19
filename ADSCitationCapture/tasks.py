@@ -407,7 +407,7 @@ def task_maintenance_metadata(dois, bibcodes):
                     parsed_metadata['alternate_bibcode'] = alternate_bibcode
                     bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
                     
-                if curated_metadata not {}:
+                if curated_metadata is not {}:
                     for key in curated_metadata.keys():
                         if key not in ['bibcode','doi']:
                             try:
@@ -450,10 +450,10 @@ def task_maintenance_curation(dois, bibcodes, curated_entries):
         bibcode_replaced = {}
         #First try and retrieve entry by bibcode.
         if curated_entry.get('bibcode'):
-            registered_record = db.get_citation_targets_by_bibcode(app, curated_entry.get('bibcode'), only_status='REGISTERED')   
+            registered_record = db.get_citation_targets_by_bibcode(app, [curated_entry.get('bibcode')], only_status='REGISTERED')   
         #if no bibcode specified, try by doi.
         elif curated_entry.get('doi'):
-            registered_record = db.get_citation_targets_by_doi(app, curated_entry.get('doi'), only_status='REGISTERED')   
+            registered_record = db.get_citation_targets_by_doi(app, [curated_entry.get('doi')], only_status='REGISTERED')   
         #report error
         else:
             logger.error('Unable retrieve entry for {} from database. Please check input file.'.format(curated_entry))

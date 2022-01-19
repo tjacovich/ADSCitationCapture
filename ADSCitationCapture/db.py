@@ -138,7 +138,7 @@ def _extract_key_citation_target_data(records_db, disable_filter=False):
             'alternate_bibcode': record_db.parsed_cited_metadata.get('alternate_bibcode', []),
             'content': record_db.content,
             'content_type': record_db.content_type,
-            'curated_metadata': record_db.manual_metadata if record_db.manual_metadata not None else {},
+            'curated_metadata': record_db.manual_metadata if record_db.manual_metadata is not None else {},
         }
         for record_db in records_db
         if disable_filter or record_db.parsed_cited_metadata.get('bibcode', None) is not None
