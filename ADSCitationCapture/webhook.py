@@ -21,7 +21,7 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 
 # =============================== FUNCTIONS ======================================= #
-def _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url, source_type="software",source_license="https://creativecommons.org/publicdomain/zero/1.0/"):
+def _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url, source_type="software", source_license=""):
     now = datetime.datetime.now()
     data = {
         "RelationshipType": {
@@ -47,7 +47,7 @@ def _build_data(event_type, original_relationship_name, source_bibcode, target_i
                 "ID": target_id
             },
             "Type": {
-                "Name": source_type 
+                "Name": source_type
             }
         },
         "LinkPublicationDate": now.strftime("%Y-%m-%d"),
@@ -83,10 +83,7 @@ def _source_cites_target(citation_change, parsed_metadata, deleted=False):
     target_id, target_id_schema, target_id_url = _target_elements(citation_change)
     source_bibcode = citation_change.citing
     source_type = parsed_metadata.get('doctype', "").lower()
-    try:
-        source_license = parsed_metadata.get('license_url',"")
-    except:
-        source_license = "https://creativecommons.org/publicdomain/zero/1.0/"
+    source_license = parsed_metadata.get('license_url', "")
     data = _build_data(event_type, original_relationship_name, source_bibcode, target_id, target_id_schema, target_id_url, source_type, source_license)
     return data
 
