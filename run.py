@@ -124,7 +124,7 @@ def maintenance_curation(filename=None):
             #collect bibcodes from entries if available.
             bibcodes = list(filter(lambda entry: entry.get('bibcode', None) not None, curated_entries))
             #collect dois if no bibcode is available.
-            dois = list(filter(lambda entry: (entry.get('doi', None) not None and entry.get('bibcode',None) is None), curated_entries))
+            dois = list(filter(lambda entry: (entry.get('doi', None) not None and entry.get('bibcode', None) is None), curated_entries))
         
             n_requested = len(dois) + len(bibcodes)
 

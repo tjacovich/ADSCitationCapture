@@ -47,6 +47,7 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
         citation_target.content_type = content_type
         citation_target.raw_cited_metadata = raw_metadata
         citation_target.parsed_cited_metadata = parsed_metadata
+        citation_target.curated_metadata = {}
         citation_target.status = status
         session.add(citation_target)
         try:
@@ -59,7 +60,7 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
             stored = True
     return stored
 
-def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, status=None):
+def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None):
     """
     Update metadata for a citation target
     """
@@ -72,9 +73,10 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
             except UnicodeEncodeError:
                 pass
         if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
-                (status is not None and citation_target.status != status):
+                (status is not None and citation_target.status != status) or citation_target.manual_metadata != manual_metadata:
             citation_target.raw_cited_metadata = raw_metadata
             citation_target.parsed_cited_metadata = parsed_metadata
+            citation_target.curated_metadata = curated_metadata
             if status is not None:
                 citation_target.status = status
             session.add(citation_target)
@@ -136,6 +138,7 @@ def _extract_key_citation_target_data(records_db, disable_filter=False):
             'alternate_bibcode': record_db.parsed_cited_metadata.get('alternate_bibcode', []),
             'content': record_db.content,
             'content_type': record_db.content_type,
+            'curated_metadata': record_db.manual_metadata if record_db.manual_metadata not None else {},
         }
         for record_db in records_db
         if disable_filter or record_db.parsed_cited_metadata.get('bibcode', None) is not None
@@ -209,6 +212,7 @@ def get_citation_target_metadata(app, doi):
         if citation_target_in_db:
             metadata['raw'] = citation_target.raw_cited_metadata
             metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
+            metadata['curated'] = citation_target.curated_metadata if citation_target.curated_metadata is not None else {}
             metadata['status'] = citation_target.status
     return metadata
 

@@ -71,6 +71,7 @@ class CitationTarget(Base):
     content_type = Column(citation_content_type)
     raw_cited_metadata = Column(Text())
     parsed_cited_metadata = Column(JSONB)
+    curated_metadata = Column(JSONB)
     status = Column(target_status_type)
     created = Column(UTCDateTime, default=get_date)
     updated = Column(UTCDateTime, onupdate=get_date)
