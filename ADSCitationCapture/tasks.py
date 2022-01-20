@@ -456,75 +456,79 @@ def task_maintenance_curation(dois, bibcodes, curated_entries):
             registered_record = db.get_citation_targets_by_doi(app, [curated_entry.get('doi')], only_status='REGISTERED')   
         #report error
         else:
-            logger.error('Unable retrieve entry for {} from database. Please check input file.'.format(curated_entry))
+            logger.error('Unable to retrieve entry for {} from database. Please check input file.'.format(curated_entry))
 
         # Fetch DOI metadata (if HTTP request fails, an exception is raised
         # and the task will be re-queued (see app.py and adsputils))
-        raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
-        if raw_metadata:
-            parsed_metadata = doi.parse_metadata(raw_metadata)
-            is_software = parsed_metadata.get('doctype', '').lower() == "software"
-                        
-            if not is_software:
-                logger.error("The new metadata for '%s' has changed its 'doctype' and it is not 'software' anymore", registered_record['bibcode'])
-            elif parsed_metadata.get('bibcode') in (None, ""):
-                logger.error("The new metadata for '%s' affected the metadata parser and it did not correctly compute a bibcode", registered_record['bibcode'])
-            else:
-                # Detect concept DOIs: they have one or more versions of the software
-                # and they are not a version of something else
-                concept_doi = len(parsed_metadata.get('version_of', [])) == 0 and len(parsed_metadata.get('versions', [])) >= 1
-                different_bibcodes = registered_record['bibcode'] != parsed_metadata['bibcode']
-                if concept_doi and different_bibcodes:
-                    # Concept DOI publication date changes with newer software version
-                    # and authors can also change (i.e., first author last name initial)
-                    # but we want to respect the year in the bibcode, which corresponds
-                    # to the year of the latest release when it was first ingested
-                    # by ADS
-                    parsed_metadata['bibcode'] = registered_record['bibcode']
-                    # Temporary bugfix (some bibcodes have non-capital letter at the end):
-                    parsed_metadata['bibcode'] = parsed_metadata['bibcode'][:-1] + parsed_metadata['bibcode'][-1].upper()
-                    # Re-verify if bibcodes are still different (they could be if
-                    # name parsing has changed):
+        try:
+            raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
+        
+            if raw_metadata:
+                parsed_metadata = doi.parse_metadata(raw_metadata)
+                is_software = parsed_metadata.get('doctype', '').lower() == "software"
+                            
+                if not is_software:
+                    logger.error("The new metadata for '%s' has changed its 'doctype' and it is not 'software' anymore", registered_record['bibcode'])
+                elif parsed_metadata.get('bibcode') in (None, ""):
+                    logger.error("The new metadata for '%s' affected the metadata parser and it did not correctly compute a bibcode", registered_record['bibcode'])
+                else:
+                    # Detect concept DOIs: they have one or more versions of the software
+                    # and they are not a version of something else
+                    concept_doi = len(parsed_metadata.get('version_of', [])) == 0 and len(parsed_metadata.get('versions', [])) >= 1
                     different_bibcodes = registered_record['bibcode'] != parsed_metadata['bibcode']
-                if different_bibcodes:
-                    # These two bibcodes are identical and we can signal the broker
-                    event_data = webhook.identical_bibcodes_event_data(registered_record['bibcode'], parsed_metadata['bibcode'])
-                    if event_data:
-                        dump_prefix = datetime.now().strftime("%Y%m%d") # "%Y%m%d_%H%M%S"
-                        logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], parsed_metadata['bibcode'])
-                        task_emit_event.delay(event_data, dump_prefix)
-                    #
-                    logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'], parsed_metadata.get('bibcode', None))
-                    alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])
-                    alternate_bibcode += registered_record.get('alternate_bibcode', [])
-                    if registered_record['bibcode'] not in alternate_bibcode:
-                        alternate_bibcode.append(registered_record['bibcode'])
-                    parsed_metadata['alternate_bibcode'] = alternate_bibcode
-                    bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
+                    if concept_doi and different_bibcodes:
+                        # Concept DOI publication date changes with newer software version
+                        # and authors can also change (i.e., first author last name initial)
+                        # but we want to respect the year in the bibcode, which corresponds
+                        # to the year of the latest release when it was first ingested
+                        # by ADS
+                        parsed_metadata['bibcode'] = registered_record['bibcode']
+                        # Temporary bugfix (some bibcodes have non-capital letter at the end):
+                        parsed_metadata['bibcode'] = parsed_metadata['bibcode'][:-1] + parsed_metadata['bibcode'][-1].upper()
+                        # Re-verify if bibcodes are still different (they could be if
+                        # name parsing has changed):
+                        different_bibcodes = registered_record['bibcode'] != parsed_metadata['bibcode']
+                    if different_bibcodes:
+                        # These two bibcodes are identical and we can signal the broker
+                        event_data = webhook.identical_bibcodes_event_data(registered_record['bibcode'], parsed_metadata['bibcode'])
+                        if event_data:
+                            dump_prefix = datetime.now().strftime("%Y%m%d") # "%Y%m%d_%H%M%S"
+                            logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], parsed_metadata['bibcode'])
+                            task_emit_event.delay(event_data, dump_prefix)
+                        #
+                        logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'], parsed_metadata.get('bibcode', None))
+                        alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])
+                        alternate_bibcode += registered_record.get('alternate_bibcode', [])
+                        if registered_record['bibcode'] not in alternate_bibcode:
+                            alternate_bibcode.append(registered_record['bibcode'])
+                        parsed_metadata['alternate_bibcode'] = alternate_bibcode
+                        bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
+                    
+                    #cycle through keys and set values for parsed metadata according to curated_metadata.
+                    for key in curated_metadata.keys():
+                        if key not in ['bibcode','doi']:
+                            try:
+                                parsed_metadata[key] = curated_metadata[key]
+                            except:
+                                logger.error("Failed setting {} for {}.".format(key, parsed_metadata.get('bibcode')))
                 
-                #cycle through keys and set values for parsed metadata according to curated_metadata.
-                for key in curated_metadata.keys():
-                    if key not in ['bibcode','doi']:
-                        try:
-                            parsed_metadata[key] = curated_metadata[key]
-                        except:
-                            logger.error("Failed setting {} for {}.".format(key, parsed_metadata.get('bibcode')))
-            
-                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata)
+                    updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata)
 
-        if updated:
-            citation_change = adsmsg.CitationChange(content=registered_record['content'],
-                                                           content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
-                                                           status=adsmsg.Status.updated,
-                                                           timestamp=datetime.now()
-                                                           )
-            if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
-                # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
-                original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
-                citations = api.get_canonical_bibcodes(app, original_citations)
-                logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
-
+            if updated:
+                citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                            content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                            status=adsmsg.Status.updated,
+                                                            timestamp=datetime.now()
+                                                            )
+                if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+                    # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+                    original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
+                    citations = api.get_canonical_bibcodes(app, original_citations)
+                    logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+                    task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
+        except Exception as e:
+            logger.error("task_maintenance_curation Failed to update metadata for {} with Exception: {}. Please check that the bibcode or doi matches a target record.".format(curated_entry, e))
+            raise
 
 @app.task(queue='maintenance_resend')
 def task_maintenance_resend(dois, bibcodes, broker):

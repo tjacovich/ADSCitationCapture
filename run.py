@@ -117,10 +117,17 @@ def maintenance_curation(filename=None):
     """
     #checks if file is specificed
     if filename is not None:
-        try:
-            with open(filename) as f:
+        
+        with open(filename) as f:
+            try:
                 #convert file lines to list of dicts, 1 dict per entry.
-                curated_entries = [json.loads(entry[0]) for entry in f.readlines()]
+                curated_entries = [json.loads(i) for i in f.read().splitlines()]
+
+            except Exception as e:
+                msg = "Parsing file: {}, failed with Exception: {}. Please check each entry is properly formatted.".format(filename, e)
+                logger.error(msg)
+                raise
+
             #collect bibcodes from entries if available.
             bibcodes = list(filter(lambda entry:(entry.get('bibcode', None) is not None), curated_entries))
             #collect dois if no bibcode is available.
@@ -130,13 +137,14 @@ def maintenance_curation(filename=None):
 
             logger.info("MAINTENANCE task: requested a metadata update for '{}' records".format(n_requested))
 
-            # Update metadata and forward to master
+        # Update metadata and forward to master
+        if n_requested != 0:
             tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries)
-        except:
-            logger.error("Unable to parse file: {}. Please check each entry is properly formatted.".format(filename))
+
     else:
         logger.error("MAINTENANCE task: manual curation failed. Please specify a file containing the modified citations.")
-    
+
+
 def diagnose(bibcodes, json):
     citation_count = db.get_citation_count(tasks.app)
     citation_target_count = db.get_citation_target_count(tasks.app)
@@ -236,6 +244,10 @@ if __name__ == '__main__':
                         action='store',
                         default=[],
                         help='Space separated bibcode list, if no list is provided then the full database is considered')
+    maintenance_parser.add_argument('--input_filename',
+                        action='store',
+                        type=str,
+                        help='Path to the input file (e.g., refids.dat) file that contains the citation list')
     diagnose_parser = subparsers.add_parser('DIAGNOSE', help='Process data for diagnosing infrastructure')
     diagnose_parser.add_argument(
                         '--bibcodes',
@@ -263,7 +275,7 @@ if __name__ == '__main__':
             logger.info("PROCESS task: %s", args.input_filename)
             process(args.input_filename, force=False, diagnose=False)
     elif args.action == "MAINTENANCE":
-        if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not args.reevaluate:
+        if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not args.reevaluate and not args.curation:
             maintenance_parser.error("nothing to be done since no task has been selected")
         else:
             # Read files if provided (instead of a direct list of DOIs)
