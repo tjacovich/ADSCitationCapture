@@ -468,10 +468,38 @@ python3 run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_up
 
 
 ```
-# All the registered citation targets
+# Curating based on an input file.
 python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
-
 ```
+- Curated Example
+
+    For a given citation target in the database, the `parsed_cited_metadata` takes the form
+
+    ```
+    parsed_cited_metadata
+
+    {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Last, First"], "bibcode": "YYYYzndo...XYZABCR", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [],"affiliations": ["Some Institution<ORCID>0000-0009-8765-4321</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Last, F"]}
+    ```
+   
+    Modifications to the metadata can be made by supplying a file of the form
+
+
+    ```
+    sample_input_file.dat
+
+    {"authors": ["Some, Name"], "bibcode": YYYYzndo...XYZABCR", "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"], "normalized_authors": ["Some, N"]}
+    ```
+   
+   `input_filename` requires either `"bibcode"` or `"doi"` to be set for the entry to be retrieved. All other entries are optional.
+
+    The `--curation` flag takes this input and converts `parsed_cited_metadata` to
+
+
+    ```
+    {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Some, Name"], "bibcode": "YYYYzndo...XYZABCR", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [], "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Some, N"]}
+    ```
+
+    
 
 # Miscellaneous
 
