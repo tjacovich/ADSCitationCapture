@@ -73,7 +73,7 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
             except UnicodeEncodeError:
                 pass
         if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
-                (status is not None and citation_target.status != status) or citation_target.manual_metadata != manual_metadata:
+                (status is not None and citation_target.status != status) or citation_target.curated_metadata != curated_metadata:
             citation_target.raw_cited_metadata = raw_metadata
             citation_target.parsed_cited_metadata = parsed_metadata
             citation_target.curated_metadata = curated_metadata
@@ -138,7 +138,7 @@ def _extract_key_citation_target_data(records_db, disable_filter=False):
             'alternate_bibcode': record_db.parsed_cited_metadata.get('alternate_bibcode', []),
             'content': record_db.content,
             'content_type': record_db.content_type,
-            'curated_metadata': record_db.manual_metadata if record_db.manual_metadata is not None else {},
+            'curated_metadata': record_db.curated_metadata if record_db.curated_metadata is not None else {},
         }
         for record_db in records_db
         if disable_filter or record_db.parsed_cited_metadata.get('bibcode', None) is not None

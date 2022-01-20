@@ -450,10 +450,10 @@ def task_maintenance_curation(dois, bibcodes, curated_entries):
         bibcode_replaced = {}
         #First try and retrieve entry by bibcode.
         if curated_entry.get('bibcode'):
-            registered_record = db.get_citation_targets_by_bibcode(app, [curated_entry.get('bibcode')], only_status='REGISTERED')   
+            registered_record = db.get_citation_targets_by_bibcode(app, [curated_entry.get('bibcode')], only_status='REGISTERED')[0]   
         #if no bibcode specified, try by doi.
         elif curated_entry.get('doi'):
-            registered_record = db.get_citation_targets_by_doi(app, [curated_entry.get('doi')], only_status='REGISTERED')   
+            registered_record = db.get_citation_targets_by_doi(app, [curated_entry.get('doi')], only_status='REGISTERED')[0]   
         #report error
         else:
             logger.error('Unable to retrieve entry for {} from database. Please check input file.'.format(curated_entry))
@@ -503,16 +503,16 @@ def task_maintenance_curation(dois, bibcodes, curated_entries):
                             alternate_bibcode.append(registered_record['bibcode'])
                         parsed_metadata['alternate_bibcode'] = alternate_bibcode
                         bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
-                    
+
                     #cycle through keys and set values for parsed metadata according to curated_metadata.
-                    for key in curated_metadata.keys():
+                    for key in curated_entry.keys():
                         if key not in ['bibcode','doi']:
                             try:
-                                parsed_metadata[key] = curated_metadata[key]
+                                parsed_metadata[key] = curated_entry[key]
                             except:
                                 logger.error("Failed setting {} for {}.".format(key, parsed_metadata.get('bibcode')))
                 
-                    updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata)
+                    updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_entry)
 
             if updated:
                 citation_change = adsmsg.CitationChange(content=registered_record['content'],
