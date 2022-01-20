@@ -218,6 +218,7 @@ def get_associated_works_by_doi(app, all_versions_doi, only_status='REGISTERED')
     except:
         logger.info('No associated works for {} in database', dois[0])
         return [None]
+        
 def get_citation_targets(app, only_status='REGISTERED'):
     """
     Return a list of dict with all citation targets (or only the registered ones)

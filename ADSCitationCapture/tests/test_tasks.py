@@ -161,8 +161,8 @@ class TestWorkers(TestBase):
             self.assertFalse(mocked['webhook_dump_event'].called)
             self.assertFalse(mocked['webhook_emit_event'].called)
 
-    def test_process_updated_associated_works_doi(self):
-        tasks.process_updated_associated_works(target_bibcode,associated_versions)
+    def test_process_updated_associated_works(self):
+        tasks.task_process_updated_associated_works(target_bibcode, associated_versions)
         
     def test_process_deleted_citation_changes_doi(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.deleted)

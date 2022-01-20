@@ -81,20 +81,22 @@ def task_process_new_citation(citation_change, force=False):
                         logger.error("Unable to recover related versions for {}",citation_change)
                         all_versions_doi = None
                     #fetch additional versions from db if they exist.
-                    if all_versions_doi['versions'] not in (None, ''):
+                    if all_versions_doi['versions'] not in (None,[]):
+                        logger.info("Found {} versions for {}".format(len(all_versions_doi['versions']),citation_change.content))
                         versions_in_db=db.get_associated_works_by_doi(app, all_versions_doi)
                         #Only add bibcodes if there are versions in db, otherwise leave as None.
-                        if versions_in_db not in ([""], [''], [None], None):
-                            logger.info("Found {} versions in database", versions_in_db)
+                        if versions_in_db not in ([], [None]):
+                            logger.info("Found {} versions in database for {}".format(len(versions_in_db),citation_change.content))
                             #adds the new citation target bibcode because it will not be in the db yet, 
                             # and then appends the versions already in the db.
                             associated_version_bibcodes = [parsed_metadata.get('bibcode')]
                             associated_version_bibcodes.extend(versions_in_db)
                             for dois in versions_in_db:
                                 #update associated works for all versions in db
-                                logger.debug('Calling task process_updated_associated_works')
-                                task_process_updated_associated_works.delay(dois,associated_version_bibcodes)
-
+                                logger.info('Calling task process_updated_associated_works')
+                                task_process_updated_associated_works.delay(dois, associated_version_bibcodes)
+                        
+    #PID
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
         content_type = "PID"

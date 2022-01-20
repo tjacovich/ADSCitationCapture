@@ -200,7 +200,7 @@ def maintentance_reevaluate_associated_works(dois, bibcodes):
     """
     Update associated software records for citation targets already in the database.
     """
-     n_requested = len(dois) + len(bibcodes)
+    n_requested = len(dois) + len(bibcodes)
     if n_requested == 0:
         logger.info("MAINTENANCE task: checking all the registered records for associated works")
     else:
