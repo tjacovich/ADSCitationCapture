@@ -456,6 +456,23 @@ python3 run.py MAINTENANCE --metadata --doi 10.5281/zenodo.840393
 python3 run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_updates_09232019.out
 ```
 
+- Curate metadata:
+    - User supplies an input file containing entries they wish to modify with each line in json form:
+    ```
+    {"bibcode":"XYZ....2022","key_to_change_1":"value_1","key_to_change_2":"value_2"}
+    ```
+    - Will identify database entries specified in `input_filename`
+    - Parse each line of `input_filename` into separate json entries.
+    - Replace `parsed_cited_metadata` field entries with those from `input_filename`.
+    - Save `input_filename` entries in separtate `curated_metadata` field to prevent automated updates from overwriting changes.
+
+
+```
+# All the registered citation targets
+python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
+
+```
+
 # Miscellaneous
 
 ## Alembic
