@@ -464,7 +464,7 @@ python3 run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_up
     - Will identify database entries specified in `input_filename`
     - Parse each line of `input_filename` into separate json entries.
     - Replace `parsed_cited_metadata` field entries with those from `input_filename`.
-    - Save `input_filename` entries in separtate `curated_metadata` field to prevent automated updates from overwriting changes.
+    - Save `input_filename` entries in separate `curated_metadata` field to prevent automated updates from overwriting curated changes.
 
 
 ```
@@ -477,6 +477,7 @@ python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
 
     ```
     parsed_cited_metadata
+    ----------------------
 
     {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Last, First"], "bibcode": "YYYYzndo...BCDEFGR", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [],"affiliations": ["Some Institution<ORCID>0000-0009-8765-4321</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Last, F"]}
     ```
@@ -486,6 +487,7 @@ python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
 
     ```
     sample_input_file.dat
+    ----------------------
 
     {"authors": ["Some, Name"], "bibcode": YYYYzndo...BCDEFGR", "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"], "normalized_authors": ["Some, N"]}
     ```
@@ -496,6 +498,9 @@ python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
 
 
     ```
+    parsed_cited_metadata
+    ----------------------
+    
     {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Some, Name"], "bibcode": "YYYYzndo...BCDEFGR", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [], "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Some, N"]}
     ```
 
