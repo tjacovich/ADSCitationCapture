@@ -230,6 +230,7 @@ pip3 install -r requirements.txt
 pip3 install -r dev-requirements.txt
 alembic upgrade head
 ```
+Currently, `python3` versions `python 3.10` and newer are incompatible as certain required features have been deprecated or renamed.
 
 Diagnose your setup by running an asynchronous worker (it requires a RabbitMQ instance):
 
@@ -500,7 +501,7 @@ python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
     ```
     parsed_cited_metadata
     ----------------------
-    
+
     {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Some, Name"], "bibcode": "YYYYzndo...BCDEFGR", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [], "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Some, N"]}
     ```
 
