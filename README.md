@@ -478,7 +478,7 @@ python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
     ```
     parsed_cited_metadata
 
-    {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Last, First"], "bibcode": "YYYYzndo...XYZABCR", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [],"affiliations": ["Some Institution<ORCID>0000-0009-8765-4321</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Last, F"]}
+    {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Last, First"], "bibcode": "YYYYzndo...BCDEFGR", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [],"affiliations": ["Some Institution<ORCID>0000-0009-8765-4321</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Last, F"]}
     ```
    
     Modifications to the metadata can be made by supplying a file of the form
@@ -487,7 +487,7 @@ python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
     ```
     sample_input_file.dat
 
-    {"authors": ["Some, Name"], "bibcode": YYYYzndo...XYZABCR", "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"], "normalized_authors": ["Some, N"]}
+    {"authors": ["Some, Name"], "bibcode": YYYYzndo...BCDEFGR", "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"], "normalized_authors": ["Some, N"]}
     ```
    
    `input_filename` requires either `"bibcode"` or `"doi"` to be set for the entry to be retrieved. All other entries are optional.
@@ -496,10 +496,10 @@ python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
 
 
     ```
-    {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Some, Name"], "bibcode": "YYYYzndo...XYZABCR", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [], "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Some, N"]}
+    {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Some, Name"], "bibcode": "YYYYzndo...BCDEFGR", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [], "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Some, N"]}
     ```
 
-    
+    The modified `parsed_cited_metadata` is then used to construct the message forwarded to Master Pipeline.
 
 # Miscellaneous
 
