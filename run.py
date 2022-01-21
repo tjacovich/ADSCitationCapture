@@ -111,13 +111,12 @@ def maintenance_reevaluate(dois, bibcodes):
     # Send to master updated metadata
     tasks.task_maintenance_reevaluate.delay(dois, bibcodes)
 
-def maintenance_curation(filename=None):
+def maintenance_curation(filename = None, dois = None, bibcodes = None, delete = False):
     """
     Refetch metadata and update any manually curated values.
     """
     #checks if file is specificed
     if filename is not None:
-        
         with open(filename) as f:
             try:
                 #convert file lines to list of dicts, 1 dict per entry.
@@ -139,7 +138,16 @@ def maintenance_curation(filename=None):
 
         # Update metadata and forward to master
         if n_requested != 0:
-            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries)
+            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, delete)
+        else:
+            logger.info("No targets specified for curation.")
+
+    elif dois is not None or bibcodes is not None:
+        if delete:
+            n_requested = len(dois) + len(bibcodes)
+            logger.info("MAINTENANCE task: requested deletion of curated metadata for '{}' records.".format(n_requested))
+            curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"dois":doi} for doi in dois]
+            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, delete)
 
     else:
         logger.error("MAINTENANCE task: manual curation failed. Please specify a file containing the modified citations.")
@@ -248,6 +256,10 @@ if __name__ == '__main__':
                         action='store',
                         type=str,
                         help='Path to the input file (e.g., refids.dat) file that contains the citation list')
+    maintenance_parser.add_argument('--delete',
+                        action='store_true',
+                        default=False,
+                        help='Delete manually curated metadata for supplied bibcodes.')
     diagnose_parser = subparsers.add_parser('DIAGNOSE', help='Process data for diagnosing infrastructure')
     diagnose_parser.add_argument(
                         '--bibcodes',
@@ -274,6 +286,7 @@ if __name__ == '__main__':
         else:
             logger.info("PROCESS task: %s", args.input_filename)
             process(args.input_filename, force=False, diagnose=False)
+
     elif args.action == "MAINTENANCE":
         if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not args.reevaluate and not args.curation:
             maintenance_parser.error("nothing to be done since no task has been selected")
@@ -304,7 +317,8 @@ if __name__ == '__main__':
             elif args.reevaluate:
                 maintenance_reevaluate(dois, bibcodes)
             elif args.curation:
-                maintenance_curation(args.input_filename)
+                maintenance_curation(args.input_filename, dois, bibcodes, args.delete)
+
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)
