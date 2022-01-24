@@ -151,7 +151,7 @@ def maintenance_curation(filename = None, dois = None, bibcodes = None, json = N
     
     elif json is not None:
         try:
-            #convert file lines to list of dicts, 1 dict per entry.
+            #convert json line to list of dicts, 1 dict per entry.
             curated_entries = [json.loads(json)]
 
         except Exception as e:
