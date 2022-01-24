@@ -474,6 +474,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, delete = False):
                     logger.error("The new metadata for '%s' has changed its 'doctype' and it is not 'software' anymore", registered_record['bibcode'])
                 elif parsed_metadata.get('bibcode') in (None, ""):
                     logger.error("The new metadata for '%s' affected the metadata parser and it did not correctly compute a bibcode", registered_record['bibcode'])
+                #Note: This may not be necessary for curation to take place.
                 else:
                     # Detect concept DOIs: they have one or more versions of the software
                     # and they are not a version of something else
