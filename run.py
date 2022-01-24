@@ -111,7 +111,7 @@ def maintenance_reevaluate(dois, bibcodes):
     # Send to master updated metadata
     tasks.task_maintenance_reevaluate.delay(dois, bibcodes)
 
-def maintenance_curation(filename = None, dois = None, bibcodes = None, delete = False):
+def maintenance_curation(filename = None, dois = None, bibcodes = None, json = None, delete = False):
     """
     Refetch metadata and update any manually curated values.
     """
@@ -148,6 +148,26 @@ def maintenance_curation(filename = None, dois = None, bibcodes = None, delete =
             logger.info("MAINTENANCE task: requested deletion of curated metadata for '{}' records.".format(n_requested))
             curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"dois":doi} for doi in dois]
             tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, delete)
+    
+    elif json is not None:
+        try:
+            #convert file lines to list of dicts, 1 dict per entry.
+            curated_entries = [json.loads(json)]
+
+        except Exception as e:
+            msg = "Parsing json arg: {}, failed with Exception: {}. Please check each entry is properly formatted.".format(filename, e)
+            logger.error(msg)
+            raise
+        
+        #collect bibcodes from entries if available.
+        bibcodes = list(filter(lambda entry:(entry.get('bibcode', None) is not None), curated_entries))
+        #collect dois if no bibcode is available.
+        dois = list(filter(lambda entry:(entry.get('doi', None) is not None and entry.get('bibcode', None) is None), curated_entries))
+    
+        n_requested = len(dois) + len(bibcodes)
+
+        logger.info("MAINTENANCE task: requested a metadata update for '{}' records".format(n_requested))
+        tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, delete)
 
     else:
         logger.error("MAINTENANCE task: manual curation failed. Please specify a file containing the modified citations.")
@@ -317,7 +337,7 @@ if __name__ == '__main__':
             elif args.reevaluate:
                 maintenance_reevaluate(dois, bibcodes)
             elif args.curation:
-                maintenance_curation(args.input_filename, dois, bibcodes, args.delete)
+                maintenance_curation(args.input_filename, dois, bibcodes, json, args.delete)
 
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
