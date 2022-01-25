@@ -79,7 +79,9 @@ def _update_citation_target_metadata_session(session, content, raw_metadata, par
         citation_target.parsed_cited_metadata = parsed_metadata
         citation_target.curated_metadata = curated_metadata
         citation_target.bibcode = bibcode
-        citation_target.associated_works = associated
+        if(citation_target.associated_works != associated):
+                logger.debug("associated works set for {} set from {} to {}".format(citation_target.content, citation_target.associated_works, associated))
+                citation_target.associated_works = associated
         if status is not None:
             citation_target.status = status
         session.add(citation_target)

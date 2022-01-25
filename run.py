@@ -405,8 +405,12 @@ if __name__ == '__main__':
                 maintenance_repopulate()
 =======
             elif args.eval_associated:
+<<<<<<< HEAD
                 maintenance_reevaluate_associated_works(dois, bibcodes)
 >>>>>>> 6aed0af (Initial modifications to maintenance tasks for associated works.)
+=======
+                maintentance_reevaluate_associated_works(dois,bibcodes)
+>>>>>>> 6219aaf (Updates to multiple parts of task.py to deal with updating associated works in database. Updates to logging processes in db.py and tasky.py. Updated MAINTENANCE --eval_associated in run.py)
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)
