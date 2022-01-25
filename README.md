@@ -473,15 +473,18 @@ python3 run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_up
 python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
 # Curating based on JSON from a command line argument.
 python3 run.py MAINTENANCE --curation --json {'curated_metadata'}
-# Delete curated_metadata for a given entry by bibcode
-python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --delete
-# Delete curated_metadata for a given entry by doi
-python3 run.py MAINTENANCE --curation --doi "10.XYZA/ZENODO.BCDEFG" --delete
-# Delete curated_metadata by file
-python3 run.py MAINTENANCE --curation --input_filename $/path/to/input_file --delete
-
+# Clear curated_metadata for a given entry by bibcode
+python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --reset
+# Clear curated_metadata for a given entry by doi
+python3 run.py MAINTENANCE --curation --doi "10.XYZA/ZENODO.BCDEFG" --reset
+# Clear curated_metadata by file
+python3 run.py MAINTENANCE --curation --input_filename $/path/to/input_file --reset
+# Display current metadata for a given entry by doi
+python3 run.py MAINTENANCE --curation --doi "10.XYZA/ZENODO.BCDEFG" --show
+# Display current metadata for a given bibcode
+python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --show
 ```
-For deleting by input file, only the `doi` or `bibcode` needs to be specified in the file. Any other details entered into the entry will be added as new metadata. You can use this to remove a single value from the curated metadata by passing a json entry with all the old values except for the one to be deleted.
+For clearing `curated_metadata` by input file, only the `doi` or `bibcode` needs to be specified in the file. Any other details entered into the entry will be added as new metadata. You can use this to remove a single value from the curated metadata by passing a json entry with all the old values except for the one to be deleted.
 
 - Curated Example
 

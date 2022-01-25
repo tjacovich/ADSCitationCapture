@@ -111,7 +111,7 @@ def maintenance_reevaluate(dois, bibcodes):
     # Send to master updated metadata
     tasks.task_maintenance_reevaluate.delay(dois, bibcodes)
 
-def maintenance_curation(filename = None, dois = None, bibcodes = None, json = None, delete = False):
+def maintenance_curation(filename = None, dois = None, bibcodes = None, json = None, reset = False, show = False):
     """
     Refetch metadata and update any manually curated values.
     """
@@ -138,36 +138,39 @@ def maintenance_curation(filename = None, dois = None, bibcodes = None, json = N
 
         # Update metadata and forward to master
         if n_requested != 0:
-            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, delete)
+            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, reset)
         else:
             logger.info("No targets specified for curation.")
 
     elif dois is not None or bibcodes is not None:
-        if delete:
+        if reset:
             n_requested = len(dois) + len(bibcodes)
             logger.info("MAINTENANCE task: requested deletion of curated metadata for '{}' records.".format(n_requested))
-            curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"dois":doi} for doi in dois]
-            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, delete)
-    
-    elif json is not None:
-        try:
-            #convert json line to list of dicts, 1 dict per entry.
-            curated_entries = [json.loads(json)]
+            curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"doi":doi} for doi in dois]
+            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, reset)
+        elif show:
+            n_requested = len(dois) + len(bibcodes)
+            curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"doi":doi} for doi in dois]
+            print(curated_entries)
+            logger.info("MAINTENANCE task: Displaying current metadata for '{}' record(s).".format(n_requested))
+            tasks.task_maintenance_show_metadata.delay(curated_entries)
+        elif json:
+            try:
+                #convert json line to list of dicts, 1 dict per entry.
+                curated_entries = [json.loads(json)]
+                if dois:
+                    curated_entries[0]['doi'] = dois[0]
+                elif bibcodes:
+                    curated_entries[0]['bibcode'] = bibcodes[0]
+            except Exception as e:
+                msg = "Parsing json arg: {}, failed with Exception: {}. Please check each entry is properly formatted.".format(filename, e)
+                logger.error(msg)
+                raise
+            
+            n_requested = len(dois) + len(bibcodes)
 
-        except Exception as e:
-            msg = "Parsing json arg: {}, failed with Exception: {}. Please check each entry is properly formatted.".format(filename, e)
-            logger.error(msg)
-            raise
-        
-        #collect bibcodes from entries if available.
-        bibcodes = list(filter(lambda entry:(entry.get('bibcode', None) is not None), curated_entries))
-        #collect dois if no bibcode is available.
-        dois = list(filter(lambda entry:(entry.get('doi', None) is not None and entry.get('bibcode', None) is None), curated_entries))
-    
-        n_requested = len(dois) + len(bibcodes)
-
-        logger.info("MAINTENANCE task: requested a metadata update for '{}' records".format(n_requested))
-        tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, delete)
+            logger.info("MAINTENANCE task: requested a metadata update for '{}' records".format(n_requested))
+            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, reset)
 
     else:
         logger.error("MAINTENANCE task: manual curation failed. Please specify a file containing the modified citations.")
@@ -276,10 +279,14 @@ if __name__ == '__main__':
                         action='store',
                         type=str,
                         help='Path to the input file (e.g., refids.dat) file that contains the citation list')
-    maintenance_parser.add_argument('--delete',
+    maintenance_parser.add_argument('--reset',
                         action='store_true',
                         default=False,
                         help='Delete manually curated metadata for supplied bibcodes.')
+    maintenance_parser.add_argument('--show',
+                        action='store_true',
+                        default=False,
+                        help='Show current metadata for a given citation target.')
     diagnose_parser = subparsers.add_parser('DIAGNOSE', help='Process data for diagnosing infrastructure')
     diagnose_parser.add_argument(
                         '--bibcodes',
@@ -337,7 +344,7 @@ if __name__ == '__main__':
             elif args.reevaluate:
                 maintenance_reevaluate(dois, bibcodes)
             elif args.curation:
-                maintenance_curation(args.input_filename, dois, bibcodes, json, args.delete)
+                maintenance_curation(args.input_filename, dois, bibcodes, json, args.reset, args.show)
 
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
