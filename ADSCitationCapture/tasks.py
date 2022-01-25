@@ -23,9 +23,9 @@ app.conf.CELERY_QUEUES = (
     Queue('process-new-citation', app.exchange, routing_key='process-new-citation'),
     Queue('process-updated-citation', app.exchange, routing_key='process-updated-citation'),
     Queue('process-deleted-citation', app.exchange, routing_key='process-deleted-citation'),
-    #Queue('process-updated-association-works', app.exchange, routing_key='process-updated-associated-works'),
+    Queue('process-updated-association-works', app.exchange, routing_key='process-updated-associated-works'),
     Queue('maintenance_canonical', app.exchange, routing_key='maintenance_canonical'),
-    Queue('maintenance_metadata', app.exchange, routing_key='maintenance_metadata'),
+    Queue('maintenance_metadata', app.exchange, routing_key='maintenance_meadata'),
     Queue('maintenance_resend', app.exchange, routing_key='maintenance_resend'),
     Queue('maintenance_reevaluate', app.exchange, routing_key='maintenance_reevaluate'),
     Queue('maintenance_associated_works', app.exchange, routing_key='maintenance_associated_works'),
@@ -85,7 +85,6 @@ def task_process_new_citation(citation_change, force=False):
                         logger.info("Found {} versions for {}".format(len(all_versions_doi['versions']),citation_change.content))
                         versions_in_db=db.get_associated_works_by_doi(app, all_versions_doi)
                         #Only add bibcodes if there are versions in db, otherwise leave as None.
-                        print(versions_in_db)
                         if versions_in_db not in ([], [None]):
                             #pudb.set_trace()
                             logger.info("Found {} versions in database for {}".format(len(versions_in_db),citation_change.content))
@@ -233,7 +232,7 @@ def task_process_updated_citation(citation_change, force=False):
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
         _emit_citation_change(citation_change, parsed_metadata)
         
-@app.task(queue='process-updated-citation')
+@app.task(queue='process-updated-associated-works')
 def task_process_updated_associated_works(target_bibcode, associated_versions, force=False):
     """
     Update associated works in citation record
