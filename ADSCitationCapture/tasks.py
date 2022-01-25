@@ -569,7 +569,18 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, delete = False):
                     #remove bad keys from curated entries.
                     for key in bad_keys:
                         curated_entry.pop(key)
-                    
+                    #regenerate bibcode with curated_metadata and append old bibcode to alternate_bibcode 
+                    if not delete:
+                        zenodo_bibstem = "zndo"
+                        new_bibcode = doi.build_bibcode(parsed_metadata, doi.zenodo_doi_re, zenodo_bibstem)
+                        alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])
+                        alternate_bibcode += registered_record.get('alternate_bibcode', [])
+                        if new_bibcode != parsed_metadata['bibcode']:
+                            if parsed_metadata.get('bibcode') not in alternate_bibcode:
+                                alternate_bibcode.append(parsed_metadata.get('bibcode'))
+                            parsed_metadata['bibcode'] = new_bibcode
+                            bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
+                            logger.info("Updated bibcode from {}  to {}".format(alternate_bibcode[-1], new_bibcode))
                     #update db
                     updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_entry)
 
