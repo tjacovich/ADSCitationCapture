@@ -164,12 +164,12 @@ def get_github_metadata(citation_url):
 
         try:
             path = urllib.parse.urlparse(citation_url).path.split("/")
+            github_api = "https://api.github.com/repos/{}/{}/license".format(path[1],path[2])
 
-        except:
-            msg = "Failed to parse :{}".format(citation_url)
+        except with Exception as e:
+            msg = "Failed to parse :{} with Exception: {}".format(citation_url,e)
             logger.error(msg)
 
-        github_api = "https://api.github.com/repos/{}/{}/license".format(path[1],path[2])
         try:
             git_return = requests.get(github_api)
             json_return = git_return.json()

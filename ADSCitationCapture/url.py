@@ -42,11 +42,11 @@ def is_alive(url):
 def is_github(url):
     try:
         domain = urllib.parse.urlparse(url).hostname
-        is_link_alive = is_alive(url)
+
     except:
         msg = "Failed to verify {}".format(url)
         logger.exception(msg)
         raise
     
-    return True if domain.endswith("github.com") and is_link_alive else False
+    return True if domain  "github.com" or domain is "www.github.com" and is_link_alive else False
     
