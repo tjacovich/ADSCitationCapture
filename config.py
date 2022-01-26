@@ -20,6 +20,10 @@ ASCL_URL = "http://ascl.net/"
 ADS_API_TOKEN = "<secret>"
 ADS_API_URL = "https://ui.adsabs.harvard.edu/v1/"
 
+GITHUB_API_TOKEN = "<secret>"
+GITHUB_API_URL = "https://api.github.com/"
+# When 'True', Collect license data from the Github API 
+GITHUB_API_MODE = False
 # When 'True', no events are emitted to the broker via the webhook
 TESTING_MODE = True
 # When 'True', it converts all the asynchronous calls into synchronous,

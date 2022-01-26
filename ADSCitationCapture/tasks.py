@@ -17,6 +17,7 @@ import adsmsg
 proj_home = os.path.realpath(os.path.join(os.path.dirname(__file__), '../'))
 app = app_module.ADSCitationCaptureCelery('ads-citation-capture', proj_home=proj_home, local_config=globals().get('local_config', {}))
 logger = app.logger
+github_api_mode = app.conf.get('GITHUB_API_MODE', False)
 
 
 app.conf.CELERY_QUEUES = (
@@ -87,11 +88,14 @@ def task_process_new_citation(citation_change, force=False):
         status = "EMITTABLE"
         is_link_alive = url.is_alive(citation_change.content)
         #If link is alive, attempt to get license info from github. Else return empty license.
-        if url.is_github(citation_change.content):
-            license_info = api.get_github_metadata(citation_change.content)
+        if url.is_github(citation_change.content) and is_link_alive:
+            if github_api_mode:
+                license_info = api.get_github_metadata(app, citation_change.content)
+            else:
+                license_info = {'license_name': "", 'license_url': ""}
         else:
-            license_info = {'license_name': None, 'license_url': None}
-        parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+            license_info = {'license_name': "", 'license_url': ""}
+        parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',""),'license_url':license_info.get('license_url',"") }
     
     else:
         logger.error("Citation change should have doi, pid or url informed: {}", citation_change)
