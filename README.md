@@ -472,8 +472,10 @@ python3 run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_up
 ```
 # Curating based on an input file.
 python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
-# Curating based on JSON from a command line argument.
-python3 run.py MAINTENANCE --curation --json {'curated_metadata'}
+# Curating based on JSON from a command line argument by bibcode.
+python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --json {'curated_metadata'}
+# Curating based on JSON from a command line argument by DOI.
+python3 run.py MAINTENANCE --curation --doi "10.XYZA/ZENODO.BCDEFG" --json {'curated_metadata'}
 # Clear curated_metadata for a given entry by bibcode
 python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --reset
 # Clear curated_metadata for a given entry by doi
