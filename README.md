@@ -465,6 +465,7 @@ python3 run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_up
     - Will identify database entries specified in `input_filename`
     - Parse each line of `input_filename` into separate json entries.
     - Replace `parsed_cited_metadata` field entries with those from `input_filename`.
+    - Update target bibcode based on `curated_metadata` (save old bibcode as alternate bibcode.)
     - Save `input_filename` entries in separate `curated_metadata` field to prevent automated updates from overwriting curated changes.
 
 
@@ -479,9 +480,9 @@ python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --reset
 python3 run.py MAINTENANCE --curation --doi "10.XYZA/ZENODO.BCDEFG" --reset
 # Clear curated_metadata by file
 python3 run.py MAINTENANCE --curation --input_filename $/path/to/input_file --reset
-# Display current metadata for a given entry by doi
+# Display current metadata for a given entry by doi as standard output
 python3 run.py MAINTENANCE --curation --doi "10.XYZA/ZENODO.BCDEFG" --show
-# Display current metadata for a given bibcode
+# Display current metadata for a given entry by bibcode as standard output
 python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --show
 ```
 For clearing `curated_metadata` by input file, only the `doi` or `bibcode` needs to be specified in the file. Any other details entered into the entry will be added as new metadata. You can use this to remove a single value from the curated metadata by passing a json entry with all the old values except for the one to be deleted.
