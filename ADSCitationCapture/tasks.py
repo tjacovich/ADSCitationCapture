@@ -453,7 +453,7 @@ def task_maintenance_show_metadata(curated_entries):
     for curated_entry in curated_entries:
         updated = False
         bibcode_replaced = {}
-        #Firt try by doi.
+        #First try by doi.
         try:
             if curated_entry.get('doi'):
                 registered_record = db.get_citation_targets_by_doi(app, [curated_entry.get('doi')], only_status='REGISTERED')[0]   
@@ -744,9 +744,6 @@ def task_maintenance_reevaluate(dois, bibcodes):
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                 task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
-
-
-
 
 @app.task(queue='output-results')
 def task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced={}):
