@@ -20,7 +20,7 @@ logger = setup_logging(__name__, proj_home=proj_home,
                         attach_stdout=config.get('LOG_STDOUT', False))
 
 dc = DataCiteParser()
-zenodo_doi_re = re.compile("^10.\d{4,9}/zenodo\.([0-9]*)$", re.IGNORECASE)
+zenodo_doi_re = re.compile(r"^10.\d{4,9}/zenodo\.([0-9]*)$", re.IGNORECASE)
 upper_case_az_character_re = re.compile("[A-Z]")
 
 
