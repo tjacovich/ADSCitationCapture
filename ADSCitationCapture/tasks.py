@@ -529,7 +529,7 @@ def task_maintenance_reevaluate(dois, bibcodes):
         bibcode_replaced = {}
         # Fetch DOI metadata (if HTTP request fails, an exception is raised
         # and the task will be re-queued (see app.py and adsputils))
-        if previously_discarded_record['content'] == 'DOI'
+        if previously_discarded_record['content_type'] == 'DOI':
             raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], previously_discarded_record['content'])
             if raw_metadata:
                 parsed_metadata = doi.parse_metadata(raw_metadata)
