@@ -85,16 +85,15 @@ def task_process_new_citation(citation_change, force=False):
     elif citation_change.content_type == adsmsg.CitationChangeContentType.url \
         and citation_change.content not in ["", None]:
         content_type = "URL"
-        status = "EMITTABLE"
         is_link_alive = url.is_alive(citation_change.content)
+        status = "EMITTABLE"
+        license_info = {'license_name': "", 'license_url': ""}
         #If link is alive, attempt to get license info from github. Else return empty license.
         if url.is_github(citation_change.content) and is_link_alive:
             if github_api_mode:
                 license_info = api.get_github_metadata(app, citation_change.content)
-            else:
-                license_info = {'license_name': "", 'license_url': ""}
-        else:
-            license_info = {'license_name': None, 'license_url': None}
+        elif not url.is_github(citation_change.content):
+            status = "DISCARDED"
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
 
     else:
@@ -157,10 +156,9 @@ def task_process_new_citation(citation_change, force=False):
         #Emits citation change to broker. Will currently fail for URLs as they are not set as software
         _emit_citation_change(citation_change, parsed_metadata)
 
-        stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
-        #stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
+        stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
 
 
 @app.task(queue='process-updated-citation')
@@ -531,31 +529,32 @@ def task_maintenance_reevaluate(dois, bibcodes):
         bibcode_replaced = {}
         # Fetch DOI metadata (if HTTP request fails, an exception is raised
         # and the task will be re-queued (see app.py and adsputils))
-        raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], previously_discarded_record['content'])
-        if raw_metadata:
-            parsed_metadata = doi.parse_metadata(raw_metadata)
-            is_software = parsed_metadata.get('doctype', '').lower() == "software"
-            if not is_software:
-                logger.error("Discarded '%s', it is not 'software'", previously_discarded_record['content'])
-            elif parsed_metadata.get('bibcode') in (None, ""):
-                logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", previously_discarded_record['content'])
-            else:
-                # Create citation target in the DB
-                updated = db.update_citation_target_metadata(app, previously_discarded_record['content'], raw_metadata, parsed_metadata, status='REGISTERED')
-                if updated:
-                    db.mark_all_discarded_citations_as_registered(app, previously_discarded_record['content'])
-        if updated:
-            citation_change = adsmsg.CitationChange(content=previously_discarded_record['content'],
-                                                           content_type=getattr(adsmsg.CitationChangeContentType, previously_discarded_record['content_type'].lower()),
-                                                           status=adsmsg.Status.new,
-                                                           timestamp=datetime.now()
-                                                           )
-            if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
-                # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
-                original_citations = db.get_citations_by_bibcode(app, parsed_metadata['bibcode'])
-                citations = api.get_canonical_bibcodes(app, original_citations)
-                logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
+        if previously_discarded_record['content'] == 'DOI'
+            raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], previously_discarded_record['content'])
+            if raw_metadata:
+                parsed_metadata = doi.parse_metadata(raw_metadata)
+                is_software = parsed_metadata.get('doctype', '').lower() == "software"
+                if not is_software:
+                    logger.error("Discarded '%s', it is not 'software'", previously_discarded_record['content'])
+                elif parsed_metadata.get('bibcode') in (None, ""):
+                    logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", previously_discarded_record['content'])
+                else:
+                    # Create citation target in the DB
+                    updated = db.update_citation_target_metadata(app, previously_discarded_record['content'], raw_metadata, parsed_metadata, status='REGISTERED')
+                    if updated:
+                        db.mark_all_discarded_citations_as_registered(app, previously_discarded_record['content'])
+            if updated:
+                citation_change = adsmsg.CitationChange(content=previously_discarded_record['content'],
+                                                            content_type=getattr(adsmsg.CitationChangeContentType, previously_discarded_record['content_type'].lower()),
+                                                            status=adsmsg.Status.new,
+                                                            timestamp=datetime.now()
+                                                            )
+                if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+                    # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+                    original_citations = db.get_citations_by_bibcode(app, parsed_metadata['bibcode'])
+                    citations = api.get_canonical_bibcodes(app, original_citations)
+                    logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+                    task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
 
 
 
