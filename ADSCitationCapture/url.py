@@ -48,5 +48,5 @@ def is_github(url):
         logger.exception(msg)
         raise
     
-    return True if domain == "github.com" or domain == "www.github.com" and is_link_alive else False
+    return True if domain in ["github.com", "www.github.com", "gist.github.com"] else False
     
