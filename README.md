@@ -524,6 +524,15 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
     {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Some, Name"], "bibcode": "YYYYzndo...BCDEFGS", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [], "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Some, N"]}
     ```
 
+- Update associated works:
+    - For each record in the database it:
+        - Identifies all records that share the same concept record and are also in the database.
+        - Collects bibcodes and version numbers for all associated records, including the concept record if it exists in the database.
+        - Updates the nonbib_record for the original record and forwards it to Master pipeline.
+```
+# Reevaluate associated works for all registered citation targets
+python3 run.py MAINTENANCE --eval-associated
+```        
 # Miscellaneous
 
 ## Alembic
