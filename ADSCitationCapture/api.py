@@ -178,7 +178,7 @@ def get_github_metadata(app, citation_url):
                 git_return = requests.get(github_api, headers=headers)
                 json_return = git_return.json()
                 license_name = json_return["license"]["key"] 
-                license_url = json_return["license"]["url"] if json_return["license"]["url"] is not 'null' else ""
+                license_url = json_return["license"]["url"] if json_return["license"]["url"] is not None else ""
             except:
                 msg = "Request to {} failed with status code: {}".format(github_api,git_return.status_code)
                 logger.error(msg)
