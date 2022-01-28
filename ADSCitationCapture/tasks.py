@@ -64,7 +64,7 @@ def task_process_new_citation(citation_change, force=False):
         and citation_change.content not in ["", None]:
         # Default values
         content_type = "DOI"
-        associated_version_bibcodes = ['']
+        associated_version_bibcodes = {'':''}
         if not citation_target_in_db:
             # Fetch DOI metadata (if HTTP request fails, an exception is raised
             # and the task will be re-queued (see app.py and adsputils))
@@ -85,15 +85,14 @@ def task_process_new_citation(citation_change, force=False):
                         logger.info("Found {} versions for {}".format(len(all_versions_doi['versions']),citation_change.content))
                         versions_in_db=db.get_associated_works_by_doi(app, all_versions_doi)
                         #Only add bibcodes if there are versions in db, otherwise leave as None.
-                        if versions_in_db not in ([], [None]):
-                            #pudb.set_trace()
+                        if versions_in_db not in (None, [None]):
                             logger.info("Found {} versions in database for {}".format(len(versions_in_db),citation_change.content))
                             #adds the new citation target bibcode because it will not be in the db yet, 
                             # and then appends the versions already in the db.
-                            associated_version_bibcodes = [parsed_metadata.get('bibcode')]
-                            associated_version_bibcodes.extend(versions_in_db)
+                            associated_version_bibcodes = {parsed_metadata.get('version'):parsed_metadata.get('bibcode')}
+                            associated_version_bibcodes.update(versions_in_db)
                             logger.debug("{}: associated_versions_bibcodes".format(associated_version_bibcodes))
-                            for bibcode in versions_in_db:
+                            for bibcode in versions_in_db.values():
                                 #update associated works for all versions in db
                                 logger.info('Calling task process_updated_associated_works')
                                 task_process_updated_associated_works.delay(bibcode, associated_version_bibcodes)
@@ -255,14 +254,14 @@ def task_process_updated_associated_works(target_bibcode, associated_versions, f
     citation_target_bibcode = parsed_metadata.get('bibcode', None)
     status = metadata.get('status', 'DISCARDED')
     #Forward the update only if status is "REGISTERED" and associated works is not None.
-    #if status == 'REGISTERED':
-    if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
-        # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
-        original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
-        citations = api.get_canonical_bibcodes(app, original_citations)
-        logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-        task_output_results.delay(citation_change, parsed_metadata, citations, associated_versions)
-        db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, associated = associated_versions)
+    if status == 'REGISTERED' and updated:
+        if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+            # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+            original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
+            citations = api.get_canonical_bibcodes(app, original_citations)
+            logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+            task_output_results.delay(citation_change, parsed_metadata, citations, associated_versions)
+            db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, associated = associated_versions)
        
 @app.task(queue='process-deleted-citation')
 def task_process_deleted_citation(citation_change, force=False):
@@ -885,18 +884,18 @@ def task_maintenance_reevaluate_associated_works(dois, bibcodes):
                     logger.error("Unable to recover related versions for {}",custom_citation_change)
                     all_versions_doi = None
                 #fetch additional versions from db if they exist.
-                if all_versions_doi['versions'] not in (None, ''):
+                if all_versions_doi['versions'] not in (None,[]):
+                    logger.info("Found {} versions for {}".format(len(all_versions_doi['versions']),custom_citation_change.content))
                     versions_in_db=db.get_associated_works_by_doi(app, all_versions_doi)
                     #Only add bibcodes if there are versions in db, otherwise leave as None.
-                    if versions_in_db not in ([""], [''], [None], None):
-                        logger.info("Found {} versions in database".format(len(versions_in_db)))
+                    if versions_in_db not in (None, [None]):
+                        logger.info("Found {} versions in database for {}".format(len(versions_in_db),custom_citation_change.content))
                         #adds the new citation target bibcode because it will not be in the db yet, 
                         # and then appends the versions already in the db.
-                        associated_version_bibcodes = [parsed_metadata.get('bibcode')]
-                        associated_version_bibcodes.extend(versions_in_db)
-                        db.update_citation_target_metadata(app,custom_citation_change.content, raw_metadata, parsed_metadata,associated = associated_version_bibcodes)
-                        task_output_results.delay(custom_citation_change, parsed_metadata, citations, associated_version_bibcodes)
-    
+                        associated_version_bibcodes=versions_in_db
+                        logger.debug("{}: associated_versions_bibcodes".format(associated_version_bibcodes))
+                        task_process_updated_associated_works.delay(registered_record['bibcode'], associated_version_bibcodes)
+                    
 
 @app.task(queue='output-results')
 def task_output_results(citation_change, parsed_metadata, citations, db_versions=[''], bibcode_replaced={}):
