@@ -55,7 +55,7 @@ def task_process_new_citation(citation_change, force=False):
     parsed_metadata = metadata.get('parsed', {})
     if citation_target_in_db:
         status = metadata.get('status', 'DISCARDED') # "REGISTERED" if it is a software record
-    
+
     #Zenodo
     if citation_change.content_type == adsmsg.CitationChangeContentType.doi \
         and citation_change.content not in ["", None]:
@@ -71,7 +71,7 @@ def task_process_new_citation(citation_change, force=False):
                 is_software = parsed_metadata.get('doctype', '').lower() == "software"
                 if parsed_metadata.get('bibcode') not in (None, "") and is_software:
                     status = "REGISTERED"
-    
+
     #ASCL
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
@@ -79,7 +79,7 @@ def task_process_new_citation(citation_change, force=False):
         status = None
         is_link_alive = url.is_alive(app.conf['ASCL_URL'] + citation_change.content)
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "software" }
-    
+
     #URL
     elif citation_change.content_type == adsmsg.CitationChangeContentType.url \
         and citation_change.content not in ["", None]:
@@ -92,17 +92,17 @@ def task_process_new_citation(citation_change, force=False):
         else:
             license_info = {'license_name': None, 'license_url': None}
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
-    
+
     else:
         logger.error("Citation change should have doi, pid or url informed: {}", citation_change)
         status = None
 
-    #Generates entry for Zenodo citations and notifies web broker 
+    #Generates entry for Zenodo citations and notifies web broker
     if status not in [None, "EMITTABLE"]:
         if not citation_target_in_db:
             # Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
-        
+
         if status == "REGISTERED":
             #Connects new bibcode to canonical bibcode and DOI
             if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
@@ -114,51 +114,51 @@ def task_process_new_citation(citation_change, force=False):
                         dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
                         logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", citation_change.citing, canonical_citing_bibcode)
                         task_emit_event.delay(event_data, dump_prefix)
-                
+
                 citation_target_bibcode = parsed_metadata.get('bibcode')
-                
+
                 # The new bibcode and the DOI are identical
                 event_data = webhook.identical_bibcode_and_doi_event_data(citation_target_bibcode, citation_change.content)
                 if event_data:
                     dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
                     logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", citation_target_bibcode, citation_change.content)
                     task_emit_event.delay(event_data, dump_prefix)
-                
+
                 # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                 original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
                 citations = api.get_canonical_bibcodes(app, original_citations)
-                
+
                 # Add canonical bibcode of current detected citation
                 if canonical_citing_bibcode and canonical_citing_bibcode not in citations:
                     citations.append(canonical_citing_bibcode)
-                
-                logger.debug("Calling 'task_output_results' with '%s'", citation_change)   
+
+                logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                 task_output_results.delay(citation_change, parsed_metadata, citations)
-            
+
             logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
 
             _emit_citation_change(citation_change, parsed_metadata)
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
-    
+
     #Alternate call if a URL
     elif status=="EMITTABLE":
         if not citation_target_in_db:
             # Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
-        
+
         logger.debug("Reached 'call _emit_citation_change' with '%s'", citation_change)
 
         #Emits citation change to broker. Will currently fail for URLs as they are not set as software
         _emit_citation_change(citation_change, parsed_metadata)
-        
+
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
         #stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
-    
-        
+
+
 @app.task(queue='process-updated-citation')
 def task_process_updated_citation(citation_change, force=False):
     """
@@ -261,15 +261,15 @@ def _emit_citation_change(citation_change, parsed_metadata):
     """
     is_link_alive = parsed_metadata and parsed_metadata.get("link_alive", False)
     is_software = parsed_metadata and parsed_metadata.get("doctype", "").lower() == "software"
-    is_emittable = parsed_metadata and citation_change.content_type == adsmsg.CitationChangeContentType.url 
-    
+    is_emittable = parsed_metadata and citation_change.content_type == adsmsg.CitationChangeContentType.url
+
     if is_software and is_link_alive:
         event_data = webhook.citation_change_to_event_data(citation_change, parsed_metadata)
         if event_data:
             dump_prefix = citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S")
             logger.debug("Calling 'task_emit_event' for '%s'", citation_change)
             task_emit_event.delay(event_data, dump_prefix)
-            
+
     elif is_emittable and is_link_alive:
         event_data = webhook.citation_change_to_event_data(citation_change, parsed_metadata)
         if event_data:
@@ -438,7 +438,7 @@ def task_maintenance_resend(dois, bibcodes, broker):
         registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
         registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
         registered_records = _remove_duplicated_dict_in_list(registered_records)
-        
+
         if broker:
             emittable_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='EMITTABLE')
             emittable_records = _remove_duplicated_dict_in_list(emittable_records)
@@ -475,12 +475,12 @@ def task_maintenance_resend(dois, bibcodes, broker):
                                                                    timestamp=datetime.now()
                                                                    )
                     # Signal that the citing bibcode cites the DOI
-                    event_data = webhook.citation_change_to_event_data(emit_citation_change)
+                    event_data = webhook.citation_change_to_event_data(emit_citation_change, parsed_metadata)
                     if event_data:
                         dump_prefix = emit_citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S_resent")
                         logger.debug("Calling 'task_emit_event' for '%s'", emit_citation_change)
                         task_emit_event.delay(event_data, dump_prefix)
-    if broker:                    
+    if broker:
         for emittable_record in emittable_records:
             citations = db.get_citations_by_bibcode(app, emittable_record['bibcode'])
             custom_citation_change = adsmsg.CitationChange(content=emittable_record['content'],
@@ -499,7 +499,7 @@ def task_maintenance_resend(dois, bibcodes, broker):
                                                                 timestamp=datetime.now()
                                                                 )
                     # Signal that the citing bibcode cites the DOI
-                    event_data = webhook.citation_change_to_event_data(emit_citation_change)
+                    event_data = webhook.citation_change_to_event_data(emit_citation_change, parsed_metadata)
                     if event_data:
                         dump_prefix = emit_citation_change.timestamp.ToDatetime().strftime("%Y%m%d_%H%M%S_resent")
                         logger.debug("Calling 'task_emit_event' for '%s'", emit_citation_change)
