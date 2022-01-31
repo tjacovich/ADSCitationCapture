@@ -569,7 +569,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, delete = False):
                         new_bibcode = doi.build_bibcode(parsed_metadata, doi.zenodo_doi_re, zenodo_bibstem)
                         alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])
                         alternate_bibcode += registered_record.get('alternate_bibcode', [])
-                        if 'alternate_bibcode' in curated_entry.keys(): alternate_bibcode += curated_entry['alternate_bibcode']
+                        if 'alternate_bibcode' in curated_entry.keys(): [alternate_bibcode.append(alt) for alt in curated_entry['alternate_bibcode'] if alt not in alternate_bibcode]
                         if 'alternate_bibcode' in registered_record['curated_metadata'].keys(): [curated_entry['alternate_bibcode'].append(alt) for alt in registered_record['curated_metadata']['alternate_bibcode'] if alt not in curated_entry['alternate_bibcode']]
                         if new_bibcode != registered_record.get('bibcode'):
                             logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
