@@ -567,7 +567,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, delete = False):
                     #cycle through keys and set values for parsed metadata according to curated_metadata.
                     bad_keys=[]
                     for key in curated_entry.keys():
-                        if key not in ['bibcode','doi']:
+                        if key not in ['bibcode','alternate_bibcode','doi']:
                             if key in parsed_metadata.keys():
                                 try:
                                     parsed_metadata[key] = curated_entry[key]
@@ -591,6 +591,10 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, delete = False):
                             parsed_metadata['bibcode'] = new_bibcode
                             bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
                             logger.info("Updated bibcode from {}  to {}".format(alternate_bibcode[-1], new_bibcode))
+                            if curated_metadata['alternate_bibcode']: 
+                                [curated_metadata['alternate_bibcode'].append(alt) for alt in alternate_bibcode if alt not in curated_metadata['alternate_bibcode']]
+                            else:
+                                curated_metadata['alternate_bibcode'] = alternate_bibcode
                     #update db
                     updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_entry)
 
