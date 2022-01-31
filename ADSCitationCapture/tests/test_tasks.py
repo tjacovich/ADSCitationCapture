@@ -162,7 +162,72 @@ class TestWorkers(TestBase):
             self.assertFalse(mocked['webhook_emit_event'].called)
 
     def test_process_updated_associated_works(self):
-        tasks.task_process_updated_associated_works(target_bibcode, associated_versions)
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.updated)
+        associated_versions = {"":""}
+        target_bibcode = '2014zndo.....11020F'
+        doi_id = "10.5281/zenodo.11020" # software
+        with TestBase.mock_multiple_targets({
+                'citation_already_exists': patch.object(db, 'citation_already_exists', return_value=True), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'store_citation_target': patch.object(db, 'store_citation_target', return_value=True), \
+                'store_citation': patch.object(db, 'store_citation', return_value=True), \
+                'store_event': patch.object(db, 'store_event', return_value=True), \
+                'update_citation': patch.object(db, 'update_citation', return_value=True), \
+                'mark_citation_as_deleted': patch.object(db, 'mark_citation_as_deleted', return_value=(True, 'REGISTERED')), \
+                'get_citations': patch.object(db, 'get_citations', return_value=[]), \
+                'update_citation_target_metadata': patch.object(db, 'update_citation_target_metadata', return_value=True), \
+                'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
+                'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
+                'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
+                'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
+                'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
+                'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=self.mock_data[doi_id]['raw']), \
+                'parse_metadata': patch.object(doi, 'parse_metadata', return_value=self.mock_data[doi_id]['parsed']), \
+                'build_bibcode': patch.object(doi, 'build_bibcode', wraps=doi.build_bibcode), \
+                'url_is_alive': patch.object(url, 'is_alive', return_value=True), \
+                'is_url': patch.object(url, 'is_url', wraps=url.is_url), \
+                'versions_in_database':patch.object(db, 'get_associated_works_by_doi')
+                'citation_change_to_event_data': patch.object(webhook, 'citation_change_to_event_data', wraps=webhook.citation_change_to_event_data), \
+                'identical_bibcodes_event_data': patch.object(webhook, 'identical_bibcodes_event_data', wraps=webhook.identical_bibcodes_event_data), \
+                'identical_bibcode_and_doi_event_data': patch.object(webhook, 'identical_bibcode_and_doi_event_data', wraps=webhook.identical_bibcode_and_doi_event_data), \
+                'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
+                'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
+                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_updated_associated_works(target_bibcode, associated_versions)
+            self.assertTrue(mocked['citation_already_exists'].called)
+            self.assertFalse(mocked['get_citation_target_metadata'].called)
+            self.assertFalse(mocked['fetch_metadata'].called)
+            self.assertFalse(mocked['parse_metadata'].called)
+            self.assertFalse(mocked['url_is_alive'].called)
+            self.assertFalse(mocked['get_canonical_bibcode'].called)
+            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertFalse(mocked['get_citations_by_bibcode'].called)
+            self.assertFalse(mocked['store_citation_target'].called)
+            self.assertFalse(mocked['store_citation'].called)
+            self.assertFalse(mocked['update_citation'].called)
+            self.assertFalse(mocked['mark_citation_as_deleted'].called)
+            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertFalse(mocked['update_citation_target_metadata'].called)
+            self.assertFalse(mocked['get_citation_target_count'].called)
+            self.assertFalse(mocked['get_citation_count'].called)
+            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertFalse(mocked['get_citation_targets'].called)
+            self.assertFalse(mocked['request_existing_citations'].called)
+            self.assertFalse(mocked['build_bibcode'].called)
+            self.assertFalse(mocked['is_url'].called)
+            self.assertFalse(mocked['citation_change_to_event_data'].called)
+            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
+            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
+            self.assertFalse(mocked['store_event'].called)
+            self.assertFalse(mocked['webhook_dump_event'].called)
+            self.assertFalse(mocked['webhook_emit_event'].called)
+
         
     def test_process_deleted_citation_changes_doi(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.deleted)
