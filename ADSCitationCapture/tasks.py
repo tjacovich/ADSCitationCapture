@@ -19,9 +19,9 @@ app = app_module.ADSCitationCaptureCelery('ads-citation-capture', proj_home=proj
 logger = app.logger
 github_api_mode = app.conf.get('GITHUB_API_MODE', False)
 
-
 app.conf.CELERY_QUEUES = (
     Queue('process-citation-changes', app.exchange, routing_key='process-citation-changes'),
+    Queue('process-github-licenses', app.exchange, routing_key='process-github-licenses'),
     Queue('process-new-citation', app.exchange, routing_key='process-new-citation'),
     Queue('process-updated-citation', app.exchange, routing_key='process-updated-citation'),
     Queue('process-deleted-citation', app.exchange, routing_key='process-deleted-citation'),
@@ -32,6 +32,8 @@ app.conf.CELERY_QUEUES = (
     Queue('output-results', app.exchange, routing_key='output-results'),
 )
 
+#limit github API queries to keep below rate limit
+app.control.rate_limit('task_process_github_licenses', '83/m')
 
 # ============================= TASKS ============================================= #
 
@@ -91,7 +93,7 @@ def task_process_new_citation(citation_change, force=False):
         #If link is alive, attempt to get license info from github. Else return empty license.
         if url.is_github(citation_change.content) and is_link_alive:
             if github_api_mode:
-                license_info = api.get_github_metadata(app, citation_change.content)
+                license_info = task_process_github_licenses.delay(citation_change).get()
         elif not url.is_github(citation_change.content):
             status = "DISCARDED"
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
@@ -153,13 +155,16 @@ def task_process_new_citation(citation_change, force=False):
 
         logger.debug("Reached 'call _emit_citation_change' with '%s'", citation_change)
 
-        #Emits citation change to broker. Will currently fail for URLs as they are not set as software
+        #Emits citation change to broker.
         _emit_citation_change(citation_change, parsed_metadata)
 
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
 
+@app.task(queue='process-github-licenses')
+def task_process_github_licenses(citation_change):
+    return api.get_github_metadata(app, citation_change.content)
 
 @app.task(queue='process-updated-citation')
 def task_process_updated_citation(citation_change, force=False):
