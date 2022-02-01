@@ -18,10 +18,11 @@ proj_home = os.path.realpath(os.path.join(os.path.dirname(__file__), '../'))
 app = app_module.ADSCitationCaptureCelery('ads-citation-capture', proj_home=proj_home, local_config=globals().get('local_config', {}))
 logger = app.logger
 github_api_mode = app.conf.get('GITHUB_API_MODE', False)
+eager_celery = app.conf.get('CELERY_ALWAYS_EAGER', False)
 
 app.conf.CELERY_QUEUES = (
     Queue('process-citation-changes', app.exchange, routing_key='process-citation-changes'),
-    Queue('process-github-licenses', app.exchange, routing_key='process-github-licenses'),
+    Queue('process-github-urls', app.exchange, routing_key='process-github-urls'),
     Queue('process-new-citation', app.exchange, routing_key='process-new-citation'),
     Queue('process-updated-citation', app.exchange, routing_key='process-updated-citation'),
     Queue('process-deleted-citation', app.exchange, routing_key='process-deleted-citation'),
@@ -33,7 +34,7 @@ app.conf.CELERY_QUEUES = (
 )
 
 #limit github API queries to keep below rate limit
-app.control.rate_limit('task_process_github_licenses', '83/m')
+if not eager_celery: app.control.rate_limit('task_process_github_urls', '83/m')
 
 # ============================= TASKS ============================================= #
 
@@ -92,8 +93,7 @@ def task_process_new_citation(citation_change, force=False):
         license_info = {'license_name': "", 'license_url': ""}
         #If link is alive, attempt to get license info from github. Else return empty license.
         if url.is_github(citation_change.content) and is_link_alive:
-            if github_api_mode:
-                license_info = task_process_github_licenses.delay(citation_change).get()
+                task_process_github_urls.delay(citation_change, metadata)
         elif not url.is_github(citation_change.content):
             status = "DISCARDED"
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
@@ -147,8 +147,25 @@ def task_process_new_citation(citation_change, force=False):
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
 
+    
+@app.task(queue='process-github-urls')
+def task_process_github_urls(citation_change, metadata):
+    citation_target_in_db = bool(metadata) # False if dict is empty
+    raw_metadata = metadata.get('raw', None)
+    parsed_metadata = metadata.get('parsed', {})
+    content_type = "URL"
+    is_link_alive = url.is_alive(citation_change.content)
+    status = "EMITTABLE"
+    license_info = {'license_name': "", 'license_url': ""}
+    #If link is alive, attempt to get license info from github. Else return empty license.
+    if url.is_github(citation_change.content) and is_link_alive:
+        if github_api_mode:
+            license_info = api.get_github_metadata(app, citation_change.content)
+    elif not url.is_github(citation_change.content):
+        status = "DISCARDED"
+    parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
     #Alternate call if a URL
-    elif status=="EMITTABLE":
+    if status=="EMITTABLE":
         if not citation_target_in_db:
             # Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
@@ -161,10 +178,6 @@ def task_process_new_citation(citation_change, force=False):
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
-
-@app.task(queue='process-github-licenses')
-def task_process_github_licenses(citation_change):
-    return api.get_github_metadata(app, citation_change.content)
 
 @app.task(queue='process-updated-citation')
 def task_process_updated_citation(citation_change, force=False):
