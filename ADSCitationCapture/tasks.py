@@ -93,9 +93,15 @@ def task_process_new_citation(citation_change, force=False):
                             associated_version_bibcodes.update(versions_in_db)
                             logger.debug("{}: associated_versions_bibcodes".format(associated_version_bibcodes))
                             for bibcode in versions_in_db.values():
+                                associated_registered_record = db.get_citation_targets_by_bibcode(app,[bibcode])[0] 
+                                associated_citation_change = adsmsg.CitationChange(content=associated_registered_record['content'],
+                                                       content_type=getattr(adsmsg.CitationChangeContentType, associated_registered_record['content_type'].lower()),
+                                                       status=adsmsg.Status.updated,
+                                                       timestamp=datetime.now()
+                                                       )
                                 #update associated works for all versions in db
                                 logger.info('Calling task process_updated_associated_works')
-                                task_process_updated_associated_works.delay(bibcode, associated_version_bibcodes)
+                                task_process_updated_associated_works.delay(associated_citation_change, associated_version_bibcodes)
                         
     #PID
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
@@ -232,21 +238,15 @@ def task_process_updated_citation(citation_change, force=False):
         _emit_citation_change(citation_change, parsed_metadata)
         
 @app.task(queue='process-updated-associated-works')
-def task_process_updated_associated_works(target_bibcode, associated_versions, force=False):
+def task_process_updated_associated_works(citation_change, associated_versions, force=False):
     """
     Update associated works in citation record
     Do not emit to broker as changes to associated works are not propagated
     """
     #check if associated works is not empty
     updated = bool(associated_versions)
-    registered_record = db.get_citation_targets_by_bibcode(app,[target_bibcode])[0] 
-    citation_change = adsmsg.CitationChange(content=registered_record['content'],
-                                                       content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
-                                                       status=adsmsg.Status.updated,
-                                                       timestamp=datetime.now()
-                                                       )
     metadata = db.get_citation_target_metadata(app, citation_change.content)
-    raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
+    raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], citation_change.content)
     if raw_metadata:
         parsed_metadata = doi.parse_metadata(raw_metadata)
         is_software = parsed_metadata.get('doctype', '').lower() == "software"
@@ -261,7 +261,7 @@ def task_process_updated_associated_works(target_bibcode, associated_versions, f
             citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
             task_output_results.delay(citation_change, parsed_metadata, citations, associated_versions)
-            db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, associated = associated_versions)
+            db.update_citation_target_metadata(app, citation_change.content, raw_metadata, parsed_metadata, associated = associated_versions)
        
 @app.task(queue='process-deleted-citation')
 def task_process_deleted_citation(citation_change, force=False):
@@ -898,7 +898,7 @@ def task_maintenance_reevaluate_associated_works(dois, bibcodes):
                     
 
 @app.task(queue='output-results')
-def task_output_results(citation_change, parsed_metadata, citations, db_versions=[''], bibcode_replaced={}):
+def task_output_results(citation_change, parsed_metadata, citations, db_versions={"":""}, bibcode_replaced={}):
     """
     This worker will forward results to the outside
     exchange (typically an ADSMasterPipeline) to be
