@@ -6,10 +6,6 @@ from adsputils import load_config
 from ADSCitationCapture import app, tasks
 from ADSCitationCapture.models import Base
 
-
-
-
-
 class TestBase(unittest.TestCase):
 
     @staticmethod
