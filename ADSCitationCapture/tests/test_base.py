@@ -300,7 +300,7 @@ class TestBase(unittest.TestCase):
                     "10.5281/zenodo.5545068",
                     "10.5281/zenodo.5706396",
                     "10.5281/zenodo.5773480"
-                ],},
+                ]},
                 'associated': {"v2.0.0": "2017zndo....248351D"}
         }
         self.mock_data["2017zndo....248351D"] = [{     
