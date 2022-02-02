@@ -174,9 +174,9 @@ def task_process_github_urls(citation_change, metadata):
             #Emits citation change to broker.
             _emit_citation_change(citation_change, parsed_metadata)
 
-            # Store the citation at the very end, so that if an exception is raised before
-            # this task can be re-run in the future without key collisions in the database
-            stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
+        # Store the citation at the very end, so that if an exception is raised before
+        # this task can be re-run in the future without key collisions in the database
+        stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
 
 @app.task(queue='process-updated-citation')
 def task_process_updated_citation(citation_change, force=False):
