@@ -92,9 +92,9 @@ def task_process_new_citation(citation_change, force=False):
         status = "EMITTABLE"
         license_info = {'license_name': "", 'license_url': ""}
         #If link is alive, attempt to get license info from github. Else return empty license.
-        if url.is_github(citation_change.content) and is_link_alive:
+        if url.is_github(citation_change.content):
                 task_process_github_urls.delay(citation_change, metadata)
-        elif not url.is_github(citation_change.content):
+        else:
             status = "DISCARDED"
         parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
 
@@ -149,6 +149,11 @@ def task_process_new_citation(citation_change, force=False):
     
 @app.task(queue='process-github-urls')
 def task_process_github_urls(citation_change, metadata):
+    """
+    Process new github urls
+    Emit to broker only if it is EMITTABLE
+    Do not forward to Master
+    """
     citation_target_in_db = bool(metadata) # False if dict is empty
     raw_metadata = metadata.get('raw', None)
     parsed_metadata = metadata.get('parsed', {})
@@ -163,17 +168,16 @@ def task_process_github_urls(citation_change, metadata):
     elif not url.is_github(citation_change.content):
         status = "DISCARDED"
     parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
-
+    
+    #Saves citations to database, and emits citations with "EMITTABLE"
     if status not None:
         if not citation_target_in_db:
             # Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
         if status=="EMITTABLE":
             logger.debug("Reached 'call _emit_citation_change' with '%s'", citation_change)
-
             #Emits citation change to broker.
             _emit_citation_change(citation_change, parsed_metadata)
-
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
