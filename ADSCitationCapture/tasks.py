@@ -146,7 +146,6 @@ def task_process_new_citation(citation_change, force=False):
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
-
     
 @app.task(queue='process-github-urls')
 def task_process_github_urls(citation_change, metadata):
@@ -164,20 +163,20 @@ def task_process_github_urls(citation_change, metadata):
     elif not url.is_github(citation_change.content):
         status = "DISCARDED"
     parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
-    #Alternate call if a URL
-    if status=="EMITTABLE":
+
+    if status not None:
         if not citation_target_in_db:
             # Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
+        if status=="EMITTABLE":
+            logger.debug("Reached 'call _emit_citation_change' with '%s'", citation_change)
 
-        logger.debug("Reached 'call _emit_citation_change' with '%s'", citation_change)
+            #Emits citation change to broker.
+            _emit_citation_change(citation_change, parsed_metadata)
 
-        #Emits citation change to broker.
-        _emit_citation_change(citation_change, parsed_metadata)
-
-        # Store the citation at the very end, so that if an exception is raised before
-        # this task can be re-run in the future without key collisions in the database
-        stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
+            # Store the citation at the very end, so that if an exception is raised before
+            # this task can be re-run in the future without key collisions in the database
+            stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
 
 @app.task(queue='process-updated-citation')
 def task_process_updated_citation(citation_change, force=False):
