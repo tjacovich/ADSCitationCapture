@@ -170,7 +170,7 @@ def task_process_github_urls(citation_change, metadata):
     parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
     
     #Saves citations to database, and emits citations with "EMITTABLE"
-    if status not None:
+    if status is not None:
         if not citation_target_in_db:
             # Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
