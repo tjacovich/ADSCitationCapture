@@ -139,10 +139,8 @@ def _build_nonbib_record(app, citation_change, record, db_versions, status):
         'data': [],
         'data_links_rows': [
             {'link_type': 'ESOURCE', 'link_sub_type': 'PUB_HTML',
-                     'url': [app.conf['DOI_URL'] + doi], 'title': [''], 'item_count':0},], # `item_count` only used for DATA and not ESOURCES
-        'data_links_rows': [  
-            {'link_type': 'ASSOCIATED', 'link_sub_type': '', 
-                     'url': db_versions.values(), 'title': db_versions.keys(), 'item_count':0},],
+                     'url': [app.conf['DOI_URL'] + doi], 'title': [''], 'item_count':0},
+                     ], # `item_count` only used for DATA and not ESOURCES
         'citation_count_norm': record.citation_count_norm,
         'grants': [],
         'ned_objects': [],
@@ -152,6 +150,9 @@ def _build_nonbib_record(app, citation_change, record, db_versions, status):
         'simbad_objects': [],
         'total_link_counts': 0 # Only used for DATA and not for ESOURCES
     }
+    if db_versions != {"":""}:
+        nonbib_record_dict['data_links_rows'].append({'link_type': 'ASSOCIATED', 'link_sub_type': '', 
+                     'url': db_versions.values(), 'title': db_versions.keys(), 'item_count':0})
     nonbib_record = NonBibRecord(**nonbib_record_dict)
     nonbib_record.esource.extend(record.esources)
     nonbib_record.reference.extend(record.reference)

@@ -59,7 +59,7 @@ class TestWorkers(TestBase):
         content_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/sample_nonbib_record_associated.json")
         with open(content_filename) as f:
             expect_nonbib_record = json.load(f)
-            
+
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.updated)
         citation_change = tasks._protobuf_to_adsmsg_citation_change(citation_changes.changes[0])
         doi_id = "10.5281/zenodo.4475376" # software
@@ -67,6 +67,7 @@ class TestWorkers(TestBase):
         citations =['']
         db_versions = self.mock_data[doi_id]['associated']
         bib_record, nonbib_record = forward.build_record(self.app, citation_change, parsed_metadata, citations, db_versions)  
+        
         self.assertEqual(bib_record.toJSON(),expect_bib_record)
         self.assertEqual(nonbib_record.toJSON(),expect_nonbib_record)
 if __name__ == '__main__':
