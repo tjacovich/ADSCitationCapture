@@ -34,7 +34,7 @@ class TestWorkers(TestBase):
     def tearDown(self):
         TestBase.tearDown(self)
         
-    def test_build_bib_record(self):
+    def test_build_bib_record_no_associated_works(self):
         content_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/sample_bib_record.json")
         with open(content_filename) as f:
             expect_bib_record = json.load(f)
@@ -52,5 +52,22 @@ class TestWorkers(TestBase):
         self.assertEqual(bib_record.toJSON(),expect_bib_record)
         self.assertEqual(nonbib_record.toJSON(),expect_nonbib_record)
 
+    def test_build_bib_record_associated_works(self):
+        content_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/sample_bib_record_associated.json")
+        with open(content_filename) as f:
+            expect_bib_record = json.load(f)
+        content_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/sample_nonbib_record_associated.json")
+        with open(content_filename) as f:
+            expect_nonbib_record = json.load(f)
+            
+        citation_changes = self._common_citation_changes_doi(adsmsg.Status.updated)
+        citation_change = tasks._protobuf_to_adsmsg_citation_change(citation_changes.changes[0])
+        doi_id = "10.5281/zenodo.4475376" # software
+        parsed_metadata = self.mock_data[doi_id]['parsed']
+        citations =['']
+        db_versions = self.mock_data[doi_id]['associated']
+        bib_record, nonbib_record = forward.build_record(self.app, citation_change, parsed_metadata, citations, db_versions)  
+        self.assertEqual(bib_record.toJSON(),expect_bib_record)
+        self.assertEqual(nonbib_record.toJSON(),expect_nonbib_record)
 if __name__ == '__main__':
     unittest.main()
