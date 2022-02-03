@@ -23,7 +23,6 @@ app.conf.CELERY_QUEUES = (
     Queue('process-new-citation', app.exchange, routing_key='process-new-citation'),
     Queue('process-updated-citation', app.exchange, routing_key='process-updated-citation'),
     Queue('process-deleted-citation', app.exchange, routing_key='process-deleted-citation'),
-    Queue('process-updated-association-works', app.exchange, routing_key='process-updated-associated-works'),
     Queue('maintenance_canonical', app.exchange, routing_key='maintenance_canonical'),
     Queue('maintenance_metadata', app.exchange, routing_key='maintenance_meadata'),
     Queue('maintenance_resend', app.exchange, routing_key='maintenance_resend'),
@@ -237,7 +236,7 @@ def task_process_updated_citation(citation_change, force=False):
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
         _emit_citation_change(citation_change, parsed_metadata)
         
-@app.task(queue='process-updated-associated-works')
+@app.task(queue='process-updated-citation')
 def task_process_updated_associated_works(citation_change, associated_versions, force=False):
     """
     Update associated works in citation record
