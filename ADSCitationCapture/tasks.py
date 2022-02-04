@@ -245,23 +245,22 @@ def task_process_updated_associated_works(citation_change, associated_versions, 
     #check if associated works is not empty
     updated = bool(associated_versions)
     metadata = db.get_citation_target_metadata(app, citation_change.content)
-    raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], citation_change.content)
+    raw_metadata = metadata.get('raw',{})
     if raw_metadata:
-        parsed_metadata = doi.parse_metadata(raw_metadata)
+        parsed_metadata = metadata.get('parsed', {})
         is_software = parsed_metadata.get('doctype', '').lower() == "software"
-    #parsed_metadata = metadata.get('parsed', {})
-    citation_target_bibcode = parsed_metadata.get('bibcode', None)
-    status = metadata.get('status', 'DISCARDED')
-    #Forward the update only if status is "REGISTERED" and associated works is not None.
-    if status == 'REGISTERED' and updated:
-        if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
-            # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
-            original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
-            citations = api.get_canonical_bibcodes(app, original_citations)
-            logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-            task_output_results.delay(citation_change, parsed_metadata, citations, associated_versions)
-            db.update_citation_target_metadata(app, citation_change.content, raw_metadata, parsed_metadata, associated = associated_versions)
-       
+        citation_target_bibcode = parsed_metadata.get('bibcode', None)
+        status = metadata.get('status', 'DISCARDED')
+        #Forward the update only if status is "REGISTERED" and associated works is not None.
+        if status == 'REGISTERED' and updated:
+            if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+                # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+                original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
+                citations = api.get_canonical_bibcodes(app, original_citations)
+                logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+                task_output_results.delay(citation_change, parsed_metadata, citations, associated_versions)
+                db.update_citation_target_metadata(app, citation_change.content, raw_metadata, parsed_metadata, associated = associated_versions)
+        
 @app.task(queue='process-deleted-citation')
 def task_process_deleted_citation(citation_change, force=False):
     """
