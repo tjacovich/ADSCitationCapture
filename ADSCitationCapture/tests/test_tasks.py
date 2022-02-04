@@ -1174,10 +1174,10 @@ class TestWorkers(TestBase):
                     'normalized_authors': ['Test, U']
                     }
             citations = []
-            db_versions={"":""}
             bibcode_replaced = {"new":'test123456789012345',"previous":'test123456789054321'}
-            tasks.task_output_results(citation_change, parsed_metadata, citations, db_versions, bibcode_replaced)
+            tasks.task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced = bibcode_replaced)
             self.assertTrue(forward_message.called)
             self.assertEqual(forward_message.call_count, 4)
+            
 if __name__ == '__main__':
     unittest.main()
