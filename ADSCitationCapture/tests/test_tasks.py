@@ -1165,5 +1165,19 @@ class TestWorkers(TestBase):
             self.assertTrue(forward_message.called)
             self.assertEqual(forward_message.call_count, 2)
 
+    def test_task_output_results_if_bibcode_replaced(self):
+        with patch('ADSCitationCapture.app.ADSCitationCaptureCelery.forward_message', return_value=None) as forward_message:
+            citation_change = adsmsg.CitationChange(content_type=adsmsg.CitationChangeContentType.doi, status=adsmsg.Status.active)
+            parsed_metadata = {
+                    'bibcode': 'test123456789012345',
+                    'authors': ['Test, Unit'],
+                    'normalized_authors': ['Test, U']
+                    }
+            citations = []
+            db_versions={"":""}
+            bibcode_replaced = {"new":'test123456789012345',"previous":'test123456789054321'}
+            tasks.task_output_results(citation_change, parsed_metadata, citations, db_versions, bibcode_replaced)
+            self.assertTrue(forward_message.called)
+            self.assertEqual(forward_message.call_count, 4)
 if __name__ == '__main__':
     unittest.main()
