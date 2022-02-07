@@ -17,8 +17,6 @@ import adsmsg
 proj_home = os.path.realpath(os.path.join(os.path.dirname(__file__), '../'))
 app = app_module.ADSCitationCaptureCelery('ads-citation-capture', proj_home=proj_home, local_config=globals().get('local_config', {}))
 logger = app.logger
-github_api_mode = app.conf.get('GITHUB_API_MODE', False)
-eager_celery = app.conf.get('CELERY_ALWAYS_EAGER', False)
 
 app.conf.CELERY_QUEUES = (
     Queue('process-citation-changes', app.exchange, routing_key='process-citation-changes'),
@@ -34,7 +32,8 @@ app.conf.CELERY_QUEUES = (
 )
 
 #limit github API queries to keep below rate limit
-if not eager_celery: app.control.rate_limit('task_process_github_urls', '83/m')
+github_api_limit = app.conf.get('GITHUB_API_LIMIT','80/m')
+app.control.rate_limit('task_process_github_urls', github_api_limit)
 
 # ============================= TASKS ============================================= #
 
@@ -93,10 +92,10 @@ def task_process_new_citation(citation_change, force=False):
         license_info = {'license_name': "", 'license_url': ""}
         #If link is alive, attempt to get license info from github. Else return empty license.
         if url.is_github(citation_change.content):
-                task_process_github_urls.delay(citation_change, metadata)
+            task_process_github_urls.delay(citation_change, metadata)
         else:
             status = "DISCARDED"
-        parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+        parsed_metadata = {'link_alive': is_link_alive, 'doctype': 'unknown', 'license_name': license_info.get('license_name', ""), 'license_url': license_info.get('license_url', "") }
 
     else:
         logger.error("Citation change should have doi, pid or url informed: {}", citation_change)
@@ -154,6 +153,7 @@ def task_process_github_urls(citation_change, metadata):
     Emit to broker only if it is EMITTABLE
     Do not forward to Master
     """
+    github_api_mode = app.conf.get('GITHUB_API_MODE', False)
     citation_target_in_db = bool(metadata) # False if dict is empty
     raw_metadata = metadata.get('raw', None)
     parsed_metadata = metadata.get('parsed', {})
@@ -167,7 +167,7 @@ def task_process_github_urls(citation_change, metadata):
             license_info = api.get_github_metadata(app, citation_change.content)
     elif not url.is_github(citation_change.content):
         status = "DISCARDED"
-    parsed_metadata = {'link_alive': is_link_alive, "doctype": "unknown", 'license_name':license_info.get('license_name',None),'license_url':license_info.get('license_url',None) }
+    parsed_metadata = {'link_alive': is_link_alive, 'doctype': "unknown", 'license_name': license_info.get('license_name', ""), 'license_url': license_info.get('license_url', "") }
     
     #Saves citations to database, and emits citations with "EMITTABLE"
     if status is not None:

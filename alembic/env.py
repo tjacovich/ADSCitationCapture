@@ -18,11 +18,13 @@ fileConfig(config.config_file_name)
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 #target_metadata = None
+from adsputils import load_config
 
 opath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+app_conf = load_config(proj_home=opath)
+
 if opath not in sys.path:
     sys.path.insert(0, opath)
-from ADSCitationCapture.tasks import app
 from ADSCitationCapture import models
 
 target_metadata = models.Base.metadata
@@ -52,8 +54,8 @@ def run_migrations_offline():
         context.run_migrations()
 
 def get_app_config(key):
-    print('Getting actual config for', key, app.conf.get(key))
-    return app.conf.get(key)
+    print('Getting actual config for', key, app_conf.get(key,""))
+    return app_conf.get(key)
 
 def run_migrations_online():
     """Run migrations in 'online' mode.

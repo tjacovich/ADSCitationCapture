@@ -22,6 +22,7 @@ ADS_API_URL = "https://ui.adsabs.harvard.edu/v1/"
 
 GITHUB_API_TOKEN = "<secret>"
 GITHUB_API_URL = "https://api.github.com/"
+GITHUB_API_LIMIT = "80/m"
 # When 'True', Collect license data from the Github API 
 GITHUB_API_MODE = False
 # When 'True', no events are emitted to the broker via the webhook
