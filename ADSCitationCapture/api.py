@@ -163,7 +163,7 @@ def get_github_metadata(app, citation_url):
     headers['User-Agent'] = "ads-citation-capture"
     headers['Authorization'] = "token {}".format(app.conf['GITHUB_API_TOKEN'])
 
-    if url.is_github(citation_url):
+    if url.is_github(citation_url) and not url.is_gist(citation_url):
         github_api = None
         try:
             path = urllib.parse.urlparse(citation_url).path.split("/")

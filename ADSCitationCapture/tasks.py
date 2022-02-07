@@ -32,8 +32,7 @@ app.conf.CELERY_QUEUES = (
 )
 
 #limit github API queries to keep below rate limit
-github_api_limit = app.conf.get('GITHUB_API_LIMIT','80/m')
-app.control.rate_limit('task_process_github_urls', github_api_limit)
+github_api_limit = app.conf.get('GITHUB_API_LIMIT', '4800/h')
 
 # ============================= TASKS ============================================= #
 
@@ -146,7 +145,7 @@ def task_process_new_citation(citation_change, force=False):
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
     
-@app.task(queue='process-github-urls')
+@app.task(queue='process-github-urls', rate_limit = github_api_limit)
 def task_process_github_urls(citation_change, metadata):
     """
     Process new github urls

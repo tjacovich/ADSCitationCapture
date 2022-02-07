@@ -70,7 +70,7 @@ class TestWorkers(TestBase):
         with open(datacite_parsed_metadata_filename, "r") as f:
             parsed_metadata = json.loads("".join(f.readlines()))
         zenodo_bibstem = "zndo"
-        zenodo_doi_re = re.compile("^10.\d{4,9}/zenodo\.([0-9]*)$", re.IGNORECASE)
+        zenodo_doi_re = re.compile(r"^10.\d{4,9}/zenodo\.([0-9]*)$", re.IGNORECASE)
         bibcode = doi.build_bibcode(parsed_metadata, zenodo_doi_re, zenodo_bibstem)
         self.assertEqual(bibcode, expected_bibcode)
 

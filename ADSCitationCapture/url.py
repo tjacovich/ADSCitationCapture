@@ -49,4 +49,15 @@ def is_github(url):
         raise
     
     return True if domain in ["github.com", "www.github.com", "gist.github.com"] else False
+
+def is_gist(url):
+    try:
+        domain = urllib.parse.urlparse(url).hostname
+
+    except:
+        msg = "Failed to verify {}".format(url)
+        logger.exception(msg)
+        raise
+    
+    return True if domain in ["gist.github.com"] else False
     

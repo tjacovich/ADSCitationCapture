@@ -182,7 +182,7 @@ CELERY_ALWAYS_EAGER = False
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = False
 ```
 
-Hence, the pipeline will send messages via RabbitMQ to execute tasks from the master pipeline, which will store its own data in PostgreSQL, update Solr and send data to the resolver service. RabbitMQ must be up before attempting to envoke `alembic upgrade head` for CitationCapture, or else it will hang due to the app trying to set a rate limit for queues that don't actually exist.
+Hence, the pipeline will send messages via RabbitMQ to execute tasks from the master pipeline, which will store its own data in PostgreSQL, update Solr and send data to the resolver service.
 
 #### RabbitMQ
 

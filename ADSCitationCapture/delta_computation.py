@@ -68,7 +68,7 @@ class DeltaComputation():
         self.input_refids_filename = input_refids_filename
         self._setup_schemas()
         if self.force or self.joint_table_name not in Inspector.from_engine(self.engine).get_table_names(schema=self.schema_name):
-            self.logger.info("Importing '%s' into table '%s.%s' and expanding JSON into talbe '%s.%s'", self.input_refids_filename, self.schema_name, self.table_name, self.schema_name, self.expanded_table_name)
+            self.logger.info("Importing '%s' into table '%s.%s' and expanding JSON into table '%s.%s'", self.input_refids_filename, self.schema_name, self.table_name, self.schema_name, self.expanded_table_name)
             try:
                 self._import()
             except:
