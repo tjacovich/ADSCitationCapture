@@ -5,7 +5,7 @@ import tempfile
 import argparse
 import json
 from astropy.io import ascii
-from ADSCitationCapture import tasks, db
+from ADSCitationCapture import tasks, db, app
 from ADSCitationCapture.delta_computation import DeltaComputation
 
 # ============================= INITIALIZATION ==================================== #
@@ -222,7 +222,7 @@ if __name__ == '__main__':
                         help='Space delimited list of json citation data')
 
     args = parser.parse_args()
-
+    os.system('celery beat -l INFO -A ADSCitationCapture.tasks --pidfile=/tmp/celerybeat.pid &')
     if args.action == "PROCESS":
         if not os.path.exists(args.input_filename):
             process_parser.error("the file '{}' does not exist".format(args.input_filename))

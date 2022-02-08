@@ -1,4 +1,4 @@
-
+from celery.schedules import crontab
 import os
 from kombu import Queue
 from google.protobuf.json_format import MessageToDict
@@ -29,12 +29,36 @@ app.conf.CELERY_QUEUES = (
     Queue('maintenance_resend', app.exchange, routing_key='maintenance_resend'),
     Queue('maintenance_reevaluate', app.exchange, routing_key='maintenance_reevaluate'),
     Queue('output-results', app.exchange, routing_key='output-results'),
+    Queue('github-tokens', app.exchange, max_length=2, routing_key = 'github-tokens')
 )
 
 #limit github API queries to keep below rate limit
-github_api_limit = app.conf.get('GITHUB_API_LIMIT', '4800/h')
+github_api_limit = app.conf.get('GITHUB_API_LIMIT', 80)
 
 # ============================= TASKS ============================================= #
+@app.task(queue = 'github-tokens')
+def token():
+    return 1
+
+@app.on_after_finalize.connect
+def setup_periodic_tasks(sender,**kwargs):
+    #sends tokens at a rate of github_api_limit tasks per minute
+    sender.add_periodic_task(github_api_limit/60, token.signature(queue='github-tokens'), options={'queue': 'github-tokens', 'routing_key': 'github-tokens'})  
+
+# function for pulling tokens from queue
+def rate_limit(task, task_group):
+    # acquiring broker connection from pool
+    logger.debug("Calling rate limit function for process-github-urls")
+    if not app.conf.get("CELERY_ALWAYS_EAGER"):
+        with task.app.connection_for_read() as conn:
+            # getting token
+            msg = conn.default_channel.basic_get(task_group+'-tokens', no_ack=True)
+            # received None - queue is empty, no tokens
+            logger.debug("Received message")
+            if msg is None:
+                # repeat task after 1 second
+                logger.debug("No token available, retrying.")
+                task.retry(countdown=1,max_retries=200)
 
 @app.task(queue='process-new-citation')
 def task_process_new_citation(citation_change, force=False):
@@ -144,16 +168,18 @@ def task_process_new_citation(citation_change, force=False):
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
-    
-@app.task(queue='process-github-urls', rate_limit = github_api_limit)
-def task_process_github_urls(citation_change, metadata):
+
+#rate limit applied for CELERY_ALWAYS_EAGER
+@app.task(queue='process-github-urls',bind = True, rate_limit = str(github_api_limit)+'/m')
+def task_process_github_urls(self, citation_change, metadata):
     """
     Process new github urls
     Emit to broker only if it is EMITTABLE
     Do not forward to Master
     """
-    github_api_mode = app.conf.get('GITHUB_API_MODE', False)
+    rate_limit(self, 'github')
     citation_target_in_db = bool(metadata) # False if dict is empty
+    github_api_mode = app.conf.get('GITHUB_API_MODE', False)
     raw_metadata = metadata.get('raw', None)
     parsed_metadata = metadata.get('parsed', {})
     content_type = "URL"
@@ -161,13 +187,16 @@ def task_process_github_urls(citation_change, metadata):
     status = "EMITTABLE"
     license_info = {'license_name': "", 'license_url': ""}
     #If link is alive, attempt to get license info from github. Else return empty license.
-    if url.is_github(citation_change.content) and is_link_alive:
+    if url.is_github(citation_change.content) and is_link_alive and not citation_target_in_db:
         if github_api_mode:
             license_info = api.get_github_metadata(app, citation_change.content)
     elif not url.is_github(citation_change.content):
         status = "DISCARDED"
     parsed_metadata = {'link_alive': is_link_alive, 'doctype': "unknown", 'license_name': license_info.get('license_name', ""), 'license_url': license_info.get('license_url', "") }
     
+    #Confirm that metadata hasn't been entered into the system already for citation_target as TOF for task can be quite long.
+    metadata = db.get_citation_target_metadata(app, citation_change.content)
+    citation_target_in_db = bool(metadata) # False if dict is empty
     #Saves citations to database, and emits citations with "EMITTABLE"
     if status is not None:
         if not citation_target_in_db:
