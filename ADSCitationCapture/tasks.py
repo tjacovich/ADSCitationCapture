@@ -266,19 +266,19 @@ def task_process_citation_changes(citation_changes, force=False):
 
         if citation_change.status == adsmsg.Status.new:
             if citation_in_db:
-                logger.error("Ignoring new citation (citting '%s', content '%s' and timestamp '%s') because it already exists in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+                logger.error("Ignoring new citation (citing '%s', content '%s' and timestamp '%s') because it already exists in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             else:
                 logger.debug("Calling 'task_process_new_citation' with '%s'", citation_change)
                 task_process_new_citation.delay(citation_change, force=force)
         elif citation_change.status == adsmsg.Status.updated:
             if not citation_in_db:
-                logger.error("Ignoring updated citation (citting '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+                logger.error("Ignoring updated citation (citing '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             else:
                 logger.debug("Calling 'task_process_updated_citation' with '%s'", citation_change)
                 task_process_updated_citation.delay(citation_change, force=force)
         elif citation_change.status == adsmsg.Status.deleted:
             if not citation_in_db:
-                logger.error("Ignoring deleted citation (citting '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+                logger.error("Ignoring deleted citation (citing '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             else:
                 logger.debug("Calling 'task_process_deleted_citation' with '%s'", citation_change)
                 task_process_deleted_citation.delay(citation_change)
