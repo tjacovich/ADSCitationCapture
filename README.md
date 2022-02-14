@@ -500,7 +500,7 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
     parsed_cited_metadata
     ----------------------
 
-    {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Last, First"], "bibcode": "YYYYzndo...BCDEFGR", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [],"affiliations": ["Some Institution<ORCID>0000-0009-8765-4321</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Last, F"]}
+    {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Last, First"], "bibcode": "YYYYzndo...BCDEFGL", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [],"affiliations": ["Some Institution<ORCID>0000-0009-8765-4321</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Last, F"]}
     ```
    
     Modifications to the metadata can be made by supplying a file of the form
@@ -522,7 +522,7 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
     parsed_cited_metadata
     ----------------------
 
-    {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Some, Name"], "bibcode": "YYYYzndo...BCDEFGR", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [], "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Some, N"]}
+    {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Some, Name"], "bibcode": "YYYYzndo...BCDEFGS", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [], "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Some, N"]}
     ```
 
     The modified `parsed_cited_metadata` is then used to construct the message forwarded to Master Pipeline.
