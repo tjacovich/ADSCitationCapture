@@ -1,5 +1,5 @@
-git+https://github.com/adsabs/adsabs-pyingest@v1.0.19
-adsputils==v1.2.7
+git+https://github.com/adsabs/adsabs-pyingest@v1.0.24
+adsputils==v1.3.0
 psycopg2-binary==2.8.3
 alembic==0.9.3
 sqlalchemy-postgres-copy==0.5.0

@@ -302,11 +302,12 @@ Run unit tests via:
 py.test ADSCitationCapture/tests/
 ```
 
-Diagnose your setup by running an asynchronous worker (it requires a RabbitMQ instance):
+Diagnose your setup by running an asynchronous worker, (it requires a RabbitMQ instance):
 
 ```
 celery worker -l DEBUG -A ADSCitationCapture.tasks -c 1
 ```
+This celery worker will perform the tasks queued by RabbitMQ, so it must continue running while calling any citation capture functions.
 
 Then you can run the diagnose with fake data (beware this will end up in the database/solr):
 
