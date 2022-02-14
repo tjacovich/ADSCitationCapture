@@ -190,7 +190,7 @@ def get_citation_targets(app, only_status='REGISTERED'):
     with app.session_scope() as session:
         if only_status:
             records_db = session.query(CitationTarget).filter_by(status=only_status).all()
-            disable_filter = only_status == 'DISCARDED'
+            disable_filter = only_status in ['DISCARDED','EMITTABLE']
         else:
             records_db = session.query(CitationTarget).all()
             disable_filter = True

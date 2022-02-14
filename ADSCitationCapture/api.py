@@ -153,32 +153,35 @@ def get_canonical_bibcode(app, bibcode, timeout=30):
     else:
         return canonical[0]
 
-def get_github_metadata(citation_url):
+def get_github_metadata(app, citation_url):
     """
     Retrieve License and related metadata from GitHub API
     """
     license_name = ""
     license_url = ""
+    headers = {}
+    headers['User-Agent'] = "ads-citation-capture"
+    headers['Authorization'] = "token {}".format(app.conf['GITHUB_API_TOKEN'])
 
-    if url.is_github(citation_url):
-
+    if url.is_github(citation_url) and not url.is_gist(citation_url):
+        github_api = None
         try:
             path = urllib.parse.urlparse(citation_url).path.split("/")
+            github_api = app.conf['GITHUB_API_URL']+"repos/{}/{}/license".format(path[1],path[2])
 
-        except:
-            msg = "Failed to parse :{}".format(citation_url)
+        except Exception as e:
+            msg = "Failed to parse :{} with Exception: {}".format(citation_url,e)
             logger.error(msg)
-
-        github_api = "https://api.github.com/repos/{}/{}/license".format(path[1],path[2])
-        try:
-            git_return = requests.get(github_api)
-            json_return = git_return.json()
-            license_name = json_return["license"]['key']
-            license_url = json_return["license"]["url"]
-
-        except:
-            msg = "Request to {} failed with status code: {}".format(github_api,git_return.status_code)
-            logger.error(msg)
+        
+        if github_api:
+            try:
+                git_return = requests.get(github_api, headers=headers)
+                json_return = git_return.json()
+                license_name = json_return["license"]["key"] 
+                license_url = json_return["license"]["url"] if json_return["license"]["url"] is not None else ""
+            except:
+                msg = "Request to {} failed with status code: {}".format(github_api,git_return.status_code)
+                logger.error(msg)
 
     else:
         msg = "URL:{} is not a github repository returning default license info.".format(citation_url)
