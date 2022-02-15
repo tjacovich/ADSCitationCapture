@@ -54,9 +54,9 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
             session.commit()
         except IntegrityError as e:
             # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
-            logger.error("Ignoring new citation target (citting '%s', content '%s' and timestamp '%s') because it already exists in the database (another new citation may have been processed before this one): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
+            logger.error("Ignoring new citation target (citing '%s', content '%s' and timestamp '%s') because it already exists in the database (another new citation may have been processed before this one): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
         else:
-            logger.info("Stored new citation target (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Stored new citation target (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             stored = True
     return stored
 
@@ -104,9 +104,9 @@ def store_citation(app, citation_change, content_type, raw_metadata, parsed_meta
             session.commit()
         except IntegrityError as e:
             # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
-            logger.error("Ignoring new citation (citting '%s', content '%s' and timestamp '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
+            logger.error("Ignoring new citation (citing '%s', content '%s' and timestamp '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
         else:
-            logger.info("Stored new citation (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Stored new citation (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             stored = True
     return stored
 
@@ -282,9 +282,9 @@ def update_citation(app, citation_change):
             session.add(citation)
             session.commit()
             updated = True
-            logger.info("Updated citation (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Updated citation (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
         else:
-            logger.info("Ignoring citation update (citting '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Ignoring citation update (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
     return updated
 
 def mark_citation_as_deleted(app, citation_change):
@@ -303,9 +303,9 @@ def mark_citation_as_deleted(app, citation_change):
             session.add(citation)
             session.commit()
             marked_as_deleted = True
-            logger.info("Marked citation as deleted (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Marked citation as deleted (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
         else:
-            logger.info("Ignoring citation deletion (citting '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Ignoring citation deletion (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
     return marked_as_deleted, previous_status
 
 def mark_all_discarded_citations_as_registered(app, content):
