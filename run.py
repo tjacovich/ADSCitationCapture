@@ -153,7 +153,7 @@ def maintenance_curation(filename = None, dois = None, bibcodes = None, json = N
             curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"doi":doi} for doi in dois]
             print(curated_entries)
             logger.info("MAINTENANCE task: Displaying current metadata for '{}' record(s).".format(n_requested))
-            db.show_metadata(curated_entries)
+            tasks.maintenance_show_metadata(curated_entries)
         elif json:
             try:
                 #convert json line to list of dicts, 1 dict per entry.

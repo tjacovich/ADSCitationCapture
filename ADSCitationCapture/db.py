@@ -321,37 +321,4 @@ def mark_all_discarded_citations_as_registered(app, content):
             session.add(citation)
         session.commit()
 
-def show_metadata(curated_entries):
-    """
-    Print current metadata for a given citation target to standard output.
-    """
-    for curated_entry in curated_entries:
-        updated = False
-        bibcode_replaced = {}
-        #First try by doi.
-        try:
-            if curated_entry.get('doi'):
-                registered_record = db.get_citation_targets_by_doi(app, [curated_entry.get('doi')], only_status='REGISTERED')[0]   
-                custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
-                                                        content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
-                                                        status=adsmsg.Status.updated,
-                                                        timestamp=datetime.now()
-                                                        )
-                parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
-                print(parsed_metadata)
-
-            #If no doi, try and retrieve entry by bibcode.
-            elif curated_entry.get('bibcode'):
-                registered_record = db.get_citation_targets_by_bibcode(app, [curated_entry.get('bibcode')], only_status='REGISTERED')[0]   
-                custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
-                                                        content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
-                                                        status=adsmsg.Status.updated,
-                                                        timestamp=datetime.now()
-                                                        )
-                parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
-                print(parsed_metadata)
-
-        #report error
-        except Exception as e:
-            logger.error('Attempt to retrieve entry for {} from database failed with Exception: {}. Please check input file.'.format(curated_entry,e))
 
