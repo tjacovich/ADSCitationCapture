@@ -462,7 +462,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     if 'alternate_bibcode' in registered_record['curated_metadata'].keys(): alternate_bibcode = [alt for alt in alternate_bibcode if alt not in registered_record['curated_metadata']['alternate_bibcode']]
                     parsed_metadata['alternate_bibcode'] = alternate_bibcode
                     bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
-                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata)
+                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata)
         
         if updated:
             citation_change = adsmsg.CitationChange(content=registered_record['content'],
@@ -571,14 +571,6 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
             else:
                 logger.debug("Resetting citation to current DataCite metadata")
                 task_maintenance_metadata.delay([registered_record['content']],[registered_record['bibcode']],reset = True)
-                # parsed_metadata = 
-                # logger.warn('Deleting alternate bibcodes added manually for {}'.format(registered_record['bibcode']))
-                # alternate_bibcode = registered_record.get('alternate_bibcode', [])
-                # #Removes any alternate bibcodes that were added by hand. Does not remove bibcodes that were added automatically
-                # if 'alternate_bibcode' in registered_record['curated_metadata'].keys(): alternate_bibcode = [alt for alt in alternate_bibcode if alt not in registered_record['curated_metadata']['alternate_bibcode']]
-                # parsed_metadata['alternate_bibcode'] = alternate_bibcode
-                # bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
-            #update db
             
         except Exception as e:
             logger.error("task_maintenance_curation Failed to update metadata for {} with Exception: {}. Please check that the bibcode or doi matches a target record.".format(curated_entry, e))
