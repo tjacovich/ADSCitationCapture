@@ -532,7 +532,18 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
 ```
 # Reevaluate associated works for all registered citation targets
 python3 run.py MAINTENANCE --eval-associated
+# Reevaluate associated works for specified doi
+python3 run.py MAINTENANCE --eval-associated --bibcode 2017zndo....840393W
+# Specific doi (space separated list)
+python3 run.py MAINTENANCE --eval-associated --doi 10.5281/zenodo.840393
 ```        
+
+Note: Performing an associated works update on a single entry will also update the associated works for all associated entries.
+
+## Potential Race Condition
+### Linking Associated Works
+When multiple new associated citation targets are processed in the same batch, there is a chance for the associated works to be out of sync between the multiple citation targets. A race condition can occur where associated works are collected from the database before either citation is entered, meaning the two new citations would not be associated with each other. The addition of another associated work in a subsequent batch would fix the problem, as would performing a `MAINTENANCE --eval_associated` on one of the unsynced bibcodes.
+
 # Miscellaneous
 
 ## Alembic
