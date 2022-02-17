@@ -858,6 +858,7 @@ def task_maintenance_reevaluate_associated_works(dois, bibcodes):
         registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
         registered_records = _remove_duplicated_dict_in_list(registered_records)
 
+    #convert record into citation_change message
     for registered_record in registered_records:
         citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
         custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
@@ -867,6 +868,8 @@ def task_maintenance_reevaluate_associated_works(dois, bibcodes):
                                                        )
         metadata = db.get_citation_target_metadata(app, registered_record['content'])
         raw_metadata = metadata.get('raw', {})
+
+        #confirm citation is registered software, then check for associated works.
         if raw_metadata:
             parsed_metadata = metadata.get('parsed', {})
             is_software = parsed_metadata.get('doctype', '').lower() == "software"
@@ -875,8 +878,8 @@ def task_maintenance_reevaluate_associated_works(dois, bibcodes):
             elif parsed_metadata.get('bibcode') in (None, ""):
                 logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", registered_record['content'])
             else:
-                logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                    #Check for additional versions
+                logger.debug("Checking associated records for '%s'", custom_citation_change)
+                #Check for additional versions
                 try:
                     all_versions_doi = doi.fetch_all_versions_doi(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata)
                 except:
@@ -884,16 +887,13 @@ def task_maintenance_reevaluate_associated_works(dois, bibcodes):
                     all_versions_doi = None
                 #fetch additional versions from db if they exist.
                 if all_versions_doi['versions'] not in (None,[]):
-                    logger.info("Found {} versions for {}".format(len(all_versions_doi['versions']), custom_citation_change.content))
+                    logger.debug("Found {} versions for {}".format(len(all_versions_doi['versions']), custom_citation_change.content))
                     versions_in_db = db.get_associated_works_by_doi(app, all_versions_doi)
                     #Only add bibcodes if there are versions in db, otherwise leave as None.
-                    if versions_in_db not in (None, [None]):
+                    if versions_in_db not in (None, [None]) and registered_records.get('associated_works', None) != versions_in_db:
                         logger.info("Found {} versions in database for {}".format(len(versions_in_db), custom_citation_change.content))
-                        #adds the new citation target bibcode because it will not be in the db yet, 
-                        # and then appends the versions already in the db.
-                        associated_version_bibcodes = versions_in_db
-                        logger.debug("{}: associated_versions_bibcodes".format(associated_version_bibcodes))
-                        task_process_updated_associated_works.delay(registered_record['bibcode'], associated_version_bibcodes)
+                        logger.debug("{}: associated_versions_bibcodes".format(versions_in_db))
+                        task_process_updated_associated_works.delay(registered_record['bibcode'], versions_in_db)
                     
 
 @app.task(queue='output-results')
