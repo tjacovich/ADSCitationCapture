@@ -893,7 +893,7 @@ def task_maintenance_reevaluate_associated_works(dois, bibcodes):
                     if versions_in_db not in (None, [None]) and registered_records.get('associated_works', None) != versions_in_db:
                         logger.info("Found {} versions in database for {}".format(len(versions_in_db), custom_citation_change.content))
                         logger.debug("{}: associated_versions_bibcodes".format(versions_in_db))
-                        task_process_updated_associated_works.delay(registered_record['bibcode'], versions_in_db)
+                        task_process_updated_associated_works.delay(custom_citation_change, versions_in_db)
                     
 
 @app.task(queue='output-results')
