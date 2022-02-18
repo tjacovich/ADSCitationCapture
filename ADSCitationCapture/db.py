@@ -155,7 +155,6 @@ def _extract_key_citation_target_data(records_db, disable_filter=False):
             'content_type': record_db.content_type,
             'curated_metadata': record_db.curated_metadata if record_db.curated_metadata is not None else {},
             'associated_works': record_db.associated_works,
-            'version': record_db.parsed_cited_metadata.get('version', '')
         }
         for record_db in records_db
         if disable_filter or record_db.parsed_cited_metadata.get('bibcode', None) is not None
