@@ -230,9 +230,10 @@ def task_process_updated_citation(citation_change, force=False):
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
+            associated_works = db.get_citation_targets_by_doi([citation_change.content])[0]
             citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-            task_output_results.delay(citation_change, parsed_metadata, citations)
+            task_output_results.delay(citation_change, parsed_metadata, citations, associated_works)
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
         _emit_citation_change(citation_change, parsed_metadata)
         
@@ -276,8 +277,9 @@ def task_process_deleted_citation(citation_change, force=False):
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
+            associated_works = db.get_citation_targets_by_doi([citation_change.content])[0]
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-            task_output_results.delay(citation_change, parsed_metadata, citations)
+            task_output_results.delay(citation_change, parsed_metadata, citations, associated_works)
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
         _emit_citation_change(citation_change, parsed_metadata)
 
@@ -421,7 +423,7 @@ def task_maintenance_canonical(dois, bibcodes):
         parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
         if parsed_metadata:
             logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-            task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes)
+            task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes, registered_record.get('associated_works', {"":""}))
 
 @app.task(queue='maintenance_metadata')
 def task_maintenance_metadata(dois, bibcodes, reset = False):
@@ -638,7 +640,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                     original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
                     citations = api.get_canonical_bibcodes(app, original_citations)
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                    task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced)
+                    task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=registered_record.get('associated_works', {"":""}))
         
         except Exception as e:
             logger.error("task_maintenance_curation Failed to update metadata for {} with Exception: {}. Please check that the bibcode or doi matches a target record.".format(curated_entry, e))
@@ -741,7 +743,7 @@ def task_maintenance_resend(dois, bibcodes, broker):
             if not broker:
                 # Only update master
                 logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                task_output_results.delay(custom_citation_change, parsed_metadata, citations)
+                task_output_results.delay(custom_citation_change, parsed_metadata, citations, registered_record.get('associated_works',{"":""}))
             else:
                 # Only re-emit to the broker
                 # Signal that the target bibcode and the DOI are identical
@@ -837,8 +839,8 @@ def task_maintenance_reevaluate(dois, bibcodes):
                     original_citations = db.get_citations_by_bibcode(app, parsed_metadata['bibcode'])
                     citations = api.get_canonical_bibcodes(app, original_citations)
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                    task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
-        raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], previously_discarded_record['content'])
+                    task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=discarded_record.get('associated_works',{"":""}))
+                    
 
 @app.task(queue='maintenance_associated_works')
 def task_maintenance_reevaluate_associated_works(dois, bibcodes):
