@@ -258,7 +258,7 @@ def _collect_associated_works(citation_change, parsed_metadata):
             associated_version_bibcodes.update(versions_in_db)
             logger.debug("{}: associated_versions_bibcodes".format(associated_version_bibcodes))
             for bibcode in versions_in_db.values():
-                associated_registered_record = db.get_citation_targets_by_bibcode(app,[bibcode])[0] 
+                associated_registered_record = db.get_citation_targets_by_bibcode(app, [bibcode])[0] 
                 associated_citation_change = adsmsg.CitationChange(content=associated_registered_record['content'],
                                         content_type=getattr(adsmsg.CitationChangeContentType, associated_registered_record['content_type'].lower()),
                                         status=adsmsg.Status.updated,
@@ -309,7 +309,7 @@ def task_process_deleted_citation(citation_change, force=False):
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
-            associated_works = db.get_citation_targets_by_doi([citation_change.content])[0]
+            associated_works = db.get_citation_targets_by_doi(app, [citation_change.content])[0]
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
             task_output_results.delay(citation_change, parsed_metadata, citations, associated_works)
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
