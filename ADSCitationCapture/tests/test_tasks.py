@@ -13,7 +13,6 @@ import unittest
 from ADSCitationCapture import app, tasks
 from mock import patch
 
-
 class TestWorkers(TestBase):
 
     def setUp(self):
@@ -247,7 +246,7 @@ class TestWorkers(TestBase):
                 'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
                 'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
                 'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
-                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+                'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[{}]), \
                 'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
                 'get_canonical_bibcode': patch.object(api, 'get_canonical_bibcode', return_value=citation_changes.changes[0].citing), \
                 'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
@@ -282,7 +281,7 @@ class TestWorkers(TestBase):
             self.assertFalse(mocked['get_citation_target_count'].called)
             self.assertFalse(mocked['get_citation_count'].called)
             self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
-            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+            self.assertTrue(mocked['get_citation_targets_by_doi'].called)
             self.assertFalse(mocked['get_citation_targets'].called)
             self.assertFalse(mocked['request_existing_citations'].called)
             self.assertFalse(mocked['build_bibcode'].called)

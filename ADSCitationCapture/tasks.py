@@ -309,7 +309,7 @@ def task_process_deleted_citation(citation_change, force=False):
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
-            associated_works = db.get_citation_targets_by_doi(app, [citation_change.content])[0]['associated_works']
+            associated_works = db.get_citation_targets_by_doi(app, [citation_change.content])[0].get('associated_works',{"":""})
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
             task_output_results.delay(citation_change, parsed_metadata, citations, associated_works)
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)

@@ -86,7 +86,6 @@ class TestWorkers(TestBase):
                     '\n\x132016AJ....152..123G\x12\x13...................\x18\x01"\x0eascl:1208.00420\x02:\x04\x08\x80\xa3\x05',
                     '\n\x132019arXiv190105855L\x12\x13..................."\x1410.5281/zenodo.118130\x01:\x04\x08\x80\xa3\x05',
                 ]
-
             # Process first file
             i = 0
             with TestBase.mock_multiple_targets({
@@ -192,6 +191,7 @@ class TestWorkers(TestBase):
                     'webhook_dump_event': patch.object(webhook, 'dump_event', return_value=True), \
                     'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
                     'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+
                 self.process(second_refids_filename, sqlalchemy_url=self.sqlalchemy_url, schema_prefix=self.schema_prefix)
                 self.assertTrue(mocked['citation_already_exists'].called)
                 self.assertTrue(mocked['get_citation_target_metadata'].called)
@@ -211,7 +211,7 @@ class TestWorkers(TestBase):
                 self.assertFalse(mocked['get_citation_target_count'].called)
                 self.assertFalse(mocked['get_citation_count'].called)
                 self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
-                self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+                self.assertTrue(mocked['get_citation_targets_by_doi'].called)
                 self.assertFalse(mocked['get_citation_targets'].called)
                 self.assertFalse(mocked['request_existing_citations'].called)
                 self.assertTrue(mocked['build_bibcode'].called)
