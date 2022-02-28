@@ -216,7 +216,6 @@ def diagnose(bibcodes, json):
         process(input_filename, force=False, diagnose=True)
 
 
-
 def _build_diagnostics(bibcodes=None, json_payloads=None):
     """
     Builds a temporary file to be used for diagnostics.
@@ -291,7 +290,7 @@ if __name__ == '__main__':
                         action='store',
                         default=[],
                         help='Space separated bibcode list, if no list is provided then the full database is considered')
-    diagnose_parser.add_argument(
+    maintenance_parser.add_argument(
                         '--json',
                         dest='json_payload',
                         nargs='+',
@@ -367,7 +366,7 @@ if __name__ == '__main__':
             elif args.reevaluate:
                 maintenance_reevaluate(dois, bibcodes)
             elif args.curation:
-                maintenance_curation(args.input_filename, dois, bibcodes, json_payload, args.reset, args.show)
+                maintenance_curation(args.input_filename, dois, bibcodes, args.json_payload, args.reset, args.show)
 
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")

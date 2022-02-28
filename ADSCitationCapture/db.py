@@ -262,10 +262,10 @@ def generate_modified_metadata(parsed_metadata, curated_entry):
     """
     modify parsed_metadata with any curated metadata. return results.
     """
-    modified_metadata = parsed_metadata
+    modified_metadata = parsed_metadata.copy()
     bad_keys=[]
     for key in curated_entry.keys():
-        if key not in ['bibcode','alternate_bibcode','doi']:
+        if key not in ['bibcode', 'doi']:
             if key in modified_metadata.keys():
                 try:
                     modified_metadata[key] = curated_entry[key]
