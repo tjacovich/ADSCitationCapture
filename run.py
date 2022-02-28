@@ -252,7 +252,7 @@ if __name__ == '__main__':
                         dest='curation',
                         action='store_true',
                         default=False,
-                        help='Manually edit Citation Capture generated citation metadata for specific entries.')
+                        help='Override certain/all metadata fields for specific entries (First author changes will trigger bibcode changes).')
     maintenance_parser.add_argument(
                         '--resend-broker',
                         dest='resend_broker',

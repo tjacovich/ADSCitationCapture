@@ -197,7 +197,7 @@ def get_citation_targets(app, only_status='REGISTERED'):
         records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
 
-def get_citation_target_metadata(app, doi):
+def get_citation_target_metadata(app, doi, curate=True):
     """
     If the citation target already exists in the database, return the raw and
     parsed metadata together with the status of the citation target in the
@@ -211,9 +211,13 @@ def get_citation_target_metadata(app, doi):
         citation_target_in_db = citation_target is not None
         if citation_target_in_db:
             metadata['raw'] = citation_target.raw_cited_metadata
-            metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
             metadata['curated'] = citation_target.curated_metadata if citation_target.curated_metadata is not None else {}
             metadata['status'] = citation_target.status
+            if curate:
+                metadata['parsed'] = generate_modified_metadata(citation_target.parsed_cited_metadata, metadata['curated']) if citation_target.parsed_cited_metadata is not None else {}
+            else:
+                metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
+
     return metadata
 
 def get_citation_target_entry_date(app, doi):
@@ -254,6 +258,26 @@ def get_citations(app, citation_change):
         citation_bibcodes = [r.citing for r in session.query(Citation).filter_by(content=citation_change.content, status="REGISTERED").all()]
     return citation_bibcodes
 
+def generate_modified_metadata(parsed_metadata, curated_entry):
+    """
+    modify parsed_metadata with any curated metadata. return results.
+    """
+    modified_metadata = parsed_metadata
+    bad_keys=[]
+    for key in curated_entry.keys():
+        if key not in ['bibcode','alternate_bibcode','doi']:
+            if key in modified_metadata.keys():
+                try:
+                    modified_metadata[key] = curated_entry[key]
+                except Exception as e:
+                    logger.error("Failed setting {} for {} with Exception: {}.".format(key, parsed_metadata.get('bibcode'), e))
+            else:
+                logger.warn("{} is not a valid entry for parsed_cited_metadata. Flagging key for removal.".format(key))
+                bad_keys.append(key)
+    #remove bad keys from curated entries.
+    for key in bad_keys:
+        curated_entry.pop(key)
+    return modified_metadata
 
 def citation_already_exists(app, citation_change):
     """
