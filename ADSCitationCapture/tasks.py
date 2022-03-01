@@ -555,7 +555,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                 event_data = webhook.identical_bibcodes_event_data(registered_record['bibcode'], modified_metadata['bibcode'])
                 if event_data:
                     dump_prefix = datetime.now().strftime("%Y%m%d") # "%Y%m%d_%H%M%S"
-                    logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], parsed_metadata['bibcode'])
+                    logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], modified_metadata['bibcode'])
                     task_emit_event.delay(event_data, dump_prefix)
                 
             updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata = curated_entry)

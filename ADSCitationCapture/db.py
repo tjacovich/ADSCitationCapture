@@ -49,6 +49,7 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
         citation_target.parsed_cited_metadata = parsed_metadata
         citation_target.curated_metadata = {}
         citation_target.status = status
+        citation_target.bibcode = parsed_metadata.get('bibcode', None)
         session.add(citation_target)
         try:
             session.commit()
@@ -77,6 +78,7 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
             citation_target.raw_cited_metadata = raw_metadata
             citation_target.parsed_cited_metadata = parsed_metadata
             citation_target.curated_metadata = curated_metadata
+            citation_target.bibcode = parsed_metadata.get('bibcode', None)
             if status is not None:
                 citation_target.status = status
             session.add(citation_target)
@@ -345,4 +347,7 @@ def mark_all_discarded_citations_as_registered(app, content):
             session.add(citation)
         session.commit()
 
-
+def populate_bibcode_column(app):
+    records = db.get_citation_targets(app, only_status = None)
+    for record in records:
+        
