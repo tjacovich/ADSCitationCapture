@@ -49,7 +49,7 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
         citation_target.parsed_cited_metadata = parsed_metadata
         citation_target.curated_metadata = {}
         citation_target.status = status
-        citation_target.bibcode = parsed_metadata.get('bibcode', None)
+        citation_target.bibcode = parsed_metadata.get("bibcode", None)
         session.add(citation_target)
         try:
             session.commit()
@@ -61,11 +61,12 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
             stored = True
     return stored
 
-def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None):
+def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None):
     """
     Update metadata for a citation target
     """
     metadata_updated = False
+    if not bibcode: bibcode = parsed_metadata.get('bibcode', None)
     with app.session_scope() as session:
         citation_target = session.query(CitationTarget).filter(CitationTarget.content == content).first()
         if type(raw_metadata) is bytes:
@@ -74,11 +75,12 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
             except UnicodeEncodeError:
                 pass
         if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
-                (status is not None and citation_target.status != status) or citation_target.curated_metadata != curated_metadata:
+                (status is not None and citation_target.status != status) or citation_target.curated_metadata != curated_metadata or \
+                citation_target.bibcode != bibcode:
             citation_target.raw_cited_metadata = raw_metadata
             citation_target.parsed_cited_metadata = parsed_metadata
             citation_target.curated_metadata = curated_metadata
-            citation_target.bibcode = parsed_metadata.get('bibcode', None)
+            citation_target.bibcode = bibcode
             if status is not None:
                 citation_target.status = status
             session.add(citation_target)
@@ -136,7 +138,7 @@ def _extract_key_citation_target_data(records_db, disable_filter=False):
     """
     records = [
         {
-            'bibcode': record_db.parsed_cited_metadata.get('bibcode', None),
+            'bibcode': record_db.bibcode,
             'alternate_bibcode': record_db.parsed_cited_metadata.get('alternate_bibcode', []),
             'content': record_db.content,
             'content_type': record_db.content_type,
@@ -348,6 +350,19 @@ def mark_all_discarded_citations_as_registered(app, content):
         session.commit()
 
 def populate_bibcode_column(app):
-    records = db.get_citation_targets(app, only_status = None)
+    """
+    Pulls all citation targets from DB and populates the bibcode column using parsed metadata
+    """
+    records = get_citation_targets(app, only_status = None)
     for record in records:
+        content = record.get('content', None)
+        metadata = get_citation_target_metadata(app, content, curate=False)
+        if metadata:
+            raw_metadata = metadata.get('raw_metadata', {})
+            parsed_metadata = metadata.get('parsed_metadata', {})
+            curated_metadata = metadata.get('curated_metadata',{})
+            status = metadata.get('status', None)
+            update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata, status)
+
+            
         

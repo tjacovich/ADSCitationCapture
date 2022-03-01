@@ -526,11 +526,11 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                         alternate_bibcode.append(registered_record.get('bibcode'))
                         #Add the CC generated bibcode to the parsed metadata
                         parsed_metadata['alternate_bibcode'].append(registered_record.get('bibcode'))
-                
-                parsed_metadata['bibcode'] = new_bibcode
+                parsed_metadata['alternate_bibcode'] = list(set(parsed_metadata.get('alternate_bibcode')))
+                modified_metadata['bibcode'] = new_bibcode
                 bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
-                modified_metadata['alternate_bibcode'] = alternate_bibcode
-                curated_entry['alternate_bibcode'] = alternate_bibcode
+                modified_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
+                curated_entry['alternate_bibcode'] = list(set(alternate_bibcode))
                    
             #Repopulate parsed_metadata with expected bibcode information from DataCite
             else:
@@ -544,13 +544,12 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                     logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
                     if registered_record.get('bibcode') not in alternate_bibcode:
                         alternate_bibcode.append(registered_record.get('bibcode'))
-                parsed_metadata['bibcode'] = new_bibcode
-                parsed_metadata['alternate_bibcode'] = alternate_bibcode
+                parsed_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
                 bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
                 modified_metadata = parsed_metadata
                 curated_entry = {}
             
-            different_bibcodes = registered_record['bibcode'] != modifed_metadata['bibcode']
+            different_bibcodes = registered_record['bibcode'] != modified_metadata['bibcode']
             if different_bibcodes:
                 event_data = webhook.identical_bibcodes_event_data(registered_record['bibcode'], modified_metadata['bibcode'])
                 if event_data:
@@ -558,7 +557,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                     logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], modified_metadata['bibcode'])
                     task_emit_event.delay(event_data, dump_prefix)
                 
-            updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata = curated_entry)
+            updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata = curated_entry, bibcode = modified_metadata.get('bibcode'))
             if updated:
                 citation_change = adsmsg.CitationChange(content=registered_record['content'],
                                                             content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
