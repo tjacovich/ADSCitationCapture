@@ -401,6 +401,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
         if raw_metadata:
             parsed_metadata = doi.parse_metadata(raw_metadata)
             is_software = parsed_metadata.get('doctype', '').lower() == "software"
+            bibcode = registered_record.get('bibcode', None)
             if not is_software:
                 logger.error("The new metadata for '%s' has changed its 'doctype' and it is not 'software' anymore", registered_record['bibcode'])
             elif parsed_metadata.get('bibcode') in (None, ""):
@@ -436,6 +437,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     if registered_record['bibcode'] not in alternate_bibcode:
                         alternate_bibcode.append(registered_record['bibcode'])
                     parsed_metadata['alternate_bibcode'] = alternate_bibcode
+                    bibcode = parsed_metadata.get('bibcode', None)
                     bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
                 
                 #Protect curated metadata from being bulldozed by metadata updates. 
@@ -448,11 +450,12 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     if new_bibcode != parsed_metadata['bibcode']:
                         if parsed_metadata.get('bibcode') not in alternate_bibcode:
                             alternate_bibcode.append(parsed_metadata.get('bibcode'))
-                        parsed_metadata['bibcode'] = new_bibcode
-                        bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
+                        modified_metadata['bibcode'] = new_bibcode
+                        bibcode = new_bibcode
+                        bibcode_replaced = {'previous': registered_record['bibcode'], 'new': modified_metadata['bibcode'] }
                         logger.info("Updated bibcode from {}  to {}".format(alternate_bibcode[-1], new_bibcode))
                         
-                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata)
+                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata = curated_metadata, bibcode = bibcode)
         
         if updated:
             citation_change = adsmsg.CitationChange(content=registered_record['content'],
@@ -465,7 +468,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                 original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)     
+                task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced)     
 
 @app.task(queue='maintenance_metadata')
 def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
@@ -630,7 +633,12 @@ def maintenance_show_metadata(curated_entries):
                 msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
                 logger.error(msg)
 
-        
+@app.task(queue='maintenance_metadata')
+def task_maintenance_repopulate_bibcode_columns(curated = True):
+    """
+    Re-populates bibcode column with current canonical bibcode
+    """
+    db.populate_bibcode_column(app, curated)
 
 @app.task(queue='maintenance_resend')
 def task_maintenance_resend(dois, bibcodes, broker):

@@ -111,6 +111,9 @@ def maintenance_reevaluate(dois, bibcodes):
     # Send to master updated metadata
     tasks.task_maintenance_reevaluate.delay(dois, bibcodes)
 
+def maintenance_repopulate():
+    tasks.task_maintenance_repopulate_bibcode_columns.delay()
+
 def maintenance_curation(filename = None, dois = None, bibcodes = None, json_payload = None, reset = False, show = False):
     """
     Update any manually curated values for a given entry.
@@ -253,6 +256,12 @@ if __name__ == '__main__':
                         default=False,
                         help='Override certain/all metadata fields for specific entries (First author changes will trigger bibcode changes).')
     maintenance_parser.add_argument(
+                        '--populate-bibcodes',
+                        dest='repopulate',
+                        action='store_true',
+                        default=False,
+                        help="Populate citation target bibcode column with canonical bibcodes")
+    maintenance_parser.add_argument(
                         '--resend-broker',
                         dest='resend_broker',
                         action='store_true',
@@ -337,7 +346,8 @@ if __name__ == '__main__':
             process(args.input_filename, force=False, diagnose=False)
 
     elif args.action == "MAINTENANCE":
-        if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not args.reevaluate and not args.curation:
+        if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not\
+         args.reevaluate and not args.curation and not args.repopulate:
             maintenance_parser.error("nothing to be done since no task has been selected")
         else:
             # Read files if provided (instead of a direct list of DOIs)
@@ -367,7 +377,8 @@ if __name__ == '__main__':
                 maintenance_reevaluate(dois, bibcodes)
             elif args.curation:
                 maintenance_curation(args.input_filename, dois, bibcodes, args.json_payload, args.reset, args.show)
-
+            elif args.repopulate:
+                maintenance_repopulate()
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)

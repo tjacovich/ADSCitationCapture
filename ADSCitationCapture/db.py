@@ -191,7 +191,9 @@ def get_citation_targets(app, only_status='REGISTERED'):
     Return a list of dict with all citation targets (or only the registered ones)
     - Records without a bibcode in the database will not be returned
     """
+    logger.debug("Starting session")
     with app.session_scope() as session:
+        logger.debug("Calling Session Query")
         if only_status:
             records_db = session.query(CitationTarget).filter_by(status=only_status).all()
             disable_filter = only_status in ['DISCARDED','EMITTABLE']
@@ -349,18 +351,21 @@ def mark_all_discarded_citations_as_registered(app, content):
             session.add(citation)
         session.commit()
 
-def populate_bibcode_column(app):
+def populate_bibcode_column(app, curated = True):
     """
     Pulls all citation targets from DB and populates the bibcode column using parsed metadata
     """
+    logger.debug("Collecting Citation Targets")
     records = get_citation_targets(app, only_status = None)
     for record in records:
         content = record.get('content', None)
-        metadata = get_citation_target_metadata(app, content, curate=False)
+        logger.debug("Collecting metadata for {}".format(record.get('content')))
+        metadata = get_citation_target_metadata(app, content, curate = curated)
         if metadata:
-            raw_metadata = metadata.get('raw_metadata', {})
-            parsed_metadata = metadata.get('parsed_metadata', {})
-            curated_metadata = metadata.get('curated_metadata',{})
+            logger.debug("Updating Bibcode field for {}".format(record.get('content')))
+            raw_metadata = metadata.get('raw', {})
+            parsed_metadata = metadata.get('parsed', {})
+            curated_metadata = metadata.get('curated',{})
             status = metadata.get('status', None)
             update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata, status)
 
