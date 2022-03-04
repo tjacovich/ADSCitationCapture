@@ -521,7 +521,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                 parsed_metadata['alternate_bibcode'] = registered_record.get('alternate_bibcode', [])
                 if 'alternate_bibcode' in curated_entry.keys():
                     alternate_bibcode = list(set(alternate_bibcode+curated_entry['alternate_bibcode']))
-                    curated_entry['alternate_bibcode'] = alternate_bibcode
+                    logger.debug('alternate bibcodes are {}'.format(alternate_bibcode))
                 if new_bibcode != registered_record.get('bibcode'):
                     logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
                     if registered_record.get('bibcode') not in alternate_bibcode:
@@ -625,7 +625,7 @@ def maintenance_show_metadata(curated_entries):
                 parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
                 if parsed_metadata:
                     print(parsed_metadata)
-                    
+
             except Exception as e:
                 msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
                 logger.error(msg)
