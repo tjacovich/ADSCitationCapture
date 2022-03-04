@@ -583,9 +583,7 @@ def maintenance_show_metadata(curated_entries):
     Print current metadata for a given citation target to standard output.
     """
     for curated_entry in curated_entries:
-        updated = False
-        bibcode_replaced = {}
-        #First try by doi.
+
         if curated_entry.get('doi'):
             try:
                 registered_record = db.get_citation_targets_by_doi(app, [curated_entry.get('doi')], only_status='REGISTERED')[0]   
@@ -601,11 +599,9 @@ def maintenance_show_metadata(curated_entries):
                                                     )
             try:
                 parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
-                modified_metadata = db.generate_modified_metadata(parsed_metadata, registered_record.get('curated_metadata', {}))
-                if modified_metadata:
-                    print(modified_metadata)
-                elif parsed_metadata:
+                if parsed_metadata:
                     print(parsed_metadata)
+
             except Exception as e:
                 msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
                 logger.error(msg)
@@ -629,6 +625,7 @@ def maintenance_show_metadata(curated_entries):
                 parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
                 if parsed_metadata:
                     print(parsed_metadata)
+                    
             except Exception as e:
                 msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
                 logger.error(msg)

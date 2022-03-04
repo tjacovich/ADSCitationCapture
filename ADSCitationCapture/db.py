@@ -227,9 +227,9 @@ def _get_citation_target_metadata_session(session, doi, citation_in_db, metadata
         metadata['status'] = citation_target.status
         if curate:
             metadata['parsed'] = generate_modified_metadata(citation_target.parsed_cited_metadata, metadata['curated']) if citation_target.parsed_cited_metadata is not None else {}
+            metadata['parsed'].update({'bibcode': citation_target.bibcode})
         else:
             metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
-
     return metadata
 
 def get_citation_target_metadata(app, doi, curate=True):
