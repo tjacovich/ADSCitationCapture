@@ -62,6 +62,9 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
     return stored
 
 def _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None):
+    """
+    Actual calls to database session for update_citation_target_metadata
+    """
     citation_target = session.query(CitationTarget).filter(CitationTarget.content == content).first()
     if type(raw_metadata) is bytes:
         try:
@@ -79,8 +82,9 @@ def _update_citation_target_metadata_session(session, content, raw_metadata, par
             citation_target.status = status
         session.add(citation_target)
         session.commit()
-        metadata_updated = True
         logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", content, ", ".join(parsed_metadata.get('alternate_bibcode', [])))
+        metadata_updated = True
+        return metadata_updated
 
 def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None):
     """
@@ -89,25 +93,7 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
     metadata_updated = False
     if not bibcode: bibcode = parsed_metadata.get('bibcode', None)
     with app.session_scope() as session:
-        citation_target = session.query(CitationTarget).filter(CitationTarget.content == content).first()
-        if type(raw_metadata) is bytes:
-            try:
-                raw_metadata = raw_metadata.decode('utf-8')
-            except UnicodeEncodeError:
-                pass
-        if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
-                (status is not None and citation_target.status != status) or citation_target.curated_metadata != curated_metadata or \
-                citation_target.bibcode != bibcode:
-            citation_target.raw_cited_metadata = raw_metadata
-            citation_target.parsed_cited_metadata = parsed_metadata
-            citation_target.curated_metadata = curated_metadata
-            citation_target.bibcode = bibcode
-            if status is not None:
-                citation_target.status = status
-            session.add(citation_target)
-            session.commit()
-            metadata_updated = True
-            logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", content, ", ".join(parsed_metadata.get('alternate_bibcode', [])))
+        metadata_updated =  _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode)
     return metadata_updated
 
 
@@ -207,20 +193,44 @@ def get_citation_targets_by_doi(app, dois, only_status='REGISTERED'):
         records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
 
+def _get_citation_targets_session(session, only_status='REGISTERED'):
+    """
+    Actual calls to database session for get_citation_targets
+    """
+    if only_status:
+        records_db = session.query(CitationTarget).filter_by(status=only_status).all()
+        disable_filter = only_status in ['DISCARDED','EMITTABLE']
+    else:
+        records_db = session.query(CitationTarget).all()
+        disable_filter = True
+    records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
+    return records
+
 def get_citation_targets(app, only_status='REGISTERED'):
     """
     Return a list of dict with all citation targets (or only the registered ones)
     - Records without a bibcode in the database will not be returned
     """
     with app.session_scope() as session:
-        if only_status:
-            records_db = session.query(CitationTarget).filter_by(status=only_status).all()
-            disable_filter = only_status in ['DISCARDED','EMITTABLE']
-        else:
-            records_db = session.query(CitationTarget).all()
-            disable_filter = True
-        records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
+        records = _get_citation_targets_session(session, only_status)
     return records
+
+def _get_citation_target_metadata_session(session, doi, citation_in_db, metadata, curate=True):
+    """
+    Actual calls to database session for get_citation_target_metadata
+    """
+    citation_target = session.query(CitationTarget).filter_by(content=doi).first()
+    citation_target_in_db = citation_target is not None
+    if citation_target_in_db:
+        metadata['raw'] = citation_target.raw_cited_metadata
+        metadata['curated'] = citation_target.curated_metadata if citation_target.curated_metadata is not None else {}
+        metadata['status'] = citation_target.status
+        if curate:
+            metadata['parsed'] = generate_modified_metadata(citation_target.parsed_cited_metadata, metadata['curated']) if citation_target.parsed_cited_metadata is not None else {}
+        else:
+            metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
+
+    return metadata
 
 def get_citation_target_metadata(app, doi, curate=True):
     """
@@ -232,17 +242,7 @@ def get_citation_target_metadata(app, doi, curate=True):
     citation_in_db = False
     metadata = {}
     with app.session_scope() as session:
-        citation_target = session.query(CitationTarget).filter_by(content=doi).first()
-        citation_target_in_db = citation_target is not None
-        if citation_target_in_db:
-            metadata['raw'] = citation_target.raw_cited_metadata
-            metadata['curated'] = citation_target.curated_metadata if citation_target.curated_metadata is not None else {}
-            metadata['status'] = citation_target.status
-            if curate:
-                metadata['parsed'] = generate_modified_metadata(citation_target.parsed_cited_metadata, metadata['curated']) if citation_target.parsed_cited_metadata is not None else {}
-            else:
-                metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
-
+        metadata = _get_citation_target_metadata_session(session, doi, citation_in_db, metadata, curate) 
     return metadata
 
 def get_citation_target_entry_date(app, doi):
@@ -390,30 +390,12 @@ def populate_bibcode_column(main_session, curated = True):
 
 def _update_citation_target_metadata_alembic(session, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None):
     """
-    Update metadata for a citation target
+    Update metadata for a citation target when we do not need to
+    close the session after completion
     """
     metadata_updated = False
     if not bibcode: bibcode = parsed_metadata.get('bibcode', None)
-
-    citation_target = session.query(CitationTarget).filter(CitationTarget.content == content).first()
-    if type(raw_metadata) is bytes:
-        try:
-            raw_metadata = raw_metadata.decode('utf-8')
-        except UnicodeEncodeError:
-            pass
-    if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
-            (status is not None and citation_target.status != status) or citation_target.curated_metadata != curated_metadata or \
-            citation_target.bibcode != bibcode:
-        citation_target.raw_cited_metadata = raw_metadata
-        citation_target.parsed_cited_metadata = parsed_metadata
-        citation_target.curated_metadata = curated_metadata
-        citation_target.bibcode = bibcode
-        if status is not None:
-            citation_target.status = status
-        session.add(citation_target)
-        session.commit()
-        metadata_updated = True
-        logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", content, ", ".join(parsed_metadata.get('alternate_bibcode', [])))
+    metadata_updated = _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode)    
     return metadata_updated
             
 def _get_citation_target_metadata_alembic(session, doi, curate=True):
@@ -421,36 +403,17 @@ def _get_citation_target_metadata_alembic(session, doi, curate=True):
     If the citation target already exists in the database, return the raw and
     parsed metadata together with the status of the citation target in the
     database.
-    If not, return an empty dictionary.
+    If not, return an empty dictionary. 
+    Variation for when the function does not need to control the session
     """
     citation_in_db = False
     metadata = {}
-
-    citation_target = session.query(CitationTarget).filter_by(content=doi).first()
-    citation_target_in_db = citation_target is not None
-    if citation_target_in_db:
-        metadata['raw'] = citation_target.raw_cited_metadata
-        metadata['curated'] = citation_target.curated_metadata if citation_target.curated_metadata is not None else {}
-        metadata['status'] = citation_target.status
-        if curate:
-            metadata['parsed'] = generate_modified_metadata(citation_target.parsed_cited_metadata, metadata['curated']) if citation_target.parsed_cited_metadata is not None else {}
-        else:
-            metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
-
-    return metadata        
+    return _get_citation_target_metadata_session(session, doi, citation_in_db, metadata, curate)
 
 def _get_citation_targets_alembic(session, only_status='REGISTERED'):
     """
     Return a list of dict with all citation targets (or only the registered ones)
     - Records without a bibcode in the database will not be returned
+    Variation for then the function does not need to control the session.
     """
-    logger.debug("Starting session")
-    logger.debug("Calling Session Query")
-    if only_status:
-        records_db = session.query(CitationTarget).filter_by(status=only_status).all()
-        disable_filter = only_status in ['DISCARDED','EMITTABLE']
-    else:
-        records_db = session.query(CitationTarget).all()
-        disable_filter = True
-    records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
-    return records
+    return _get_citation_targets_session(session, only_status)
