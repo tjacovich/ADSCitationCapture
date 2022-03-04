@@ -7,7 +7,7 @@ Create Date: 2022-01-19 13:59:50.640443
 """
 from alembic import op
 import os
-from ADSCitationCapture import models, tasks
+from ADSCitationCapture import models, db
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 import adsputils
@@ -20,12 +20,13 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
+    session = sa.orm.Session(bind=op.get_bind())
     op.add_column('citation_target',sa.Column('curated_metadata', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
     op.add_column('citation_target_version',sa.Column('curated_metadata', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
     op.add_column('citation_target',sa.Column('bibcode', sa.Text(), nullable=True))
     op.add_column('citation_target_version',sa.Column('bibcode', sa.Text(), nullable=True))
-    tasks.task_maintenance_repopulate_bibcode_columns.delay()
-    
+    db.populate_bibcode_column(session)
+
 def downgrade():
     op.drop_column('citation_target','curated_metadata')
     op.drop_column('citation_target_version','curated_metadata')
