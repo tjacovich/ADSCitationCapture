@@ -226,7 +226,9 @@ def _get_citation_target_metadata_session(session, doi, citation_in_db, metadata
         metadata['curated'] = citation_target.curated_metadata if citation_target.curated_metadata is not None else {}
         metadata['status'] = citation_target.status
         if curate:
+            #modified metadata updates every field that isn't the doi or the canonical bibcode
             metadata['parsed'] = generate_modified_metadata(citation_target.parsed_cited_metadata, metadata['curated']) if citation_target.parsed_cited_metadata is not None else {}
+            #This line replaces the parsed bibcode with the bibcode column
             if citation_target.bibcode: metadata['parsed'].update({'bibcode': citation_target.bibcode})
         else:
             metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
