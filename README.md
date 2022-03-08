@@ -515,8 +515,7 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
    
    `input_filename` requires either `"bibcode"` or `"doi"` to be set for the entry to be retrieved. All other entries are optional.
 
-    The `--curation` flag takes this input and converts `parsed_cited_metadata` to
-
+    The `--curation` flag takes this input and writes it to `curated_metadata`. CitationCapture then modifies the parsed metadata on the fly, so that the metadata sent to Master and emitted to the broker becomes:
 
     ```
     parsed_cited_metadata
@@ -524,8 +523,6 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
 
     {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Some, Name"], "bibcode": "YYYYzndo...BCDEFGS", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [], "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Some, N"]}
     ```
-
-    The modified `parsed_cited_metadata` is then used to construct the message forwarded to Master Pipeline.
 
 # Miscellaneous
 
