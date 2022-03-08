@@ -510,7 +510,7 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
     sample_input_file.dat
     ----------------------
 
-    {"authors": ["Some, Name"], "bibcode": YYYYzndo...BCDEFGR", "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"], "normalized_authors": ["Some, N"]}
+    {"authors": ["Some, Name"], "bibcode": YYYYzndo...BCDEFGL", "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"], "normalized_authors": ["Some, N"]}
     ```
    
    `input_filename` requires either `"bibcode"` or `"doi"` to be set for the entry to be retrieved. All other entries are optional.
