@@ -450,7 +450,9 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     if 'alternate_bibcode' in curated_entry.keys():
                         alternate_bibcode = list(set(alternate_bibcode+curated_entry['alternate_bibcode']))
                         logger.debug('alternate bibcodes are {}'.format(alternate_bibcode))
+                    bibcode = registered_record.get('bibcode')
                     if new_bibcode != registered_record.get('bibcode'):
+                        bibcode = new_bibcode
                         logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
                         if registered_record.get('bibcode') not in alternate_bibcode:
                             #generate complete alt bibcode list including any curated entries
