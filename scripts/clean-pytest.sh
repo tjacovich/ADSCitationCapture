@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -x
 docker-compose rm -fsv
-docker rmi pytest_citation_capture_pipeline:latest
+docker rmi python:3.8.12

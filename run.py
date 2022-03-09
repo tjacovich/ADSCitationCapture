@@ -4,7 +4,7 @@ import sys
 import tempfile
 import argparse
 import json
-from astropy.io import ascii
+import pandas as pd
 from ADSCitationCapture import tasks, db
 from ADSCitationCapture.delta_computation import DeltaComputation
 
@@ -238,15 +238,15 @@ if __name__ == '__main__':
             # Read files if provided (instead of a direct list of DOIs)
             if len(args.dois) == 1 and os.path.exists(args.dois[0]):
                 logger.info("Reading DOIs from file '%s'", args.dois[0])
-                table = ascii.read(args.dois[0], delimiter="\t", names=('doi', 'version'))
-                dois = table['doi'].tolist()
+                table = pd.read_csv(args.dois[0], delimiter="\t", names=('doi', 'version'))
+                dois = table['doi'].to_list()
             else:
                 dois = args.dois
             # Read files if provided (instead of a direct list of bibcodes)
             if len(args.bibcodes) == 1 and os.path.exists(args.bibcodes[0]):
                 logger.info("Reading bibcodes from file '%s'", args.bibcodes[0])
-                table = ascii.read(args.bibcodes[0], delimiter="\t", names=('bibcode', 'version'))
-                bibcodes = table['bibcode'].tolist()
+                table = pd.read_csv(args.bibcodes[0], delimiter="\t", names=('bibcode', 'version'))
+                bibcodes = table['bibcode'].to_list()
             else:
                 bibcodes = args.bibcodes
             # Process
