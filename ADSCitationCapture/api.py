@@ -3,7 +3,6 @@ import os
 import requests
 import ADSCitationCapture.url as url
 import urllib.request, urllib.parse, urllib.error
-import math
 from adsputils import setup_logging
 
 # ============================= INITIALIZATION ==================================== #

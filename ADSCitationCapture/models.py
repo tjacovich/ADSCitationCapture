@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Boolean, DateTime, String, Text, Integer, func, UniqueConstraint, ForeignKey
+from sqlalchemy import Column, Boolean, String, Text, Integer, func, UniqueConstraint, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy import orm
-from sqlalchemy.dialects.postgresql import ENUM, JSON, JSONB
+from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_continuum import make_versioned
 from adsputils import UTCDateTime, get_date

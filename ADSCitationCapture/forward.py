@@ -3,7 +3,6 @@ import os
 import itertools
 import datetime
 from adsputils import get_date, date2solrstamp
-from dateutil.tz import tzutc
 from adsmsg import DenormalizedRecord, NonBibRecord, Status, CitationChangeContentType
 from bs4 import BeautifulSoup
 from adsputils import setup_logging
