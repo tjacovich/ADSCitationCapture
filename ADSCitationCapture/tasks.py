@@ -447,8 +447,8 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     new_bibcode = doi.build_bibcode(modified_metadata, doi.zenodo_doi_re, zenodo_bibstem)
                     alternate_bibcode = registered_record.get('alternate_bibcode', [])
                     parsed_metadata['alternate_bibcode'] = registered_record.get('alternate_bibcode', [])
-                    if 'alternate_bibcode' in curated_entry.keys():
-                        alternate_bibcode = list(set(alternate_bibcode+curated_entry['alternate_bibcode']))
+                    if 'alternate_bibcode' in curated_metadata.keys():
+                        alternate_bibcode = list(set(alternate_bibcode+curated_metadata['alternate_bibcode']))
                         logger.debug('alternate bibcodes are {}'.format(alternate_bibcode))
                     bibcode = registered_record.get('bibcode')
                     if new_bibcode != registered_record.get('bibcode'):
@@ -463,7 +463,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     modified_metadata['bibcode'] = new_bibcode
                     bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
                     modified_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
-                    curated_entry['alternate_bibcode'] = list(set(alternate_bibcode))
+                    curated_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
                 else:
                     modified_metadata = parsed_metadata
                 
