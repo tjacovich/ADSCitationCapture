@@ -1,4 +1,5 @@
 import os
+from typing import OrderedDict
 from psycopg2 import IntegrityError
 from dateutil.tz import tzutc
 from ADSCitationCapture.models import Citation, CitationTarget, Event
@@ -17,6 +18,10 @@ logger = setup_logging(__name__, proj_home=proj_home,
                         level=config.get('LOGGING_LEVEL', 'INFO'),
                         attach_stdout=config.get('LOG_STDOUT', False))
 
+file_names=OrderedDict()
+file_names['bibcode'] =proj_home+'/logs/bibcodes_CC.can.list'
+file_names['citations'] = proj_home+'/logs/citations_CC.list'
+file_names['references'] = proj_home+'/logs/references_CC.list'
 
 # =============================== FUNCTIONS ======================================= #
 def store_event(app, data):
@@ -106,6 +111,45 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
         metadata_updated =  _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode)
     return metadata_updated
 
+def write_citation_target_data(app, only_status=None):
+    """
+    Writes Canonical bibcodes to file for DataPipeline
+    """
+    with app.session_scope() as session:
+       with app.session_scope() as session:
+        if only_status:
+            records_db = session.query(CitationTarget).filter_by(status=only_status).all()
+            disable_filter = only_status in ['DISCARDED','EMITTABLE']
+        else:
+            records_db = session.query(CitationTarget).all()
+            disable_filter = True
+        bibcodes = [r.parsed_cited_metadata.get('bibcode', '') for r in records_db]
+
+        _write_key_citation_target_data(records_db, column_name='bibcode')
+        _write_key_citation_reference_data(app, bibcodes)
+
+def _write_key_citation_target_data(records, column_name):
+    """
+    Writes 
+    """
+    try:
+        with open(file_names[column_name], 'w') as f:
+            [f.write(str(rec.parsed_cited_metadata.get(column_name,''))+"\n") for rec in records]
+        logger.info("Wrote file {} to disk.".format(column_name))
+    except Exception as e:
+        logger.error("Failed to write file {} with exception: {}.".format(file_names[column_name],e))
+
+def _write_key_citation_reference_data(app, bibcodes):
+    try:
+        with open(file_names['citations'], 'w') as f, open(file_names['references'], 'w') as g:
+            for bib in bibcodes:
+                cites=get_citations_by_bibcode(app, bib)
+                for cite in cites:
+                    f.write(str(cite)+"\t"+str(bib)+"\n")
+                    g.write(str(bib)+"\t"+str(cite)+"\n")
+        logger.info("Wrote files {} and {} to disk.".format(file_names['citations'],file_names['references']))
+    except Exception as e:
+        logger.error("Failed to write files {} and {} with exception: {}.".format(file_names['citations'],file_names['references'],e))
 
 def store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
     """
@@ -199,7 +243,6 @@ def get_citation_targets_by_doi(app, dois, only_status='REGISTERED'):
         else:
             records_db = session.query(CitationTarget).filter(CitationTarget.content.in_(dois)).all()
             disable_filter = True
-
         records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
 

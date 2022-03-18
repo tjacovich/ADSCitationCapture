@@ -259,6 +259,7 @@ def task_process_citation_changes(citation_changes, force=False):
     Process citation changes
     """
     logger.debug('Checking content: %s', citation_changes)
+
     for citation_change in citation_changes.changes:
         citation_change = _protobuf_to_adsmsg_citation_change(citation_change)
         # Check: Is this citation already stored in the DB?
@@ -282,6 +283,10 @@ def task_process_citation_changes(citation_changes, force=False):
             else:
                 logger.debug("Calling 'task_process_deleted_citation' with '%s'", citation_change)
                 task_process_deleted_citation.delay(citation_change)
+@app.task(queue='process-citation_changes')
+def task_write_nonbib_files(results):
+    logger.info("Writing nonbib files to disk")
+    db.write_citation_target_data(app, only_status='REGISTERED')
 
 def _emit_citation_change(citation_change, parsed_metadata):
     """
