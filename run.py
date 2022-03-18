@@ -59,7 +59,7 @@ def process(refids_filename, **kwargs):
     if diagnose:
         delta._execute_sql("drop schema {0} cascade;", delta.schema_name)
     delta.connection.close()
-    
+
     #run all change tasks, then write results to files for DataPipeline to process.
     chord(tgroups,tasks.task_write_nonbib_files.s()).delay()
 
@@ -102,6 +102,9 @@ def maintenance_resend(dois, bibcodes, broker=False):
 
     # Send to master updated metadata
     tasks.task_maintenance_resend.delay(dois, bibcodes, broker)
+def maintenance_regenerate_nonbib_files():
+    logger.info("MAINTENANCE task: rewriting all files for DataPipeline")
+    tasks.task_maintenance_generate_nonbib_files()
 
 def maintenance_reevaluate(dois, bibcodes):
     """
@@ -267,6 +270,12 @@ if __name__ == '__main__':
                         default=False,
                         help="Populate citation target bibcode column with canonical bibcodes")
     maintenance_parser.add_argument(
+                        '--regenerate-nonbib',
+                        dest='regen_nonbib',
+                        action='store_true',
+                        default=False,
+                        help='Rewrite files for DataPipeline based on the current state of the Database.')
+    maintenance_parser.add_argument(
                         '--resend-broker',
                         dest='resend_broker',
                         action='store_true',
@@ -352,7 +361,7 @@ if __name__ == '__main__':
 
     elif args.action == "MAINTENANCE":
         if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not\
-         args.reevaluate and not args.curation and not args.repopulate:
+         args.reevaluate and not args.curation and not args.repopulate and not args.regen_nonbib:
             maintenance_parser.error("nothing to be done since no task has been selected")
         else:
             # Read files if provided (instead of a direct list of DOIs)
@@ -384,6 +393,8 @@ if __name__ == '__main__':
                 maintenance_curation(args.input_filename, dois, bibcodes, args.json_payload, args.reset, args.show)
             elif args.repopulate:
                 maintenance_repopulate()
+            elif args.regen_nonbib:
+                maintenance_regenerate_nonbib_files()
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)

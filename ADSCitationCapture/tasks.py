@@ -858,6 +858,14 @@ def task_maintenance_reevaluate(dois, bibcodes):
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                     task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
 
+@app.task(queue='maintenance_resend')
+def task_maintenance_generate_nonbib_files():
+    """
+    Write DataPipeline files based on the current state of the CC database.
+    """
+    logger.info("Rewriting nonbib files to disk")
+    db.write_citation_target_data(app, only_status='REGISTERED')
+
 @app.task(queue='output-results')
 def task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced={}):
     """
