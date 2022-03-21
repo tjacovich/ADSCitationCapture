@@ -552,7 +552,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
             else:
                 #Repopulate parsed_metadata with expected bibcode information from parsed_cited_metadata.
                 logger.debug("Resetting citation to original parsed metadata")
-                #regenerate bibcode with curated_metadata and append old bibcode to alternate_bibcode 
+                #regenerate bibcode with parsed_metadata and append old bibcode to alternate_bibcode 
                 zenodo_bibstem = "zndo"
                 new_bibcode = doi.build_bibcode(parsed_metadata, doi.zenodo_doi_re, zenodo_bibstem)
                 alternate_bibcode = registered_record.get('alternate_bibcode', [])
