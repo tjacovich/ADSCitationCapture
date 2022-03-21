@@ -462,8 +462,9 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     parsed_metadata['alternate_bibcode'] = list(set(parsed_metadata.get('alternate_bibcode')))
                     modified_metadata['bibcode'] = new_bibcode
                     bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
-                    modified_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
-                    curated_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
+                    alt_bibcodes = list(set(alternate_bibcode))
+                    modified_metadata['alternate_bibcode'] = alt_bibcodes
+                    curated_metadata['alternate_bibcode'] = alt_bibcodes
                 else:
                     modified_metadata = parsed_metadata
                 
@@ -517,16 +518,16 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                 logger.error("Failed to remove key: {} with error {}".format(key, e))
                 continue
         try:
-            #only check old metadata if we are adding updates, otherwise ignore.
             if not reset:
-                #first apply any previous edits to metadata that are not overwritten by new metadata.
+                #only check old metadata if we are adding updates, otherwise ignore.
                 for  key in registered_record['curated_metadata'].keys():
+                    #first apply any previous edits to metadata that are not overwritten by new metadata.
                     if key not in curated_entry.keys():
                         curated_entry[key] = registered_record['curated_metadata'][key]
 
                 modified_metadata = db.generate_modified_metadata(parsed_metadata, curated_entry)
             
-            #regenerate bibcode with curated_metadata and append old bibcode to alternate_bibcode 
+                #regenerate bibcode with curated_metadata and append old bibcode to alternate_bibcode 
                 zenodo_bibstem = "zndo"
                 new_bibcode = doi.build_bibcode(modified_metadata, doi.zenodo_doi_re, zenodo_bibstem)
                 alternate_bibcode = registered_record.get('alternate_bibcode', [])
@@ -544,11 +545,12 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                 parsed_metadata['alternate_bibcode'] = list(set(parsed_metadata.get('alternate_bibcode')))
                 modified_metadata['bibcode'] = new_bibcode
                 bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
-                modified_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
-                curated_entry['alternate_bibcode'] = list(set(alternate_bibcode))
+                alt_bibcodes = list(set(alternate_bibcode))
+                modified_metadata['alternate_bibcode'] = alt_bibcodes
+                curated_entry['alternate_bibcode'] = alt_bibcodes
                    
-            #Repopulate parsed_metadata with expected bibcode information from DataCite
             else:
+                #Repopulate parsed_metadata with expected bibcode information from parsed_cited_metadata.
                 logger.debug("Resetting citation to original parsed metadata")
                 #regenerate bibcode with curated_metadata and append old bibcode to alternate_bibcode 
                 zenodo_bibstem = "zndo"
