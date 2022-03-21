@@ -45,13 +45,12 @@ def process(refids_filename, **kwargs):
 
     delta = DeltaComputation(sqlachemy_url, sqlalchemy_echo=sqlalchemy_echo, group_changes_in_chunks_of=1, schema_prefix=schema_prefix, force=force)
     delta.compute(refids_filename)
-    tgroups = []
     for changes in delta:
         if diagnose:
             print("Calling 'task_process_citation_changes' with '{}'".format(str(changes)))
         logger.debug("Calling 'task_process_citation_changes' with '%s'", str(changes))
         try:
-            tgroups.append(tasks.task_process_citation_changes.s(changes, force=force))
+            tasks.task_process_citation_changes.delay(changes, force=force)
         except:
             # In asynchronous mode, no exception is expected
             # In synchronous mode (for debugging purposes), exception may happen (e.g., failures to fetch metadata)
@@ -59,9 +58,6 @@ def process(refids_filename, **kwargs):
     if diagnose:
         delta._execute_sql("drop schema {0} cascade;", delta.schema_name)
     delta.connection.close()
-
-    #run all change tasks, then write results to files for DataPipeline to process.
-    chord(tgroups,tasks.task_write_nonbib_files.s()).delay()
 
 def maintenance_canonical(dois, bibcodes):
     """
