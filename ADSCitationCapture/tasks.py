@@ -843,8 +843,7 @@ def task_maintenance_reevaluate(dois, bibcodes):
                     original_citations = db.get_citations_by_bibcode(app, parsed_metadata['bibcode'])
                     citations = api.get_canonical_bibcodes(app, original_citations)
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                    task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=discarded_record.get('associated_works',{"":""}))
-                    
+                    task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=previously_discarded_record.get('associated_works',{"":""}))
 
 @app.task(queue='maintenance_associated_works')
 def task_maintenance_reevaluate_associated_works(dois, bibcodes):
