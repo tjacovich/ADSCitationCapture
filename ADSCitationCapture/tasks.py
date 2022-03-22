@@ -74,35 +74,7 @@ def task_process_new_citation(citation_change, force=False):
                 if parsed_metadata.get('bibcode') not in (None, "") and is_software:
                     status = "REGISTERED"
                     associated_version_bibcodes = _collect_associated_works(citation_change, parsed_metadata)
-                    # #Check for additional versions
-                    # try:
-                    #     all_versions_doi = doi.fetch_all_versions_doi(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata)
-                    # except:
-                    #     logger.error("Unable to recover related versions for {}",citation_change)
-                    #     all_versions_doi = None
-                    # #fetch additional versions from db if they exist.
-                    # if all_versions_doi['versions'] not in (None,[]):
-                    #     logger.info("Found {} versions for {}".format(len(all_versions_doi['versions']), citation_change.content))
-                    #     versions_in_db = db.get_associated_works_by_doi(app, all_versions_doi)
-                    #     #Only add bibcodes if there are versions in db, otherwise leave as None.
-                    #     if versions_in_db not in (None, [None]):
-                    #         logger.info("Found {} versions in database for {}".format(len(versions_in_db),citation_change.content))
-                    #         #adds the new citation target bibcode because it will not be in the db yet, 
-                    #         # and then appends the versions already in the db.
-                    #         associated_version_bibcodes = {parsed_metadata.get('version'): parsed_metadata.get('bibcode')}
-                    #         associated_version_bibcodes.update(versions_in_db)
-                    #         logger.debug("{}: associated_versions_bibcodes".format(associated_version_bibcodes))
-                    #         for bibcode in versions_in_db.values():
-                    #             associated_registered_record = db.get_citation_targets_by_bibcode(app,[bibcode])[0] 
-                    #             associated_citation_change = adsmsg.CitationChange(content=associated_registered_record['content'],
-                    #                                    content_type=getattr(adsmsg.CitationChangeContentType, associated_registered_record['content_type'].lower()),
-                    #                                    status=adsmsg.Status.updated,
-                    #                                    timestamp=datetime.now()
-                    #                                    )
-                    #             #update associated works for all versions in db
-                    #             logger.info('Calling task process_updated_associated_works')
-                    #             task_process_updated_associated_works.delay(associated_citation_change, associated_version_bibcodes)
-                        
+                    
     #PID
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
