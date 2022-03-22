@@ -210,8 +210,6 @@ def _get_citation_targets_session(session, only_status='REGISTERED'):
         disable_filter = True
     records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
-
-def get_associated_works(app, all_versions_doi, only_status='REGISTERED'):
     
 def get_associated_works_by_doi(app, all_versions_doi, only_status='REGISTERED'):
     dois = all_versions_doi['versions']
