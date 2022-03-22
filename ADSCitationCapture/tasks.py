@@ -266,19 +266,19 @@ def task_process_citation_changes(citation_changes, force=False):
 
         if citation_change.status == adsmsg.Status.new:
             if citation_in_db:
-                logger.error("Ignoring new citation (citting '%s', content '%s' and timestamp '%s') because it already exists in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+                logger.error("Ignoring new citation (citing '%s', content '%s' and timestamp '%s') because it already exists in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             else:
                 logger.debug("Calling 'task_process_new_citation' with '%s'", citation_change)
                 task_process_new_citation.delay(citation_change, force=force)
         elif citation_change.status == adsmsg.Status.updated:
             if not citation_in_db:
-                logger.error("Ignoring updated citation (citting '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+                logger.error("Ignoring updated citation (citing '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             else:
                 logger.debug("Calling 'task_process_updated_citation' with '%s'", citation_change)
                 task_process_updated_citation.delay(citation_change, force=force)
         elif citation_change.status == adsmsg.Status.deleted:
             if not citation_in_db:
-                logger.error("Ignoring deleted citation (citting '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+                logger.error("Ignoring deleted citation (citing '%s', content '%s' and timestamp '%s') because it does not exist in the database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             else:
                 logger.debug("Calling 'task_process_deleted_citation' with '%s'", citation_change)
                 task_process_deleted_citation.delay(citation_change)
@@ -372,7 +372,7 @@ def task_maintenance_canonical(dois, bibcodes):
             task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes)
 
 @app.task(queue='maintenance_metadata')
-def task_maintenance_metadata(dois, bibcodes):
+def task_maintenance_metadata(dois, bibcodes, reset = False):
     """
     Maintenance operation:
     - Get all the registered citation targets (or only a subset of them if DOIs and/or bibcodes are specified)
@@ -393,10 +393,15 @@ def task_maintenance_metadata(dois, bibcodes):
         bibcode_replaced = {}
         # Fetch DOI metadata (if HTTP request fails, an exception is raised
         # and the task will be re-queued (see app.py and adsputils))
+
+        curated_metadata = registered_record.get('curated_metadata', None)
+
+        logger.debug("Curated metadata for {} is {}".format(registered_record['content'], registered_record['curated_metadata']))    
         raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
         if raw_metadata:
             parsed_metadata = doi.parse_metadata(raw_metadata)
             is_software = parsed_metadata.get('doctype', '').lower() == "software"
+            bibcode = registered_record.get('bibcode', None)
             if not is_software:
                 logger.error("The new metadata for '%s' has changed its 'doctype' and it is not 'software' anymore", registered_record['bibcode'])
             elif parsed_metadata.get('bibcode') in (None, ""):
@@ -432,8 +437,39 @@ def task_maintenance_metadata(dois, bibcodes):
                     if registered_record['bibcode'] not in alternate_bibcode:
                         alternate_bibcode.append(registered_record['bibcode'])
                     parsed_metadata['alternate_bibcode'] = alternate_bibcode
+                    bibcode = parsed_metadata.get('bibcode', None)
                     bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
-                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata)
+                
+                #Protect curated metadata from being bulldozed by metadata updates. 
+                if curated_metadata is not {}:
+                    modified_metadata = db.generate_modified_metadata(parsed_metadata, curated_metadata)
+                    zenodo_bibstem = "zndo"
+                    new_bibcode = doi.build_bibcode(modified_metadata, doi.zenodo_doi_re, zenodo_bibstem)
+                    alternate_bibcode = registered_record.get('alternate_bibcode', [])
+                    parsed_metadata['alternate_bibcode'] = registered_record.get('alternate_bibcode', [])
+                    if 'alternate_bibcode' in curated_metadata.keys():
+                        alternate_bibcode = list(set(alternate_bibcode+curated_metadata['alternate_bibcode']))
+                        logger.debug('alternate bibcodes are {}'.format(alternate_bibcode))
+                    bibcode = registered_record.get('bibcode')
+                    if new_bibcode != registered_record.get('bibcode'):
+                        bibcode = new_bibcode
+                        logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
+                        if registered_record.get('bibcode') not in alternate_bibcode:
+                            #generate complete alt bibcode list including any curated entries
+                            alternate_bibcode.append(registered_record.get('bibcode'))
+                            #Add the CC generated bibcode to the parsed metadata
+                            parsed_metadata['alternate_bibcode'].append(registered_record.get('bibcode'))
+                    parsed_metadata['alternate_bibcode'] = list(set(parsed_metadata.get('alternate_bibcode')))
+                    modified_metadata['bibcode'] = new_bibcode
+                    bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
+                    alt_bibcodes = list(set(alternate_bibcode))
+                    modified_metadata['alternate_bibcode'] = alt_bibcodes
+                    curated_metadata['alternate_bibcode'] = alt_bibcodes
+                else:
+                    modified_metadata = parsed_metadata
+                
+                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata = curated_metadata, bibcode = bibcode)
+        
         if updated:
             citation_change = adsmsg.CitationChange(content=registered_record['content'],
                                                            content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
@@ -445,7 +481,175 @@ def task_maintenance_metadata(dois, bibcodes):
                 original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
+                task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced)     
+
+@app.task(queue='maintenance_metadata')
+def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
+    """
+    Maintenance operation:
+    - Get all the registered citation targets for the entries specified in curated_entries
+    - For each, retreive metadata and if it is different to what we have in our database:
+        - Get the citations bibcodes and transform them to their canonical form
+        - Replace the retrieved metadata for values specified in curated_entries
+        - Send to master an update with the new metadata and the current list of citations canonical bibcodes
+    """
+    for curated_entry in curated_entries:
+        updated = False
+        bibcode_replaced = {}
+        
+        #Try by doi.
+        if curated_entry.get('doi'):
+            registered_record = db.get_citation_targets_by_doi(app, [curated_entry.get('doi')], only_status='REGISTERED')[0]           
+        #If not, retrieve entry by bibcode.
+        elif curated_entry.get('bibcode'):
+            registered_record = db.get_citation_targets_by_bibcode(app, [curated_entry.get('bibcode')], only_status='REGISTERED')[0]   
+        #report error
+        else:
+            logger.error('Unable to retrieve entry for {} from database. Please check input file.'.format(curated_entry))
+        
+        metadata = db.get_citation_target_metadata(app, registered_record.get('content', ''), curate = False)
+        raw_metadata = metadata.get('raw', '')
+        parsed_metadata = metadata.get('parsed', '')
+        #remove doi and bibcode from metadata to be stored in db.
+        for key in ['bibcode','doi']:
+            try:
+                curated_entry.pop(key)
+            except KeyError as e:
+                logger.error("Failed to remove key: {} with error {}".format(key, e))
+                continue
+        try:
+            if not reset:
+                #only check old metadata if we are adding updates, otherwise ignore.
+                for  key in registered_record['curated_metadata'].keys():
+                    #first apply any previous edits to metadata that are not overwritten by new metadata.
+                    if key not in curated_entry.keys():
+                        curated_entry[key] = registered_record['curated_metadata'][key]
+
+                modified_metadata = db.generate_modified_metadata(parsed_metadata, curated_entry)
+            
+                #regenerate bibcode with curated_metadata and append old bibcode to alternate_bibcode 
+                zenodo_bibstem = "zndo"
+                new_bibcode = doi.build_bibcode(modified_metadata, doi.zenodo_doi_re, zenodo_bibstem)
+                alternate_bibcode = registered_record.get('alternate_bibcode', [])
+                parsed_metadata['alternate_bibcode'] = registered_record.get('alternate_bibcode', [])
+                if 'alternate_bibcode' in curated_entry.keys():
+                    alternate_bibcode = list(set(alternate_bibcode+curated_entry['alternate_bibcode']))
+                    logger.debug('alternate bibcodes are {}'.format(alternate_bibcode))
+                if new_bibcode != registered_record.get('bibcode'):
+                    logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
+                    if registered_record.get('bibcode') not in alternate_bibcode:
+                        #generate complete alt bibcode list including any curated entries
+                        alternate_bibcode.append(registered_record.get('bibcode'))
+                        #Add the CC generated bibcode to the parsed metadata
+                        parsed_metadata['alternate_bibcode'].append(registered_record.get('bibcode'))
+                parsed_metadata['alternate_bibcode'] = list(set(parsed_metadata.get('alternate_bibcode')))
+                modified_metadata['bibcode'] = new_bibcode
+                bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
+                alt_bibcodes = list(set(alternate_bibcode))
+                modified_metadata['alternate_bibcode'] = alt_bibcodes
+                curated_entry['alternate_bibcode'] = alt_bibcodes
+                   
+            else:
+                #Repopulate parsed_metadata with expected bibcode information from parsed_cited_metadata.
+                logger.debug("Resetting citation to original parsed metadata")
+                #regenerate bibcode with parsed_metadata and append old bibcode to alternate_bibcode 
+                zenodo_bibstem = "zndo"
+                new_bibcode = doi.build_bibcode(parsed_metadata, doi.zenodo_doi_re, zenodo_bibstem)
+                alternate_bibcode = registered_record.get('alternate_bibcode', [])
+                parsed_metadata['alternate_bibcode'] = registered_record.get('alternate_bibcode', [])
+                if new_bibcode != registered_record.get('bibcode'):
+                    logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
+                    if registered_record.get('bibcode') not in alternate_bibcode:
+                        alternate_bibcode.append(registered_record.get('bibcode'))
+                parsed_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
+                bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
+                modified_metadata = parsed_metadata
+                curated_entry = {}
+            
+            different_bibcodes = registered_record['bibcode'] != modified_metadata['bibcode']
+            if different_bibcodes:
+                event_data = webhook.identical_bibcodes_event_data(registered_record['bibcode'], modified_metadata['bibcode'])
+                if event_data:
+                    dump_prefix = datetime.now().strftime("%Y%m%d") # "%Y%m%d_%H%M%S"
+                    logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], modified_metadata['bibcode'])
+                    task_emit_event.delay(event_data, dump_prefix)
+                
+            updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata = curated_entry, bibcode = modified_metadata.get('bibcode'))
+            if updated:
+                citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                            content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                            status=adsmsg.Status.updated,
+                                                            timestamp=datetime.now()
+                                                            )
+                if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+                    # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+                    original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
+                    citations = api.get_canonical_bibcodes(app, original_citations)
+                    logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+                    task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced)
+        
+        except Exception as e:
+            logger.error("task_maintenance_curation Failed to update metadata for {} with Exception: {}. Please check that the bibcode or doi matches a target record.".format(curated_entry, e))
+            raise
+
+def maintenance_show_metadata(curated_entries):
+    """
+    Print current metadata for a given citation target to standard output.
+    """
+    for curated_entry in curated_entries:
+
+        if curated_entry.get('doi'):
+            try:
+                registered_record = db.get_citation_targets_by_doi(app, [curated_entry.get('doi')], only_status='REGISTERED')[0]   
+            except Exception as e:
+                msg = "Failed to retrieve citation target {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
+                logger.error(msg)
+                raise Exception(msg)
+
+            custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                    content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                    status=adsmsg.Status.updated,
+                                                    timestamp=datetime.now()
+                                                    )
+            try:
+                parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
+                if parsed_metadata:
+                    print(parsed_metadata)
+
+            except Exception as e:
+                msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
+                logger.error(msg)
+        
+        #If no doi, try and retrieve entry by bibcode.
+        elif curated_entry.get('bibcode'):
+            try:
+                registered_record = db.get_citation_targets_by_bibcode(app, [curated_entry.get('bibcode')], only_status='REGISTERED')[0]   
+            except Exception as e:
+                msg = "Failed to retrieve citation target {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
+                logger.error(msg)
+                raise Exception(msg)
+
+            custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                    content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                    status=adsmsg.Status.updated,
+                                                    timestamp=datetime.now()
+                                                    )
+            parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
+            try:
+                parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
+                if parsed_metadata:
+                    print(parsed_metadata)
+
+            except Exception as e:
+                msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
+                logger.error(msg)
+
+@app.task(queue='maintenance_metadata')
+def task_maintenance_repopulate_bibcode_columns(curated = True):
+    """
+    Re-populates bibcode column with current canonical bibcode
+    """
+    db.populate_bibcode_column(app, curated)
 
 @app.task(queue='maintenance_resend')
 def task_maintenance_resend(dois, bibcodes, broker):
@@ -533,6 +737,7 @@ def task_maintenance_resend(dois, bibcodes, broker):
                         logger.debug("Calling 'task_emit_event' for '%s'", emit_citation_change)
                         task_emit_event.delay(event_data, dump_prefix)
 
+
 @app.task(queue='maintenance_reevaluate')
 def task_maintenance_reevaluate(dois, bibcodes):
     """
@@ -581,9 +786,6 @@ def task_maintenance_reevaluate(dois, bibcodes):
                     citations = api.get_canonical_bibcodes(app, original_citations)
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                     task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
-
-
-
 
 @app.task(queue='output-results')
 def task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced={}):

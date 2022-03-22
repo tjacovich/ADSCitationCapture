@@ -72,7 +72,6 @@ def maintenance_canonical(dois, bibcodes):
     # Send to master updated citation bibcodes in their canonical form
     tasks.task_maintenance_canonical.delay(dois, bibcodes)
 
-
 def maintenance_metadata(dois, bibcodes):
     """
     Refetch metadata and send updates to master (if any)
@@ -112,6 +111,90 @@ def maintenance_reevaluate(dois, bibcodes):
     # Send to master updated metadata
     tasks.task_maintenance_reevaluate.delay(dois, bibcodes)
 
+def maintenance_repopulate():
+    tasks.task_maintenance_repopulate_bibcode_columns.delay()
+
+def maintenance_curation(filename = None, dois = None, bibcodes = None, json_payload = None, reset = False, show = False):
+    """
+    Update any manually curated values for a given entry.
+    """
+    if [reset, show, bool(json_payload)].count(True) > 1:
+        msg = "Too many options specified. Only one of --reset, --show and --json can be set at once."
+        logger.error(msg)
+        raise ValueError(msg)
+    
+    #checks if file is specificed
+    if filename is not None:
+        if [bool(json_payload), bool(dois), bool(bibcodes)].count(True) > 0:
+            msg = "--input_filename and command line citations provided. Using --input_filename only."
+            logger.warn(msg)
+
+        with open(filename) as f:
+            try:
+                #convert file lines to list of dicts, 1 dict per entry.
+                curated_entries = [json.loads(i) for i in f.readlines()]
+
+            except Exception as e:
+                msg = "Parsing file: {}, failed with Exception: {}. Please check each entry is properly formatted.".format(filename, e)
+                logger.error(msg)
+                raise
+
+            #collect dois from entries if available.
+            dois = [entry.get('doi', None) for entry in curated_entries if entry.get('doi', None) is not None]
+            #collect dois if no bibcode is available.
+            bibcodes = [entry.get('bibcode', None) for entry in curated_entries if entry.get('doi', None) is None and entry.get('bibcode', None) is not None]
+        
+            n_requested = len(dois) + len(bibcodes)
+
+            logger.info("MAINTENANCE task: requested a metadata update for '{}' records".format(n_requested))
+
+        # Update metadata and forward to master
+        if n_requested != 0:
+            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, reset)
+        else:
+            logger.info("No targets specified for curation.")
+
+    elif dois is not None or bibcodes is not None:
+        if reset:
+            n_requested = len(dois) + len(bibcodes)
+            logger.info("MAINTENANCE task: requested deletion of curated metadata for '{}' records.".format(n_requested))
+            curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"doi":doi} for doi in dois]
+            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, reset)
+        
+        elif show:
+            n_requested = len(dois) + len(bibcodes)
+            curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"doi":doi} for doi in dois]
+            logger.info("MAINTENANCE task: Displaying current metadata for '{}' record(s).".format(n_requested))
+            tasks.maintenance_show_metadata(curated_entries)
+
+        elif json_payload:
+            if [bool(dois), bool(bibcodes)].count(True) > 1:
+                    msg = "Both dois and bibcodes specified with --json. Please specify only one type of identifier when using --json."
+                    logger.error(msg)
+                    raise ValueError(msg)
+            try:
+                #convert json line to list of dicts, 1 dict per entry.
+                curated_entries = [json.loads(json_payload)]
+                if dois:
+                    for ele, doi in enumerate(ele, dois):
+                        curated_entries[ele]['doi'] = doi
+                elif bibcodes:
+                    for ele, bibcode in enumerate(ele, bibcodes):
+                        curated_entries[ele]['bibcode'] = bibcode
+            except Exception as e:
+                msg = "Parsing json arg: {}, failed with Exception: {}. Please check each entry is properly formatted.".format(json_payload, e)
+                logger.error(msg)
+                raise
+            
+            n_requested = len(dois) + len(bibcodes)
+
+            logger.info("MAINTENANCE task: requested a metadata update for '{}' records".format(n_requested))
+            tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, reset)
+
+    else:
+        logger.error("MAINTENANCE task: manual curation failed. Please specify a file containing the modified citations.")
+
+
 def diagnose(bibcodes, json):
     citation_count = db.get_citation_count(tasks.app)
     citation_target_count = db.get_citation_target_count(tasks.app)
@@ -134,7 +217,6 @@ def diagnose(bibcodes, json):
 
         # Process diagnostic data
         process(input_filename, force=False, diagnose=True)
-
 
 
 def _build_diagnostics(bibcodes=None, json_payloads=None):
@@ -167,6 +249,18 @@ if __name__ == '__main__':
                         action='store_true',
                         default=False,
                         help='Re-send registered citations and targets to the master pipeline')
+    maintenance_parser.add_argument(
+                        '--curation',
+                        dest='curation',
+                        action='store_true',
+                        default=False,
+                        help='Override certain/all metadata fields for specific entries (First author changes will trigger bibcode changes).')
+    maintenance_parser.add_argument(
+                        '--populate-bibcodes',
+                        dest='repopulate',
+                        action='store_true',
+                        default=False,
+                        help="Populate citation target bibcode column with canonical bibcodes")
     maintenance_parser.add_argument(
                         '--resend-broker',
                         dest='resend_broker',
@@ -205,6 +299,25 @@ if __name__ == '__main__':
                         action='store',
                         default=[],
                         help='Space separated bibcode list, if no list is provided then the full database is considered')
+    maintenance_parser.add_argument(
+                        '--json',
+                        dest='json_payload',
+                        nargs='+',
+                        action='store',
+                        default=None,
+                        help='Space delimited list of json curated metadata')
+    maintenance_parser.add_argument('--input_filename',
+                        action='store',
+                        type=str,
+                        help='Path to the input file that contains the curated metadata')
+    maintenance_parser.add_argument('--reset',
+                        action='store_true',
+                        default=False,
+                        help='Delete manually curated metadata for supplied bibcodes while conserving the metadata from the original source.')
+    maintenance_parser.add_argument('--show',
+                        action='store_true',
+                        default=False,
+                        help='Show current metadata for a given citation target.')
     diagnose_parser = subparsers.add_parser('DIAGNOSE', help='Process data for diagnosing infrastructure')
     diagnose_parser.add_argument(
                         '--bibcodes',
@@ -231,8 +344,10 @@ if __name__ == '__main__':
         else:
             logger.info("PROCESS task: %s", args.input_filename)
             process(args.input_filename, force=False, diagnose=False)
+
     elif args.action == "MAINTENANCE":
-        if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not args.reevaluate:
+        if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not\
+         args.reevaluate and not args.curation and not args.repopulate:
             maintenance_parser.error("nothing to be done since no task has been selected")
         else:
             # Read files if provided (instead of a direct list of DOIs)
@@ -260,6 +375,10 @@ if __name__ == '__main__':
                 maintenance_resend(dois, bibcodes, broker=True)
             elif args.reevaluate:
                 maintenance_reevaluate(dois, bibcodes)
+            elif args.curation:
+                maintenance_curation(args.input_filename, dois, bibcodes, args.json_payload, args.reset, args.show)
+            elif args.repopulate:
+                maintenance_repopulate()
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)

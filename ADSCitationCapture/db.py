@@ -47,40 +47,53 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
         citation_target.content_type = content_type
         citation_target.raw_cited_metadata = raw_metadata
         citation_target.parsed_cited_metadata = parsed_metadata
+        citation_target.curated_metadata = {}
         citation_target.status = status
+        citation_target.bibcode = parsed_metadata.get("bibcode", None)
         session.add(citation_target)
         try:
             session.commit()
         except IntegrityError as e:
             # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
-            logger.error("Ignoring new citation target (citting '%s', content '%s' and timestamp '%s') because it already exists in the database (another new citation may have been processed before this one): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
+            logger.error("Ignoring new citation target (citing '%s', content '%s' and timestamp '%s') because it already exists in the database (another new citation may have been processed before this one): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
         else:
-            logger.info("Stored new citation target (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Stored new citation target (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             stored = True
     return stored
 
-def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, status=None):
+def _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None):
+    """
+    Actual calls to database session for update_citation_target_metadata
+    """
+    citation_target = session.query(CitationTarget).filter(CitationTarget.content == content).first()
+    if type(raw_metadata) is bytes:
+        try:
+            raw_metadata = raw_metadata.decode('utf-8')
+        except UnicodeEncodeError:
+            pass
+    if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
+            (status is not None and citation_target.status != status) or citation_target.curated_metadata != curated_metadata or \
+            citation_target.bibcode != bibcode:
+        citation_target.raw_cited_metadata = raw_metadata
+        citation_target.parsed_cited_metadata = parsed_metadata
+        citation_target.curated_metadata = curated_metadata
+        citation_target.bibcode = bibcode
+        if status is not None:
+            citation_target.status = status
+        session.add(citation_target)
+        session.commit()
+        logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", content, ", ".join(parsed_metadata.get('alternate_bibcode', [])))
+        metadata_updated = True
+        return metadata_updated
+
+def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None):
     """
     Update metadata for a citation target
     """
     metadata_updated = False
+    if not bibcode: bibcode = parsed_metadata.get('bibcode', None)
     with app.session_scope() as session:
-        citation_target = session.query(CitationTarget).filter(CitationTarget.content == content).first()
-        if type(raw_metadata) is bytes:
-            try:
-                raw_metadata = raw_metadata.decode('utf-8')
-            except UnicodeEncodeError:
-                pass
-        if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
-                (status is not None and citation_target.status != status):
-            citation_target.raw_cited_metadata = raw_metadata
-            citation_target.parsed_cited_metadata = parsed_metadata
-            if status is not None:
-                citation_target.status = status
-            session.add(citation_target)
-            session.commit()
-            metadata_updated = True
-            logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", content, ", ".join(parsed_metadata.get('alternate_bibcode', [])))
+        metadata_updated =  _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode)
     return metadata_updated
 
 
@@ -102,9 +115,9 @@ def store_citation(app, citation_change, content_type, raw_metadata, parsed_meta
             session.commit()
         except IntegrityError as e:
             # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
-            logger.error("Ignoring new citation (citting '%s', content '%s' and timestamp '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
+            logger.error("Ignoring new citation (citing '%s', content '%s' and timestamp '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
         else:
-            logger.info("Stored new citation (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Stored new citation (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
             stored = True
     return stored
 
@@ -132,10 +145,11 @@ def _extract_key_citation_target_data(records_db, disable_filter=False):
     """
     records = [
         {
-            'bibcode': record_db.parsed_cited_metadata.get('bibcode', None),
+            'bibcode': record_db.bibcode,
             'alternate_bibcode': record_db.parsed_cited_metadata.get('alternate_bibcode', []),
             'content': record_db.content,
             'content_type': record_db.content_type,
+            'curated_metadata': record_db.curated_metadata if record_db.curated_metadata is not None else {},
         }
         for record_db in records_db
         if disable_filter or record_db.parsed_cited_metadata.get('bibcode', None) is not None
@@ -179,22 +193,48 @@ def get_citation_targets_by_doi(app, dois, only_status='REGISTERED'):
         records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
 
+def _get_citation_targets_session(session, only_status='REGISTERED'):
+    """
+    Actual calls to database session for get_citation_targets
+    """
+    if only_status:
+        records_db = session.query(CitationTarget).filter_by(status=only_status).all()
+        disable_filter = only_status in ['DISCARDED','EMITTABLE']
+    else:
+        records_db = session.query(CitationTarget).all()
+        disable_filter = True
+    records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
+    return records
+
 def get_citation_targets(app, only_status='REGISTERED'):
     """
     Return a list of dict with all citation targets (or only the registered ones)
     - Records without a bibcode in the database will not be returned
     """
     with app.session_scope() as session:
-        if only_status:
-            records_db = session.query(CitationTarget).filter_by(status=only_status).all()
-            disable_filter = only_status in ['DISCARDED','EMITTABLE']
-        else:
-            records_db = session.query(CitationTarget).all()
-            disable_filter = True
-        records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
+        records = _get_citation_targets_session(session, only_status)
     return records
 
-def get_citation_target_metadata(app, doi):
+def _get_citation_target_metadata_session(session, doi, citation_in_db, metadata, curate=True):
+    """
+    Actual calls to database session for get_citation_target_metadata
+    """
+    citation_target = session.query(CitationTarget).filter_by(content=doi).first()
+    citation_target_in_db = citation_target is not None
+    if citation_target_in_db:
+        metadata['raw'] = citation_target.raw_cited_metadata
+        metadata['curated'] = citation_target.curated_metadata if citation_target.curated_metadata is not None else {}
+        metadata['status'] = citation_target.status
+        if curate:
+            #modified metadata updates every field that isn't the doi or the canonical bibcode
+            metadata['parsed'] = generate_modified_metadata(citation_target.parsed_cited_metadata, metadata['curated']) if citation_target.parsed_cited_metadata is not None else {}
+            #This line replaces the parsed bibcode with the bibcode column
+            if citation_target.bibcode: metadata['parsed'].update({'bibcode': citation_target.bibcode})
+        else:
+            metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
+    return metadata
+
+def get_citation_target_metadata(app, doi, curate=True):
     """
     If the citation target already exists in the database, return the raw and
     parsed metadata together with the status of the citation target in the
@@ -204,12 +244,7 @@ def get_citation_target_metadata(app, doi):
     citation_in_db = False
     metadata = {}
     with app.session_scope() as session:
-        citation_target = session.query(CitationTarget).filter_by(content=doi).first()
-        citation_target_in_db = citation_target is not None
-        if citation_target_in_db:
-            metadata['raw'] = citation_target.raw_cited_metadata
-            metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
-            metadata['status'] = citation_target.status
+        metadata = _get_citation_target_metadata_session(session, doi, citation_in_db, metadata, curate) 
     return metadata
 
 def get_citation_target_entry_date(app, doi):
@@ -250,6 +285,27 @@ def get_citations(app, citation_change):
         citation_bibcodes = [r.citing for r in session.query(Citation).filter_by(content=citation_change.content, status="REGISTERED").all()]
     return citation_bibcodes
 
+def generate_modified_metadata(parsed_metadata, curated_entry):
+    """
+    modify parsed_metadata with any curated metadata. return results.
+    """
+    modified_metadata = parsed_metadata.copy()
+    bad_keys=[]
+    if not modified_metadata.get('alternate_bibcode', None): modified_metadata.update({'alternate_bibcode':[]})
+    for key in curated_entry.keys():
+        if key not in ['bibcode', 'doi']:
+            if key in modified_metadata.keys():
+                try:
+                    modified_metadata[key] = curated_entry[key]
+                except Exception as e:
+                    logger.error("Failed setting {} for {} with Exception: {}.".format(key, parsed_metadata.get('bibcode'), e))
+            else:
+                logger.warn("{} is not a valid entry for parsed_cited_metadata. Flagging key for removal.".format(key))
+                bad_keys.append(key)
+    #remove bad keys from curated entries.
+    for key in bad_keys:
+        curated_entry.pop(key)
+    return modified_metadata
 
 def citation_already_exists(app, citation_change):
     """
@@ -278,9 +334,9 @@ def update_citation(app, citation_change):
             session.add(citation)
             session.commit()
             updated = True
-            logger.info("Updated citation (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Updated citation (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
         else:
-            logger.info("Ignoring citation update (citting '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Ignoring citation update (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
     return updated
 
 def mark_citation_as_deleted(app, citation_change):
@@ -299,9 +355,9 @@ def mark_citation_as_deleted(app, citation_change):
             session.add(citation)
             session.commit()
             marked_as_deleted = True
-            logger.info("Marked citation as deleted (citting '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Marked citation as deleted (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
         else:
-            logger.info("Ignoring citation deletion (citting '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Ignoring citation deletion (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
     return marked_as_deleted, previous_status
 
 def mark_all_discarded_citations_as_registered(app, content):
@@ -316,3 +372,51 @@ def mark_all_discarded_citations_as_registered(app, content):
             citation.status = 'REGISTERED'
             session.add(citation)
         session.commit()
+
+def populate_bibcode_column(main_session, curated = True):
+    """
+    Pulls all citation targets from DB and populates the bibcode column using parsed metadata
+    """
+    logger.debug("Collecting Citation Targets")
+    records = _get_citation_targets_alembic(main_session, only_status = None)
+    for record in records:
+        content = record.get('content', None)
+        logger.debug("Collecting metadata for {}".format(record.get('content')))
+        metadata = _get_citation_target_metadata_alembic(main_session, content, curate = curated)
+        if metadata:
+            logger.debug("Updating Bibcode field for {}".format(record.get('content')))
+            raw_metadata = metadata.get('raw', {})
+            parsed_metadata = metadata.get('parsed', {})
+            curated_metadata = metadata.get('curated',{})
+            status = metadata.get('status', None)
+            _update_citation_target_metadata_alembic(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status)
+
+def _update_citation_target_metadata_alembic(session, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None):
+    """
+    Update metadata for a citation target when we do not need to
+    close the session after completion
+    """
+    metadata_updated = False
+    if not bibcode: bibcode = parsed_metadata.get('bibcode', None)
+    metadata_updated = _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode)    
+    return metadata_updated
+            
+def _get_citation_target_metadata_alembic(session, doi, curate=True):
+    """
+    If the citation target already exists in the database, return the raw and
+    parsed metadata together with the status of the citation target in the
+    database.
+    If not, return an empty dictionary. 
+    Variation for when the function does not need to control the session
+    """
+    citation_in_db = False
+    metadata = {}
+    return _get_citation_target_metadata_session(session, doi, citation_in_db, metadata, curate)
+
+def _get_citation_targets_alembic(session, only_status='REGISTERED'):
+    """
+    Return a list of dict with all citation targets (or only the registered ones)
+    - Records without a bibcode in the database will not be returned
+    Variation for then the function does not need to control the session.
+    """
+    return _get_citation_targets_session(session, only_status)
