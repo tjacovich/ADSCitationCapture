@@ -55,6 +55,8 @@ def task_process_new_citation(citation_change, force=False):
     citation_target_in_db = bool(metadata) # False if dict is empty
     raw_metadata = metadata.get('raw', None)
     parsed_metadata = metadata.get('parsed', {})
+    associated_version_bibcodes = metadata.get('associated', None)
+
     if citation_target_in_db:
         status = metadata.get('status', 'DISCARDED') # "REGISTERED" if it is a software record
 
@@ -63,7 +65,6 @@ def task_process_new_citation(citation_change, force=False):
         and citation_change.content not in ["", None]:
         # Default values
         content_type = "DOI"
-        associated_version_bibcodes = {'':''}
         if not citation_target_in_db:
             # Fetch DOI metadata (if HTTP request fails, an exception is raised
             # and the task will be re-queued (see app.py and adsputils))
@@ -211,7 +212,7 @@ def task_process_updated_citation(citation_change, force=False):
         _emit_citation_change(citation_change, parsed_metadata)
 
 def _collect_associated_works(citation_change, parsed_metadata):
-    versions_in_db = {"":""}
+    versions_in_db = None
     try:
         all_versions_doi = doi.fetch_all_versions_doi(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata)
     except:
@@ -251,10 +252,12 @@ def task_process_updated_associated_works(citation_change, associated_versions, 
     updated = bool(associated_versions)
     metadata = db.get_citation_target_metadata(app, citation_change.content)
     raw_metadata = metadata.get('raw', {})
+    
     if raw_metadata:
         parsed_metadata = metadata.get('parsed', {})
-        is_software = parsed_metadata.get('doctype', '').lower() == "software"
         citation_target_bibcode = parsed_metadata.get('bibcode', None)
+        no_self_ref_versions = {key:val for key, val in associated_versions.items() if val != citation_target_bibcode}
+        logger.info("Updating associated works for %s", citation_change.content)
         status = metadata.get('status', 'DISCARDED')
         #Forward the update only if status is "REGISTERED" and associated works is not None.
         if status == 'REGISTERED' and updated:
@@ -264,7 +267,7 @@ def task_process_updated_associated_works(citation_change, associated_versions, 
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                 task_output_results.delay(citation_change, parsed_metadata, citations, associated_versions)
-                db.update_citation_target_metadata(app, citation_change.content, raw_metadata, parsed_metadata, associated = associated_versions)
+                db.update_citation_target_metadata(app, citation_change.content, raw_metadata, parsed_metadata, associated = no_self_ref_versions)
         
 @app.task(queue='process-deleted-citation')
 def task_process_deleted_citation(citation_change, force=False):

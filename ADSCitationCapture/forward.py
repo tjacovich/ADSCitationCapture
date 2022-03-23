@@ -150,7 +150,7 @@ def _build_nonbib_record(app, citation_change, record, db_versions, status):
         'simbad_objects': [],
         'total_link_counts': 0 # Only used for DATA and not for ESOURCES
     }
-    if db_versions != {"":""}:
+    if db_versions not in [{"":""}, None]:
         nonbib_record_dict['data_links_rows'].append({'link_type': 'ASSOCIATED', 'link_sub_type': '', 
                      'url': db_versions.values(), 'title': db_versions.keys(), 'item_count':0})
     nonbib_record = NonBibRecord(**nonbib_record_dict)

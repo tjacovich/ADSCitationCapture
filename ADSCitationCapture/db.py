@@ -151,6 +151,7 @@ def _extract_key_citation_target_data(records_db, disable_filter=False):
         {
             'bibcode': record_db.bibcode,
             'alternate_bibcode': record_db.parsed_cited_metadata.get('alternate_bibcode', []),
+            'version': record_db.parsed_cited_metadata.get('version', None),
             'content': record_db.content,
             'content_type': record_db.content_type,
             'curated_metadata': record_db.curated_metadata if record_db.curated_metadata is not None else {},
@@ -215,15 +216,19 @@ def get_associated_works_by_doi(app, all_versions_doi, only_status='REGISTERED')
     dois = all_versions_doi['versions']
     root_doi = all_versions_doi['all_doi'].lower()
     try:
-        versions = {records['version']:records['bibcode'] for records in get_citation_targets_by_doi(app, dois, only_status)}
+        versions = {records.get('version', ''): records.get('bibcode', '') for records in get_citation_targets_by_doi(app, dois, only_status)}
         root_ver = get_citation_targets_by_doi(app, [root_doi], only_status)
         if root_ver != []:
             root_record = {'Concept Record':root_ver[0]['bibcode']}
             versions.update(root_record)
-        return versions
+        if versions != {}:
+            return versions
+        else:
+            logger.info('No associated works for %s in database', dois[0])
+            return None
     except:
-        logger.info('No associated works for {} in database', dois[0])
-        return [None]
+        logger.info('No associated works for %s in database', dois[0])
+        return None
         
 def get_citation_targets(app, only_status='REGISTERED'):
     """
