@@ -405,7 +405,6 @@ def task_maintenance_canonical(dois, bibcodes):
     - For each, get their citations bibcodes and transform them to their canonical form
     - Send to master an update with the new list of citations canonical bibcodes
     """
-
     n_requested = len(dois) + len(bibcodes)
     if n_requested == 0:
         registered_records = db.get_citation_targets(app, only_status='REGISTERED')
