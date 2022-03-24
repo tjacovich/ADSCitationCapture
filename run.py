@@ -391,12 +391,10 @@ if __name__ == '__main__':
                 maintenance_resend(dois, bibcodes, broker=True)
             elif args.reevaluate:
                 maintenance_reevaluate(dois, bibcodes)
-
             elif args.curation:
                 maintenance_curation(args.input_filename, dois, bibcodes, args.json_payload, args.reset, args.show)
             elif args.repopulate:
                 maintenance_repopulate()
-
             elif args.eval_associated:
                 maintentance_reevaluate_associated_works(dois, bibcodes)
     elif args.action == "DIAGNOSE":

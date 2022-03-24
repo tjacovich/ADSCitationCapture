@@ -204,7 +204,7 @@ def task_process_updated_citation(citation_change, force=False):
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
             associated_works = _collect_associated_works(citation_change, parsed_metadata)
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
-            no_self_ref_versions = {key:val for key, val in associated_works.items() if val != citation_target_bibcode}
+            no_self_ref_versions = {key:val for key, val in associated_works.items() if val != citation_target_bibcode} if associated_works else None
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
