@@ -216,10 +216,10 @@ def get_associated_works_by_doi(app, all_versions_doi, only_status='REGISTERED')
     dois = all_versions_doi['versions']
     root_doi = all_versions_doi['all_doi'].lower()
     try:
-        versions = {records.get('version', ''): records.get('bibcode', '') for records in get_citation_targets_by_doi(app, dois, only_status)}
+        versions = {"Version "+str(records.get('version', '')): records.get('bibcode', '') for records in get_citation_targets_by_doi(app, dois, only_status)}
         root_ver = get_citation_targets_by_doi(app, [root_doi], only_status)
         if root_ver != []:
-            root_record = {'Concept Record':root_ver[0]['bibcode']}
+            root_record = {'Software Source':root_ver[0]['bibcode']}
             versions.update(root_record)
         if versions != {}:
             return versions

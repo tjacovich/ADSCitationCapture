@@ -227,7 +227,7 @@ def _collect_associated_works(citation_change, parsed_metadata):
             logger.info("Found {} versions in database for {}".format(len(versions_in_db),citation_change.content))
             #adds the new citation target bibcode because it will not be in the db yet, 
             # and then appends the versions already in the db.
-            associated_version_bibcodes = {parsed_metadata.get('version'): parsed_metadata.get('bibcode')}
+            associated_version_bibcodes = {'Version '+str(parsed_metadata.get('version')): parsed_metadata.get('bibcode')}
             associated_version_bibcodes.update(versions_in_db)
             logger.debug("{}: associated_versions_bibcodes".format(associated_version_bibcodes))
             for bibcode in versions_in_db.values():
