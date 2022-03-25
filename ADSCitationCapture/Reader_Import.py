@@ -159,15 +159,7 @@ class ReaderImport():
             previous_schema_date_fingerprint = int(self.previous_schema_name.replace(self.schema_prefix, "").replace("_", ""))
             if previous_schema_date_fingerprint >= schema_date_fingerprint:
                 raise Exception("The data to be imported has a date fingerprint '{0}' equal or older than the data already in the DB '{1}'".format(self.schema_name, self.previous_schema_name))
-
-            # Verify if all the data from the previous schema has been processed.
-            self._reconstruct_previous_expanded_raw_data()
-            missing = self._find_not_processed_records_from_previous_run()
-            if missing:
-                missing_str = ",\n".join(["citing: '{}', content: '{}'".format(m[0], m[1]) for m in missing])
-                #self.logger.error("Some previous records were not processed ({} in total) and will be re-processed: {}".format(len(missing), missing_str))
-                self.logger.error("Some previous records were not processed ({} in total) and will be re-processed".format(len(missing)))
-
+            
             # Drop old schemas (just keep last 3)
             if len(filtered_existing_schema_names) > 2:
                 for old_schema_name in filtered_existing_schema_names[2:]:
@@ -275,53 +267,6 @@ class ReaderImport():
             return n_changes
         else:
             return 0
-
-    def _verify_input_data(self):
-        """
-        Delta computations assume input data follow certain logic and here it
-        is checked to be true:
-
-        - At least one field contains a value for doi, pid or url
-        - Only one field contains a value for doi, pid or url
-        - No duplicates
-        """
-        ## Check assumptions
-        # - At least one field contains a value for doi, pid or url
-        count_all_fields_null_sql = \
-                "select count(*) \
-                    from {0}.{1} \
-                    where (\
-                            not doi \
-                            and not pid \
-                            and not url \
-                        );"
-        n_all_fields_null = self._execute_sql(count_all_fields_null_sql, self.schema_name, self.expanded_table_name).scalar()
-        if n_all_fields_null > 0:
-            raise Exception("There is at least an entry with all doi, pid and url fields set to null")
-
-        # - Only one field contains a value for doi, pid or url
-        count_too_many_fields_not_null_sql = \
-                "select count(*) \
-                    from {0}.{1} \
-                    where (\
-                            (doi and pid and not url) \
-                            or (doi and not pid and url) \
-                            or (not doi and pid and url) \
-                            or (doi and pid and url) \
-                        );"
-        n_too_many_fields_not_null = self._execute_sql(count_too_many_fields_not_null_sql, self.schema_name, self.expanded_table_name).scalar()
-        if n_too_many_fields_not_null > 0:
-            raise Exception("There is at least an entry with two or more doi, pid and url fields set to a value")
-
-        # - No duplicates
-        count_duplicates_sql = \
-                "select count(*) from (select count(*) \
-                    from {0}.{1} \
-                    group by citing, content \
-                    having count(*) > 1) as dups;"
-        n_duplicates = self._execute_sql(count_duplicates_sql, self.schema_name, self.expanded_table_name).scalar()
-        if n_duplicates > 0:
-            raise Exception("There are duplicate entries with the same citing, doi, pid and url fields")
 
     def _join_tables(self):
         """
