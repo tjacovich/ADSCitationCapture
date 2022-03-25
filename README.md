@@ -480,7 +480,8 @@ python3 run.py MAINTENANCE --resend-broker --doi 10.5281/zenodo.840393
 # File containing doi and version columns (tab separated)
 python3 run.py MAINTENANCE --resend-broker --doi /proj/ads/references/links/zenodo_updates_09232019.out
 ```
-    Currently, the only way to resend urls is to send all records to the broker. Urls are not currently handled by Master Pipeline.
+
+Currently, the only way to resend urls is to send all records to the broker. Urls are not currently handled by Master Pipeline.
 
 - Reevaluate Records
     - Reevaluates all discarded records, or a subset of those records
@@ -496,7 +497,8 @@ python3 run.py MAINTENANCE --reevaluate --doi 10.5281/zenodo.840393
 # File containing doi and version columns (tab separated)
 python3 run.py MAINTENANCE --reevaluate --doi /proj/ads/references/links/zenodo_updates_09232019.out
 ```
-    Currently only sends newly registered records to Master.
+
+Currently only sends newly registered records to Master.
 
 - Curate metadata:
     - User supplies an input file containing entries they wish to modify with each line in json form:
