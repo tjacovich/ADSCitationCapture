@@ -457,6 +457,46 @@ python3 run.py MAINTENANCE --metadata --doi 10.5281/zenodo.840393
 # File containing doi and version columns (tab separated)
 python3 run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_updates_09232019.out
 ```
+- Resend metadata:
+    - Takes all records or a portion of them defined by `--doi` or `--bibcode` flag.
+    - Resends `REGISTERED` records to master pipeline if `--resend`.
+    - Resends `REGISTERED` and `EMITTABLE` records to external broker if `--resend-broker`.
+```
+#Resend all records to Master pipeline
+python3 run.py MAINTENANCE --resend
+# Resend specific bibcode (space separated list)
+python3 run.py MAINTENANCE --resend --bibcode 2017zndo....840393W
+# Specific doi (space separated list)
+python3 run.py MAINTENANCE --resend --doi 10.5281/zenodo.840393
+# File containing doi and version columns (tab separated)
+python3 run.py MAINTENANCE --resend --doi /proj/ads/references/links/zenodo_updates_09232019.out
+
+#Resend all records to external data broker
+python3 run.py MAINTENANCE --resend-broker
+# Resend specific bibcode (space separated list)
+python3 run.py MAINTENANCE --resend-broker --bibcode 2017zndo....840393W
+# Specific doi (space separated list)
+python3 run.py MAINTENANCE --resend-broker --doi 10.5281/zenodo.840393
+# File containing doi and version columns (tab separated)
+python3 run.py MAINTENANCE --resend-broker --doi /proj/ads/references/links/zenodo_updates_09232019.out
+```
+    Currently, the only way to resend urls is to send all records to the broker. Urls are not currently handled by Master Pipeline.
+
+- Reevaluate Records
+    - Reevaluates all discarded records, or a subset of those records
+    - Resends to Master if `REGISTERED`
+
+```
+#Resend all records to Master pipeline
+python3 run.py MAINTENANCE --reevaluate
+# Resend specific bibcode (space separated list)
+python3 run.py MAINTENANCE --reevaluate --bibcode 2017zndo....840393W
+# Specific doi (space separated list)
+python3 run.py MAINTENANCE --reevaluate --doi 10.5281/zenodo.840393
+# File containing doi and version columns (tab separated)
+python3 run.py MAINTENANCE --reevaluate --doi /proj/ads/references/links/zenodo_updates_09232019.out
+```
+    Currently only sends newly registered records to Master.
 
 - Curate metadata:
     - User supplies an input file containing entries they wish to modify with each line in json form:
@@ -523,7 +563,13 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
 
     {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Some, Name"], "bibcode": "YYYYzndo...BCDEFGS", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [], "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Some, N"]}
     ```
+- Bibcode updates  
+    To help deal with curated metadata, an additional index was added for canonical bibcodes. To keep confirm the bibcodes column is up to date, one can run
 
+    ```
+    #Update bibcodes column for all records.
+    python3 run.py MAINTENANCE --populate-bibcodes
+    ```
 # Miscellaneous
 
 ## Alembic
