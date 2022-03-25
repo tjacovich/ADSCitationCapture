@@ -24,6 +24,13 @@ class RawCitation(Base):
     bibcode = Column(String(19))
     payload = Column(JSONB) # Binary, faster than JSON (requires postgres >9.4)
 
+class ReaderData(Base):
+    __tablename__ = 'reader_data'
+    __table_args__ = ({"schema": "public"})
+    id = Column(Integer, primary_key=True)
+    bibcode = Column(String(19))
+    payload = Column(JSONB) # Binary, faster than JSON (requires postgres >9.4)
+
 class CitationChanges(Base):
     __tablename__ = 'citation_changes'
     __table_args__ = ({"schema": "public"})
