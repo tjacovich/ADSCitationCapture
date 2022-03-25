@@ -5,9 +5,9 @@ import tempfile
 import argparse
 import json
 from astropy.io import ascii
-from celery import chord
 from ADSCitationCapture import tasks, db
 from ADSCitationCapture.delta_computation import DeltaComputation
+from ADSCitationCapture.reader_import import ReaderImport
 
 # ============================= INITIALIZATION ==================================== #
 
@@ -44,6 +44,7 @@ def process(refids_filename, **kwargs):
     sqlalchemy_echo = config.get('SQLALCHEMY_ECHO', False)
 
     delta = DeltaComputation(sqlachemy_url, sqlalchemy_echo=sqlalchemy_echo, group_changes_in_chunks_of=1, schema_prefix=schema_prefix, force=force)
+    readers = ReaderImport(sqlachemy_url, sqlalchemy_echo=sqlalchemy_echo, group_changes_in_chunks_of=1, schema_prefix=schema_prefix, force=force)
     delta.compute(refids_filename)
     for changes in delta:
         if diagnose:
