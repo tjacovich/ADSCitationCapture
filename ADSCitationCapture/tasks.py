@@ -283,6 +283,7 @@ def task_process_citation_changes(citation_changes, force=False):
             else:
                 logger.debug("Calling 'task_process_deleted_citation' with '%s'", citation_change)
                 task_process_deleted_citation.delay(citation_change)
+
 @app.task(queue='process-citation_changes')
 def task_write_nonbib_files(results):
     logger.info("Writing nonbib files to disk")
@@ -808,7 +809,6 @@ def task_maintenance_resend(dois, bibcodes, broker):
                         logger.debug("Calling 'task_emit_event' for '%s'", emit_citation_change)
                         task_emit_event.delay(event_data, dump_prefix)
 
-
 @app.task(queue='maintenance_reevaluate')
 def task_maintenance_reevaluate(dois, bibcodes):
     """
@@ -865,6 +865,16 @@ def task_maintenance_generate_nonbib_files():
     """
     logger.info("Rewriting nonbib files to disk")
     db.write_citation_target_data(app, only_status='REGISTERED')
+
+@app.task(queue='process-citation-changes')
+def task_process_reader_updates(reader_changes):
+    for changes in reader_changes:
+        if db.get_citation_targets_by_bibcode(app, [changes.bibcode]):
+            logger.info("Updating reader data for {}.".format(changes.bibcode))
+            if changes.status =="NEW":
+                logger.debug("Adding new reader to db.")
+            if changes.status =="DELETED":
+                logger.debug("Deleting reader from db.")
 
 @app.task(queue='output-results')
 def task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced={}):

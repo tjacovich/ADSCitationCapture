@@ -56,6 +56,12 @@ class ReaderImport():
         self.force = force
         self.last_modification_date = None
 
+    def _citation_changes_query(self):
+        if self.joint_table_name in Inspector.from_engine(self.engine).get_table_names(schema=self.schema_name):
+            ReaderChanges.__table__.schema = self.schema_name
+        sqlalchemy_query = self.session.query(ReaderChanges)
+        return sqlalchemy_query
+
     def compute(self, input_reader_filename):
         """
         Loads refids file into DB, crossmatches with the previous loaded file
@@ -106,31 +112,15 @@ class ReaderImport():
         if self.offset >= self.n_changes or self.n_changes == 0:
             raise StopIteration
         else:
-            citation_changes = adsmsg.CitationChanges()
+            reader_changes = []
             # Get citation changes from DB
             for instance in self._citation_changes_query().offset(self.offset).limit(self.group_changes_in_chunks_of).yield_per(100):
-                ## Build protobuf message
-                citation_change = citation_changes.changes.add()
                 # Use new_ or previous_ fields depending if status is NEW/UPDATED or DELETED
                 prefix = "previous_" if instance.status == "DELETED" else "new_"
-                citation_change.citing = getattr(instance, prefix+"citing")
-                resolved = getattr(instance, prefix+"resolved")
-                citation_change.cited = getattr(instance, prefix+"cited")
-                citation_change.content = getattr(instance, prefix+"content")
-                if getattr(instance, prefix+"doi"):
-                    citation_change.content_type = adsmsg.CitationChangeContentType.doi
-                    citation_change.content = citation_change.content.lower() # Normalize DOI to lower case: DOI names are case insensitive (https://www.doi.org/doi_handbook/2_Numbering.html#2.4)
-                elif getattr(instance, prefix+"pid"):
-                    citation_change.content_type = adsmsg.CitationChangeContentType.pid
-                elif getattr(instance, prefix+"url"):
-                    citation_change.content_type = adsmsg.CitationChangeContentType.url
-                citation_change.resolved = getattr(instance, prefix+"resolved")
-                citation_change.timestamp.FromDatetime(self.last_modification_date)
-                citation_change.status = getattr(adsmsg.Status, instance.status.lower())
+                reader_changes.append({'bibcode': getattr(instance,prefix+"bibcode"), 'reader': getattr(instance, prefix+"reader"), 'status': getattr(instance, "status")})    
             self.session.commit()
-
             self.offset += self.group_changes_in_chunks_of
-            return citation_changes
+            return reader_changes
 
     def _setup_schemas(self):
         """
@@ -199,9 +189,7 @@ class ReaderImport():
             l = postgres_copy.copy_from(fp, ReaderData, self.engine, columns=('bibcode', 'reader'))
 
     def _drop_nonzenodo_records(self):
-        """
-        Remove all entries that are not Zenodo records.
-        """
+        """Remove all entries that are not Zenodo records."""
         drop_row_sql = \
                     "DELETE FROM {0}.{1} \
                         WHERE bibcode NOT LIKE '%%zndo%%' "
@@ -210,13 +198,9 @@ class ReaderImport():
     def _delete_dups(self):
         """
         The input file can have duplicates such as:
-
-           2011arXiv1112.0312C	{"cited":"2012ascl.soft03003C","citing":"2011arXiv1112.0312C","pid":"ascl:1203.003","score":"1","source":"/proj/ads/references/resolved/arXiv/1112/0312.raw.result:10"}
-           2011arXiv1112.0312C	{"cited":"2012ascl.soft03003C","citing":"2011arXiv1112.0312C","pid":"ascl:1203.003","score":"1","source":"/proj/ads/references/resolved/AUTHOR/2012/0605.pairs.result:89"}
-
-        Because the same citation was identified in more than one source.
-        We can safely ignore them but in case there is any of these dups
-        that were not resolved, the resolved one should be prioriticed.
+            2014zndo.....11813N 3922c1a910c5f22e
+            2014zndo.....11813N 3922c1a910c5f22e
+        Note: I am not sure if this is true, for readers, but it is worth keeping for now.
         """
         delete_duplicates_sql = \
             "DELETE FROM {0}.{1} WHERE id IN ( \

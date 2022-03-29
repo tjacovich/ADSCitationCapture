@@ -215,6 +215,20 @@ def maintenance_readers(readers_filename, **kwargs):
     readers = ReaderImport(sqlachemy_url, sqlalchemy_echo=sqlalchemy_echo, group_changes_in_chunks_of=1, schema_prefix=schema_prefix, force=force)
     readers.compute(readers_filename)
 
+    for changes in readers:
+        if diagnose:
+            print("Calling 'task_process_reader_updates' with '{}'".format(str(changes)))
+        logger.debug("Calling 'task_process_reader_updates' with '%s'", str(changes))
+        try:
+            tasks.task_process_reader_updates.delay(changes, force=force)
+        except:
+            # In asynchronous mode, no exception is expected
+            # In synchronous mode (for debugging purposes), exception may happen (e.g., failures to fetch metadata)
+            logger.exception('Exception produced while processing citation changes')
+    if diagnose:
+        readers._execute_sql("drop schema {0} cascade;", readers.schema_name)
+    readers.connection.close()
+
 def diagnose(bibcodes, json):
     citation_count = db.get_citation_count(tasks.app)
     citation_target_count = db.get_citation_target_count(tasks.app)
