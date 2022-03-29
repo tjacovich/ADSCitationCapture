@@ -77,7 +77,7 @@ class ReaderImport():
                 self._execute_sql(drop_schema, self.schema_name)
                 raise
             if self.previous_schema_name is not None:
-                self.logger.info("Comparing table '%s.%s' with recreated table from previous process '%s.%s'", self.schema_name, self.expanded_table_name, self.previous_schema_name, self.recreated_previous_expanded_table_name)
+                self.logger.info("Comparing table '%s.%s' with recreated table from previous process '%s.%s'", self.schema_name, self.table_name, self.previous_schema_name, self.previous_table_name)
             self._join_tables()
             self._calculate_delta()
             self.logger.info("Created table '%s.%s'", self.schema_name, self.joint_table_name)
@@ -268,8 +268,8 @@ class ReaderImport():
                             {1}.{3}.reader as previous_reader \
                         from {1}.{3} full join {0}.{2} \
                         on \
-                            {0}.{2}.citing={1}.{3}.citing \
-                            and {0}.{2}.content={1}.{3}.content \
+                            {0}.{2}.bibcode={1}.{3}.bibcode \
+                            and {0}.{2}.reader={1}.{3}.reader \
                         where \
                             ({0}.{2}.id is not null and {1}.{3}.id is null) \
                             or ({0}.{2}.id is null and {1}.{3}.id is not null) \
