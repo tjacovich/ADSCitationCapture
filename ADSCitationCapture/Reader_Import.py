@@ -172,6 +172,7 @@ class ReaderImport():
     def _import(self):
         """Import from file, expand its JSON column and delete duplicates"""
         self._copy_from_file()
+        self._drop_nonzenodo_records()
         self._delete_dups()
 
         # try:
@@ -197,6 +198,14 @@ class ReaderImport():
         with open(self.input_reader_filename) as fp:
             l = postgres_copy.copy_from(fp, ReaderData, self.engine, columns=('bibcode', 'reader'))
 
+    def _drop_nonzenodo_records(self):
+        """
+        Remove all entries that are not Zenodo records.
+        """
+        drop_row_sql = \
+                    "DELETE FROM {0}.{1} \
+                        WHERE bibcode NOT LIKE '%%zndo%%' "
+        self._execute_sql(drop_row_sql, self.schema_name, self.table_name) 
 
     def _delete_dups(self):
         """
