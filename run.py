@@ -199,6 +199,21 @@ def maintenance_curation(filename = None, dois = None, bibcodes = None, json_pay
     else:
         logger.error("MAINTENANCE task: manual curation failed. Please specify a file containing the modified citations.")
 
+def maintenance_readers(readers_filename, **kwargs):
+    logger.info('Loading records from: %s', readers_filename)
+
+    force = kwargs.get('force', False)
+    #diagnose = kwargs.get('diagnose', False)
+    #if diagnose:
+    #    schema_prefix = "diagnose_citation_capture_"
+    #else:
+    schema_prefix = kwargs.get('schema_prefix', "citation_capture_readers_")
+
+    # Engine
+    sqlachemy_url = kwargs.get('sqlalchemy_url', config.get('SQLALCHEMY_URL', 'postgres://user:password@localhost:5432/citation_capture_pipeline'))
+    sqlalchemy_echo = config.get('SQLALCHEMY_ECHO', False)
+    readers = ReaderImport(sqlachemy_url, sqlalchemy_echo=sqlalchemy_echo, group_changes_in_chunks_of=1, schema_prefix=schema_prefix, force=force)
+    readers.compute(readers_filename)
 
 def diagnose(bibcodes, json):
     citation_count = db.get_citation_count(tasks.app)
@@ -297,6 +312,17 @@ if __name__ == '__main__':
                         default=False,
                         help='Update DOI metadata for the provided list of citation target bibcodes, or if none is provided, for all the current existing citation targets')
     maintenance_parser.add_argument(
+                        '--readers',
+                        dest='import_readers',
+                        action='store_true',
+                        default=False,
+                        help='Calls maintenance task to import reader data for all records.')
+    maintenance_parser.add_argument('--reader_filename',
+                        dest='reader_filename',
+                        action='store',
+                        type=str,
+                        help='Path to the input file that contains reader data for all records.')
+    maintenance_parser.add_argument(
                         '--doi',
                         dest='dois',
                         nargs='+',
@@ -358,7 +384,7 @@ if __name__ == '__main__':
 
     elif args.action == "MAINTENANCE":
         if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not\
-         args.reevaluate and not args.curation and not args.repopulate and not args.regen_nonbib:
+         args.reevaluate and not args.curation and not args.repopulate and not args.regen_nonbib and not args.import_readers:
             maintenance_parser.error("nothing to be done since no task has been selected")
         else:
             # Read files if provided (instead of a direct list of DOIs)
@@ -392,6 +418,8 @@ if __name__ == '__main__':
                 maintenance_repopulate()
             elif args.regen_nonbib:
                 maintenance_regenerate_nonbib_files()
+            elif args.import_readers:
+                maintenance_readers(args.reader_filename, force = False, diagnose = False)
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)

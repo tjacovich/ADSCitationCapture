@@ -28,8 +28,17 @@ class ReaderData(Base):
     __tablename__ = 'reader_data'
     __table_args__ = ({"schema": "public"})
     id = Column(Integer, primary_key=True)
-    bibcode = Column(String(19))
-    reader = Column(Text()) # store hex value as int to save space.
+    bibcode = Column(String())
+    reader = Column(Text())
+
+class ReaderChanges(Base):
+    __tablename__ = 'reader_changes'
+    __table_args__ = ({"schema": "public"})
+    id = Column(Integer, primary_key=True)
+    new_bibcode = Column(String())
+    new_reader = Column(Text())
+    previous_bibcode = Column(String())
+    previous_reader = Column(Text())
 
 class CitationChanges(Base):
     __tablename__ = 'citation_changes'

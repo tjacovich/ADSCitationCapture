@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import CreateSchema
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import create_engine
-from ADSCitationCapture.models import ReaderData, CitationChanges
+from ADSCitationCapture.models import ReaderData, ReaderChanges
 from adsputils import setup_logging
 import adsmsg
 
@@ -44,7 +44,8 @@ class ReaderImport():
                                 attach_stdout=config.get('LOG_STDOUT', False))
         #
         self.table_name = ReaderData.__tablename__
-        self.joint_table_name = CitationChanges.__tablename__
+        self.previous_table_name = ReaderData.__tablename__
+        self.joint_table_name = ReaderChanges.__tablename__
         self.schema_prefix = schema_prefix
         self.schema_name = None
         self.previous_schema_name = None
@@ -66,7 +67,7 @@ class ReaderImport():
         self.input_reader_filename = input_reader_filename
         self._setup_schemas()
         if self.force or self.joint_table_name not in Inspector.from_engine(self.engine).get_table_names(schema=self.schema_name):
-            self.logger.info("Importing '%s' into table '%s.%s' and expanding JSON into table '%s.%s'", self.input_reader_filename, self.schema_name, self.table_name, self.schema_name, self.expanded_table_name)
+            self.logger.info("Importing '%s' into table '%s.%s'", self.input_reader_filename, self.schema_name, self.table_name)
             try:
                 self._import()
             except:
@@ -91,6 +92,11 @@ class ReaderImport():
         self.logger.debug("Executing SQL: %s", sql_command)
         return self.connection.execute(sql_command)
 
+    def _reader_changes_query(self):
+        if self.joint_table_name in Inspector.from_engine(self.engine).get_table_names(schema=self.schema_name):
+            ReaderChanges.__table__.schema = self.schema_name
+        sqlalchemy_query = self.session.query(ReaderChanges)
+        return sqlalchemy_query
 
     def __iter__(self):
         return self
@@ -168,11 +174,11 @@ class ReaderImport():
         self._copy_from_file()
         self._delete_dups()
 
-        try:
-            self._verify_input_data()
-        except:
-            self.logger.exception("Input data does not comply with some assumptions")
-            raise
+        # try:
+        #     self._verify_input_data()
+        # except:
+        #     self.logger.exception("Input data does not comply with some assumptions")
+        #     raise
 
     def _copy_from_file(self):
         """Import file into DB"""
@@ -189,7 +195,7 @@ class ReaderImport():
 
         # Import a tab-delimited file
         with open(self.input_reader_filename) as fp:
-            l = postgres_copy.copy_from(fp, ReaderData, self.engine, columns=('bibcode', 'payload'))
+            l = postgres_copy.copy_from(fp, ReaderData, self.engine, columns=('bibcode', 'reader'))
 
 
     def _delete_dups(self):
@@ -206,15 +212,15 @@ class ReaderImport():
         delete_duplicates_sql = \
             "DELETE FROM {0}.{1} WHERE id IN ( \
                 SELECT id FROM \
-                    (SELECT id, row_number() over(partition by bibcode, content order by reader desc) AS dup_id FROM {0}.{1}) t \
+                    (SELECT id, row_number() over(partition by bibcode, reader order by reader desc) AS dup_id FROM {0}.{1}) t \
                 WHERE t.dup_id > 1 \
             )"
-        self._execute_sql(delete_duplicates_sql, self.schema_name, self.expanded_table_name)
+        self._execute_sql(delete_duplicates_sql, self.schema_name, self.table_name)
 
     def _compute_n_changes(self):
         """Count how many citation changes were identified"""
         if self.joint_table_name in Inspector.from_engine(self.engine).get_table_names(schema=self.schema_name):
-            n_changes = self._citation_changes_query().count()
+            n_changes = self._reader_changes_query().count()
             return n_changes
         else:
             return 0
@@ -245,13 +251,11 @@ class ReaderImport():
                             {0}.{1}.id as new_id, \
                             {0}.{1}.bibcode as new_bibcode, \
                             {0}.{1}.reader as new_reader, \
-                            {0}.{1}.timestamp as new_timestamp, \
                             cast(null as text) as previous_id, \
                             cast(null as text) as previous_bibcode, \
-                            cast(null as text) as previous_reader, \
-                            cast(null as timestamp) as previous_timestamp \
+                            cast(null as text) as previous_reader \
                         from {0}.{1};"
-            self._execute_sql(joint_table_sql, self.schema_name, self.expanded_table_name, self.joint_table_name)
+            self._execute_sql(joint_table_sql, self.schema_name, self.table_name, self.joint_table_name)
         else:
             joint_table_sql = \
                     "create table {0}.{4} as \
@@ -259,11 +263,9 @@ class ReaderImport():
                             {0}.{2}.id as new_id, \
                             {0}.{2}.bibcode as new_bibcode, \
                             {0}.{2}.reader as new_reader, \
-                            {0}.{2}.timestamp as new_timestamp, \
                             {1}.{3}.id as previous_id, \
                             {1}.{3}.bibcode as previous_bibcode, \
-                            {1}.{3}.reader as previous_reader, \
-                            {1}.{3}.timestamp as previous_timestamp \
+                            {1}.{3}.reader as previous_reader \
                         from {1}.{3} full join {0}.{2} \
                         on \
                             {0}.{2}.citing={1}.{3}.citing \
@@ -273,7 +275,7 @@ class ReaderImport():
                             or ({0}.{2}.id is null and {1}.{3}.id is not null) \
                             or ({0}.{2}.id is not null and {1}.{3}.id is not null and ({0}.{2}.bibcode<>{1}.{3}.bibcode or {0}.{2}.reader<>{1}.{3}.reader)) \
                         ;"
-            self._execute_sql(joint_table_sql, self.schema_name, self.previous_schema_name, self.expanded_table_name, self.recreated_previous_expanded_table_name, self.joint_table_name)
+            self._execute_sql(joint_table_sql, self.schema_name, self.previous_schema_name, self.table_name, self.previous_table_name, self.joint_table_name)
 
         add_id_column_sql = "ALTER TABLE {0}.{1} ADD COLUMN id SERIAL PRIMARY KEY;"
         self._execute_sql(add_id_column_sql, self.schema_name, self.joint_table_name)
