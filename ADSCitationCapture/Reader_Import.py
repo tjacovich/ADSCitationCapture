@@ -44,9 +44,6 @@ class ReaderImport():
                                 attach_stdout=config.get('LOG_STDOUT', False))
         #
         self.table_name = ReaderData.__tablename__
-        self.expanded_table_name = "expanded_" + self.table_name
-        self.recreated_previous_expanded_table_name = "recreated_previous_expanded_" + self.table_name
-        self.missing_previous_expanded_table_name = "not_processed_" + self.table_name
         self.joint_table_name = CitationChanges.__tablename__
         self.schema_prefix = schema_prefix
         self.schema_name = None
@@ -166,12 +163,9 @@ class ReaderImport():
                     drop_schema = "drop schema {0} cascade;"
                     self._execute_sql(drop_schema, old_schema_name)
 
-    
     def _import(self):
         """Import from file, expand its JSON column and delete duplicates"""
         self._copy_from_file()
-        self._expand_json()
-        self._normalize_doi_content()
         self._delete_dups()
 
         try:
@@ -198,37 +192,6 @@ class ReaderImport():
             l = postgres_copy.copy_from(fp, ReaderData, self.engine, columns=('bibcode', 'payload'))
 
 
-    def _expand_json(self):
-        """Extract data from the JSON column as individual columns"""
-        table_already_exists = self.expanded_table_name in Inspector.from_engine(self.engine).get_table_names(schema=self.schema_name)
-        if table_already_exists and self.force:
-            self.logger.info("Dropping table '%s.%s' due to force mode", self.schema_name, self.expanded_table_name)
-            drop_table = "drop table if exists {0}.{1};"
-            self._execute_sql(drop_table, self.schema_name, self.expanded_table_name)
-        elif table_already_exists:
-            return
-
-        # Expand ignoring the source field, keeping only information about
-        # score == "1" which have resolved bibcodes in the cited field
-        # and ordered by citing, data and reverse resolved to guarantee that
-        # duplicates where there is one entry that is resolved and others that
-        # don't, the one that is resolved is the one kept (the rest are removed,
-        # see _delete_dups where MIN(id) is kept)
-        create_expanded_table = \
-                "create table {0}.{2} as \
-                    select id, \
-                        payload->>'citing' as citing, \
-                        payload->>'cited' as cited, \
-                        (payload->>'doi' is not null) as doi, \
-                        (payload->>'pid' is not null) as pid, \
-                        (payload->>'url' is not null) as url, \
-                        concat(payload->>'doi'::text, payload->>'pid'::text, payload->>'url'::text) as content, \
-                        (payload->>'score' is not null and payload->>'score' = '1') as resolved, \
-                        timestamp '{3}' AT TIME ZONE 'UTC' as timestamp \
-                    from {0}.{1} order by citing asc, content asc, resolved desc;"
-        self._execute_sql(create_expanded_table, self.schema_name, self.table_name, self.expanded_table_name, self.last_modification_date.isoformat())
-
-
     def _delete_dups(self):
         """
         The input file can have duplicates such as:
@@ -243,22 +206,10 @@ class ReaderImport():
         delete_duplicates_sql = \
             "DELETE FROM {0}.{1} WHERE id IN ( \
                 SELECT id FROM \
-                    (SELECT id, row_number() over(partition by citing, content order by resolved desc) AS dup_id FROM {0}.{1}) t \
+                    (SELECT id, row_number() over(partition by bibcode, content order by reader desc) AS dup_id FROM {0}.{1}) t \
                 WHERE t.dup_id > 1 \
             )"
         self._execute_sql(delete_duplicates_sql, self.schema_name, self.expanded_table_name)
-
-    def _normalize_doi_content(self):
-        """
-        Normalize DOI to lower case: DOI names are case insensitive
-        (https://www.doi.org/doi_handbook/2_Numbering.html#2.4)
-
-        The input file can have the same DOI multiple times but each with a different
-        combination of upper/lower cases.
-        """
-        normalize_doi_content_sql = \
-            "UPDATE {0}.{1} SET content=lower(content) WHERE doi = 'true';"
-        self._execute_sql(normalize_doi_content_sql, self.schema_name, self.expanded_table_name)
 
     def _compute_n_changes(self):
         """Count how many citation changes were identified"""
@@ -292,22 +243,12 @@ class ReaderImport():
                     "create table {0}.{2} as \
                         select \
                             {0}.{1}.id as new_id, \
-                            {0}.{1}.citing as new_citing, \
-                            {0}.{1}.cited as new_cited, \
-                            {0}.{1}.doi as new_doi, \
-                            {0}.{1}.pid as new_pid, \
-                            {0}.{1}.url as new_url, \
-                            {0}.{1}.content as new_content, \
-                            {0}.{1}.resolved as new_resolved, \
+                            {0}.{1}.bibcode as new_bibcode, \
+                            {0}.{1}.reader as new_reader, \
                             {0}.{1}.timestamp as new_timestamp, \
                             cast(null as text) as previous_id, \
-                            cast(null as text) as previous_citing, \
-                            cast(null as text) as previous_cited, \
-                            cast(null as boolean) as previous_doi, \
-                            cast(null as boolean) as previous_pid, \
-                            cast(null as boolean) as previous_url, \
-                            cast(null as text) as previous_content, \
-                            cast(null as boolean) as previous_resolved, \
+                            cast(null as text) as previous_bibcode, \
+                            cast(null as text) as previous_reader, \
                             cast(null as timestamp) as previous_timestamp \
                         from {0}.{1};"
             self._execute_sql(joint_table_sql, self.schema_name, self.expanded_table_name, self.joint_table_name)
@@ -316,22 +257,12 @@ class ReaderImport():
                     "create table {0}.{4} as \
                         select \
                             {0}.{2}.id as new_id, \
-                            {0}.{2}.citing as new_citing, \
-                            {0}.{2}.cited as new_cited, \
-                            {0}.{2}.doi as new_doi, \
-                            {0}.{2}.pid as new_pid, \
-                            {0}.{2}.url as new_url, \
-                            {0}.{2}.content as new_content, \
-                            {0}.{2}.resolved as new_resolved, \
+                            {0}.{2}.bibcode as new_bibcode, \
+                            {0}.{2}.reader as new_reader, \
                             {0}.{2}.timestamp as new_timestamp, \
                             {1}.{3}.id as previous_id, \
-                            {1}.{3}.citing as previous_citing, \
-                            {1}.{3}.cited as previous_cited, \
-                            {1}.{3}.doi as previous_doi, \
-                            {1}.{3}.pid as previous_pid, \
-                            {1}.{3}.url as previous_url, \
-                            {1}.{3}.content as previous_content, \
-                            {1}.{3}.resolved as previous_resolved, \
+                            {1}.{3}.bibcode as previous_bibcode, \
+                            {1}.{3}.reader as previous_reader, \
                             {1}.{3}.timestamp as previous_timestamp \
                         from {1}.{3} full join {0}.{2} \
                         on \
@@ -340,7 +271,7 @@ class ReaderImport():
                         where \
                             ({0}.{2}.id is not null and {1}.{3}.id is null) \
                             or ({0}.{2}.id is null and {1}.{3}.id is not null) \
-                            or ({0}.{2}.id is not null and {1}.{3}.id is not null and ({0}.{2}.cited<>{1}.{3}.cited or {0}.{2}.resolved<>{1}.{3}.resolved)) \
+                            or ({0}.{2}.id is not null and {1}.{3}.id is not null and ({0}.{2}.bibcode<>{1}.{3}.bibcode or {0}.{2}.reader<>{1}.{3}.reader)) \
                         ;"
             self._execute_sql(joint_table_sql, self.schema_name, self.previous_schema_name, self.expanded_table_name, self.recreated_previous_expanded_table_name, self.joint_table_name)
 
@@ -359,7 +290,6 @@ class ReaderImport():
         #create_index = "CREATE INDEX status_idx ON {0}.{1} (status);"
         #self._execute_sql(create_index, self.schema_name,  self.joint_table_name)
 
-
     def _calculate_delta(self):
         """Classify citation changes as NEW, UPDATED or DELETED"""
         update_status_updated_sql = \
@@ -369,8 +299,8 @@ class ReaderImport():
                 {0}.{1}.status is null \
                 and {0}.{1}.new_id is not null \
                 and {0}.{1}.previous_id is not null \
-                and ({0}.{1}.new_cited<>{0}.{1}.previous_cited \
-                    or {0}.{1}.new_resolved<>{0}.{1}.previous_resolved);"
+                and ({0}.{1}.new_bibcode<>{0}.{1}.previous_bibcode \
+                    or {0}.{1}.new_reader<>{0}.{1}.previous_reader);"
         self._execute_sql(update_status_updated_sql, self.schema_name, self.joint_table_name)
 
         update_status_new_sql = \

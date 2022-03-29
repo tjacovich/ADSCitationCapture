@@ -29,7 +29,7 @@ class ReaderData(Base):
     __table_args__ = ({"schema": "public"})
     id = Column(Integer, primary_key=True)
     bibcode = Column(String(19))
-    payload = Column(JSONB) # Binary, faster than JSON (requires postgres >9.4)
+    reader = Column(Text()) # store hex value as int to save space.
 
 class CitationChanges(Base):
     __tablename__ = 'citation_changes'
