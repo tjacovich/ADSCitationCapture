@@ -881,12 +881,11 @@ def task_process_reader_updates(reader_changes, **kwargs):
             if changes['status'] =="DELETED":
                 status = "DELETED"
                 logger.info("Deleting reader from db.")
-                db.store_reader_data(app, changes, status)
+                db.mark_reader_as_deleted(app, changes)
         else:
             logger.info("{} is not a citation_target in the database. Discarding.".format(changes['bibcode']))
             status = "DISCARDED"
             db.store_reader_data(app, changes, status)
-
 
 
 @app.task(queue='output-results')
