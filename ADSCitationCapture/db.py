@@ -2,7 +2,7 @@ import os
 from typing import OrderedDict
 from psycopg2 import IntegrityError
 from dateutil.tz import tzutc
-from ADSCitationCapture.models import Citation, CitationTarget, Event
+from ADSCitationCapture.models import Citation, CitationTarget, Event, Reader
 from adsmsg import CitationChange
 from adsputils import setup_logging
 
@@ -175,6 +175,28 @@ def store_citation(app, citation_change, content_type, raw_metadata, parsed_meta
             stored = True
     return stored
 
+def store_reader_data(app, reader_change, status):
+    """
+    Stores a new citation in the DB
+    """
+    stored = False
+    with app.session_scope() as session:
+        reads = Reader()
+        reads.bibcode = reader_change['bibcode']
+        reads.reader = reader_change['reader']
+        #reads.timestamp = reader_change.timestamp.ToDatetime().replace(tzinfo=tzutc())
+        reads.status = status
+        session.add(reads)
+        try:
+            session.commit()
+        except IntegrityError as e:
+            # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
+            logger.error("Ignoring new citation (bibcode '%s', reader '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", reader_change['bibcode'], reader_change['readers'], str(e))
+        else:
+            logger.info("Stored new citation (citing '%s', content '%s')", reader_change['bibcode'], reader_change['reader'])
+            stored = True
+    return stored
+
 def get_citation_target_count(app):
     """
     Return the number of citation targets registered in the database
@@ -338,6 +360,15 @@ def get_citations(app, citation_change):
         citation_bibcodes = [r.citing for r in session.query(Citation).filter_by(content=citation_change.content, status="REGISTERED").all()]
     return citation_bibcodes
 
+def get_citation_target_readers(app, reader_change):
+    """
+    Return all the citations (bibcodes) to a given content.
+    It will ignore DELETED and DISCARDED citations.
+    """
+    with app.session_scope() as session:
+        reader_hashes = [r.reader for r in session.query(Reader).filter_by(content=reader_change.bibcode, status="REGISTERED").all()]
+    return reader_hashes
+
 def generate_modified_metadata(parsed_metadata, curated_entry):
     """
     modify parsed_metadata with any curated metadata. return results.
@@ -393,6 +424,27 @@ def update_citation(app, citation_change):
     return updated
 
 def mark_citation_as_deleted(app, citation_change):
+    """
+    Update status to DELETED for a given citation
+    """
+    marked_as_deleted = False
+    previous_status = None
+    with app.session_scope() as session:
+        citation = session.query(Citation).with_for_update().filter_by(citing=citation_change.citing, content=citation_change.content).first()
+        previous_status = citation.status
+        change_timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
+        if citation.timestamp < change_timestamp:
+            citation.status = "DELETED"
+            citation.timestamp = change_timestamp
+            session.add(citation)
+            session.commit()
+            marked_as_deleted = True
+            logger.info("Marked citation as deleted (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+        else:
+            logger.info("Ignoring citation deletion (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+    return marked_as_deleted, previous_status
+
+def mark_reader_as_deleted(app, citation_change):
     """
     Update status to DELETED for a given citation
     """

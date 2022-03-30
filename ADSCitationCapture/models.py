@@ -14,6 +14,7 @@ Base = declarative_base()
 citation_content_type = ENUM('DOI', 'PID', 'URL', name='citation_content_type')
 citation_change_type = ENUM('NEW', 'DELETED', 'UPDATED', name='citation_change_type')    
 reader_change_type = ENUM('NEW', 'DELETED', name='reader_change_type')    
+reader_status_type = ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='reader_status_type')
 citation_status_type = ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='citation_status_type')
 target_status_type = ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type')
 
@@ -31,6 +32,14 @@ class ReaderData(Base):
     id = Column(Integer, primary_key=True)
     bibcode = Column(String())
     reader = Column(Text())
+
+class Reader(Base):
+    __tablename__ = 'readers'
+    __table_args__ = ({"schema": "public"})
+    id = Column(Integer, primary_key=True)
+    bibcode = Column(String())
+    reader = Column(Text())
+    status = Column(reader_status_type)
 
 class ReaderChanges(Base):
     __tablename__ = 'reader_changes'

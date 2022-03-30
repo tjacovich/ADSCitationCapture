@@ -28,7 +28,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     schema='public'
     )
-    op.create_table('reader_data',
+    op.create_table('readers',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('bibcode', sa.String(), nullable=True),
     sa.Column('reader', sa.Text(), nullable=True),

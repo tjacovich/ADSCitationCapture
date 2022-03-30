@@ -198,6 +198,7 @@ def task_process_updated_citation(citation_change, force=False):
     parsed_metadata = metadata.get('parsed', {})
     citation_target_bibcode = parsed_metadata.get('bibcode', None)
     status = metadata.get('status', 'DISCARDED')
+    readers = db.get_citation_target_readers(app, citation_target_bibcode)
     # Emit/forward the update only if status is "REGISTERED"
     if updated and status == 'REGISTERED':
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
@@ -872,11 +873,21 @@ def task_process_reader_updates(reader_changes, **kwargs):
         if db.get_citation_targets_by_bibcode(app, [changes['bibcode']]):
             logger.info("Updating reader data for {}.".format(changes['bibcode']))
             if changes['status'] =="NEW":
-                logger.info("Adding new reader to db.")
+                status = "REGISTERED"
+                logger.info("Adding new reader for bibcode: {} to database.".format(changes['bibcode']))
+                db.store_reader_data(app, changes, status)
+                readers = db.get_citation_target_readers(app, changes['bibcode'])
+                logger.info("Found {} Readers for bibcode: {}. {}".format(len(readers), changes['bibcode'], readers))
             if changes['status'] =="DELETED":
+                status = "DELETED"
                 logger.info("Deleting reader from db.")
+                db.store_reader_data(app, changes, status)
         else:
-            logger.info("{} is not a citation_target in the db. Skipping for this ingestion.".format(changes['bibcode']))
+            logger.info("{} is not a citation_target in the database. Discarding.".format(changes['bibcode']))
+            status = "DISCARDED"
+            db.store_reader_data(app, changes, status)
+
+
 
 @app.task(queue='output-results')
 def task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced={}):
