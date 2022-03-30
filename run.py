@@ -203,11 +203,11 @@ def maintenance_readers(readers_filename, **kwargs):
     logger.info('Loading records from: %s', readers_filename)
 
     force = kwargs.get('force', False)
-    #diagnose = kwargs.get('diagnose', False)
-    #if diagnose:
-    #    schema_prefix = "diagnose_citation_capture_"
-    #else:
-    schema_prefix = kwargs.get('schema_prefix', "citation_capture_readers_")
+    diagnose = kwargs.get('diagnose', False)
+    if diagnose:
+        schema_prefix = "diagnose_citation_capture_readers_"
+    else:
+        schema_prefix = kwargs.get('schema_prefix', "citation_capture_readers_")
 
     # Engine
     sqlachemy_url = kwargs.get('sqlalchemy_url', config.get('SQLALCHEMY_URL', 'postgres://user:password@localhost:5432/citation_capture_pipeline'))
@@ -215,6 +215,7 @@ def maintenance_readers(readers_filename, **kwargs):
     readers = ReaderImport(sqlachemy_url, sqlalchemy_echo=sqlalchemy_echo, group_changes_in_chunks_of=1, schema_prefix=schema_prefix, force=force)
     readers.compute(readers_filename)
 
+    # Step through changes in readers and write them to public. Send nonbib updates to master as necessary.
     for changes in readers:
         if diagnose:
             print("Calling 'task_process_reader_updates' with '{}'".format(str(changes)))

@@ -867,14 +867,16 @@ def task_maintenance_generate_nonbib_files():
     db.write_citation_target_data(app, only_status='REGISTERED')
 
 @app.task(queue='process-citation-changes')
-def task_process_reader_updates(reader_changes):
+def task_process_reader_updates(reader_changes, **kwargs):
     for changes in reader_changes:
-        if db.get_citation_targets_by_bibcode(app, [changes.bibcode]):
-            logger.info("Updating reader data for {}.".format(changes.bibcode))
-            if changes.status =="NEW":
-                logger.debug("Adding new reader to db.")
-            if changes.status =="DELETED":
-                logger.debug("Deleting reader from db.")
+        if db.get_citation_targets_by_bibcode(app, [changes['bibcode']]):
+            logger.info("Updating reader data for {}.".format(changes['bibcode']))
+            if changes['status'] =="NEW":
+                logger.info("Adding new reader to db.")
+            if changes['status'] =="DELETED":
+                logger.info("Deleting reader from db.")
+        else:
+            logger.info("{} is not a citation_target in the db. Skipping for this ingestion.".format(changes['bibcode']))
 
 @app.task(queue='output-results')
 def task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced={}):
