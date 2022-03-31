@@ -22,7 +22,7 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 
 # =============================== FUNCTIONS ======================================= #
-def build_record(app, citation_change, parsed_metadata, citations, entry_date=None):
+def build_record(app, citation_change, parsed_metadata, citations, readers=[], entry_date=None):
     if citation_change.content_type != CitationChangeContentType.doi:
         raise Exception("Only DOI records can be forwarded to master")
     # Extract required values
@@ -38,7 +38,14 @@ def build_record(app, citation_change, parsed_metadata, citations, entry_date=No
     authors = parsed_metadata.get('authors', [])
     normalized_authors = parsed_metadata.get('normalized_authors', [])
     affiliations = parsed_metadata.get('affiliations', ['-']*len(authors))
-    pubdate = parsed_metadata.get('pubdate', get_date().strftime("%Y-%m-%d"))
+    try:
+        pubdate = parsed_metadata.get('pubdate', get_date().strftime("%Y-%m-%d"))
+        forward_time = (datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    except Exception as e:
+        logger.error("Extracting publication date for {} failed with Exception {}. Setting to Current Time.".format(bibcode, e))
+        pubdate = get_date().strftime("%Y-%m-%d")
+        forward_time = (datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')        
+
     source = parsed_metadata.get('source', "Unknown")
     version = parsed_metadata.get('version', "")
     doctype = parsed_metadata.get('doctype', "software")
@@ -104,7 +111,7 @@ def build_record(app, citation_change, parsed_metadata, citations, entry_date=No
         'pub_raw': source,
         'pubdate': pubdate,
         'pubnote': [],
-        'read_count': 0,
+        'read_count': len(readers),
         'title': [title],
         'publisher': source,
         'version': version
@@ -125,11 +132,11 @@ def build_record(app, citation_change, parsed_metadata, citations, entry_date=No
     else:
         status = 0 # active
     record = DenormalizedRecord(**record_dict)
-    nonbib_record = _build_nonbib_record(app, citation_change, record, status)
+    nonbib_record = _build_nonbib_record(app, citation_change, record, status, readers=readers)
     return record, nonbib_record
 
 
-def _build_nonbib_record(app, citation_change, record, status):
+def _build_nonbib_record(app, citation_change, record, status, readers=[]):
     doi = citation_change.content
     nonbib_record_dict = {
         'status': status,
@@ -146,7 +153,7 @@ def _build_nonbib_record(app, citation_change, record, status):
         'ned_objects': [],
         'norm_cites': 0, # log10-normalized count of citations computed on the classic site but not currently used
         'read_count': record.read_count,
-        'readers': [],
+        'readers': readers,
         'simbad_objects': [],
         'total_link_counts': 0 # Only used for DATA and not for ESOURCES
     }

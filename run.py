@@ -230,6 +230,9 @@ def maintenance_readers(readers_filename, **kwargs):
         readers._execute_sql("drop schema {0} cascade;", readers.schema_name)
     readers.connection.close()
 
+def maintenance_resend_readers(dois, bibcodes):
+    tasks.task_maintenance_resend_readers.delay(dois, bibcodes)
+
 def diagnose(bibcodes, json):
     citation_count = db.get_citation_count(tasks.app)
     citation_target_count = db.get_citation_target_count(tasks.app)
@@ -435,6 +438,7 @@ if __name__ == '__main__':
                 maintenance_regenerate_nonbib_files()
             elif args.import_readers:
                 maintenance_readers(args.reader_filename, force = False, diagnose = False)
+
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)

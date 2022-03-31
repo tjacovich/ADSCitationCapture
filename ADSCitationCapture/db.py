@@ -122,7 +122,7 @@ def write_citation_target_data(app, only_status=None):
         else:
             records_db = session.query(CitationTarget).all()
             disable_filter = True
-        bibcodes = [r.parsed_cited_metadata.get('bibcode', '') for r in records_db]
+        bibcodes = [r.bibcode for r in records_db]
 
         with open(file_names['bibcode'], 'w') as f:
             f.write("\n".join(bibcodes))
@@ -362,13 +362,13 @@ def get_citations(app, citation_change):
         citation_bibcodes = [r.citing for r in session.query(Citation).filter_by(content=citation_change.content, status="REGISTERED").all()]
     return citation_bibcodes
 
-def get_citation_target_readers(app, reader_change):
+def get_citation_target_readers(app, bibcode):
     """
-    Return all the citations (bibcodes) to a given content.
-    It will ignore DELETED and DISCARDED citations.
+    Return all the Reader hashes for a given content.
+    It will ignore DELETED and DISCARDED hashes.
     """
     with app.session_scope() as session:
-        reader_hashes = [r.reader for r in session.query(Reader).filter_by(content=reader_change.bibcode, status="REGISTERED").all()]
+        reader_hashes = [r.reader for r in session.query(Reader).filter_by(bibcode=bibcode, status="REGISTERED").all()]
     return reader_hashes
 
 def generate_modified_metadata(parsed_metadata, curated_entry):
