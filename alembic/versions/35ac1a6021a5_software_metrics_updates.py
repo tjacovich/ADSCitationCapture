@@ -47,4 +47,5 @@ def downgrade():
     op.create_foreign_key('citation_content_fkey', 'citation', 'citation_target', ['content'], ['content'])
     op.drop_table('readers', schema='public')
     op.drop_table('reader_changes', schema='public')
+    op.execute("DROP TYPE reader_status_type")
     # ### end Alembic commands ###

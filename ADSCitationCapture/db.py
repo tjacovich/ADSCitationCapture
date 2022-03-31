@@ -193,9 +193,9 @@ def store_reader_data(app, reader_change, status):
             session.commit()
         except IntegrityError as e:
             # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
-            logger.error("Ignoring new citation (bibcode '%s', reader '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", reader_change['bibcode'], reader_change['readers'], str(e))
+            logger.error("Ignoring new reader information (bibcode '%s', reader '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", reader_change['bibcode'], reader_change['readers'], str(e))
         else:
-            logger.info("Stored new citation (citing '%s', content '%s')", reader_change['bibcode'], reader_change['reader'])
+            logger.info("Stored new reader (bibcode: '%s', reader '%s')", reader_change['bibcode'], reader_change['reader'])
             stored = True
     return stored
 
