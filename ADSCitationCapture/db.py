@@ -116,7 +116,6 @@ def write_citation_target_data(app, only_status=None):
     Writes Canonical bibcodes to file for DataPipeline
     """
     with app.session_scope() as session:
-       with app.session_scope() as session:
         if only_status:
             records_db = session.query(CitationTarget).filter_by(status=only_status).all()
             disable_filter = only_status in ['DISCARDED','EMITTABLE']
@@ -125,12 +124,15 @@ def write_citation_target_data(app, only_status=None):
             disable_filter = True
         bibcodes = [r.parsed_cited_metadata.get('bibcode', '') for r in records_db]
 
-        _write_key_citation_target_data(records_db, column_name='bibcode')
+        with open(file_names['bibcode'], 'w') as f:
+            f.write("\n".join(bibcodes))
+            # [f.write(str(rec.bibcode)) for rec in records_db]
+        #_write_key_citation_target_data(records_db, column_name='bibcode')
         _write_key_citation_reference_data(app, bibcodes)
 
 def _write_key_citation_target_data(records, column_name):
     """
-    Writes 
+    Writes any parsed_metadata to file.
     """
     try:
         with open(file_names[column_name], 'w') as f:
