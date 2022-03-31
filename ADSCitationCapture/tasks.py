@@ -229,7 +229,7 @@ def task_process_deleted_citation(citation_change, force=False):
             citations = api.get_canonical_bibcodes(app, original_citations)
             readers = db.get_citation_target_readers(app, citation_target_bibcode)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-            task_output_results.delay(citation_change, parsed_metadata, citations, reader=readers)
+            task_output_results.delay(citation_change, parsed_metadata, citations, readers=readers)
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
         _emit_citation_change(citation_change, parsed_metadata)
 
@@ -368,6 +368,8 @@ def task_maintenance_canonical(dois, bibcodes):
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
             existing_citation_bibcodes = api.get_canonical_bibcodes(app, original_citations)
+            readers = db.get_citation_target_readers(app, registered_record['bibcode'])
+
         except:
             logger.exception("Failed API request to retreive existing citations for bibcode '{}'".format(registered_record['bibcode']))
             continue
@@ -379,7 +381,7 @@ def task_maintenance_canonical(dois, bibcodes):
         parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
         if parsed_metadata:
             logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-            task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes)
+            task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes, readers=readers)
 
 @app.task(queue='maintenance_metadata')
 def task_maintenance_metadata(dois, bibcodes, reset = False):
@@ -518,8 +520,9 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                 # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                 original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
                 citations = api.get_canonical_bibcodes(app, original_citations)
+                readers = db.get_citation_target_readers(app, registered_record['bibcode'])
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced)     
+                task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, readers=readers)     
 
 @app.task(queue='maintenance_metadata')
 def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
@@ -660,10 +663,12 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                     # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                     original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
                     citations = api.get_canonical_bibcodes(app, original_citations)
+                    readers = db.get_citation_target_readers(app, registered_record['bibcode'])
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                    task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced)
+                    task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, readers=readers)
             else:
                 logger.warn("Curated metadata did not result in a change to recorded metadata for {}.".format(registered_record.get('content')))
+        
         except Exception as e:
             logger.error("task_maintenance_curation Failed to update metadata for {} with Exception: {}. Please check that the bibcode or doi matches a target record.".format(curated_entry, e))
             raise
@@ -728,7 +733,7 @@ def task_maintenance_repopulate_bibcode_columns(curated = True):
     db.populate_bibcode_column(app, curated)
 
 @app.task(queue='maintenance_resend')
-def task_maintenance_resend(dois, bibcodes, broker, only_readers=True):
+def task_maintenance_resend(dois, bibcodes, broker, only_readers=False):
     """
     Maintenance operation:
     - Get all the registered citation targets (or only a subset of them if DOIs and/or bibcodes are specified)
@@ -861,8 +866,9 @@ def task_maintenance_reevaluate(dois, bibcodes):
                     # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                     original_citations = db.get_citations_by_bibcode(app, parsed_metadata['bibcode'])
                     citations = api.get_canonical_bibcodes(app, original_citations)
+                    readers = db.get_citation_target_readers(app, parsed_metadata['bibcode'])
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                    task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
+                    task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced, readers=readers)
 
 @app.task(queue='maintenance_resend')
 def task_maintenance_generate_nonbib_files():
