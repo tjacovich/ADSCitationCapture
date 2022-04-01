@@ -733,7 +733,7 @@ def task_maintenance_repopulate_bibcode_columns(curated = True):
     db.populate_bibcode_column(app, curated)
 
 @app.task(queue='maintenance_resend')
-def task_maintenance_resend(dois, bibcodes, broker, only_readers=False):
+def task_maintenance_resend(dois, bibcodes, broker, only_nonbib=False):
     """
     Maintenance operation:
     - Get all the registered citation targets (or only a subset of them if DOIs and/or bibcodes are specified)
@@ -771,8 +771,8 @@ def task_maintenance_resend(dois, bibcodes, broker, only_readers=False):
                 # Only update master
                 logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
                 readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode',''))
-                if [bool(readers), only_readers].count(True) == 2 or not only_readers:
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers = readers)
+                if [bool(readers), only_nonbib].count(True) == 2 or not only_nonbib:
+                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers = readers, only_nonbib=True)
             else:
                 # Only re-emit to the broker
                 # Signal that the target bibcode and the DOI are identical
@@ -904,7 +904,7 @@ def task_process_reader_updates(reader_changes, **kwargs):
                 if parsed_metadata:
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
                     readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode', ''))
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers = readers)
+                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers = readers, only_nonbib=True)
                 db.store_reader_data(app, changes, status)
 
             elif changes['status'] == "DELETED":
@@ -925,7 +925,7 @@ def task_process_reader_updates(reader_changes, **kwargs):
                 if parsed_metadata:
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
                     readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode', ''))
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers = readers)
+                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers = readers, only_nonbib=True)
         else:
             logger.info("{} is not a citation_target in the database. Discarding.".format(changes['bibcode']))
             status = "DISCARDED"
@@ -933,7 +933,7 @@ def task_process_reader_updates(reader_changes, **kwargs):
 
 
 @app.task(queue='output-results')
-def task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced={}, readers=[]):
+def task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced={}, readers=[], only_nonbib=False):
     """
     This worker will forward results to the outside
     exchange (typically an ADSMasterPipeline) to be
@@ -963,10 +963,11 @@ def task_output_results(citation_change, parsed_metadata, citations, bibcode_rep
     messages.append((record, nonbib_record))
 
     for record, nonbib_record in messages:
-        logger.debug('Will forward this record: %s', record)
-        logger.debug("Calling 'app.forward_message' with '%s'", str(record.toJSON()))
-        if not app.conf['CELERY_ALWAYS_EAGER']:
+        if not app.conf['CELERY_ALWAYS_EAGER'] and not only_nonbib:
+            logger.debug('Will forward this record: %s', record)
+            logger.debug("Calling 'app.forward_message' with '%s'", str(record.toJSON()))
             app.forward_message(record)
+
         logger.debug('Will forward this record: %s', nonbib_record)
         logger.debug("Calling 'app.forward_message' with '%s'", str(nonbib_record.toJSON()))
         if not app.conf['CELERY_ALWAYS_EAGER']:
