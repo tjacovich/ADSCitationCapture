@@ -22,6 +22,8 @@ file_names=OrderedDict()
 file_names['bibcode'] =proj_home+'/logs/bibcodes_CC.can.list'
 file_names['citations'] = proj_home+'/logs/citations_CC.list'
 file_names['references'] = proj_home+'/logs/references_CC.list'
+file_names['authors'] = proj_home+'/logs/facet_authors_CC.list'
+
 
 # =============================== FUNCTIONS ======================================= #
 def store_event(app, data):
@@ -123,20 +125,24 @@ def write_citation_target_data(app, only_status=None):
             records_db = session.query(CitationTarget).all()
             disable_filter = True
         bibcodes = [r.bibcode for r in records_db]
-
+        records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
         with open(file_names['bibcode'], 'w') as f:
             f.write("\n".join(bibcodes))
-            # [f.write(str(rec.bibcode)) for rec in records_db]
-        #_write_key_citation_target_data(records_db, column_name='bibcode')
         _write_key_citation_reference_data(app, bibcodes)
+        logger.info("Writing author data for {} records".format(len(records)))
+        _write_key_citation_target_data(app, records, 'authors')
 
-def _write_key_citation_target_data(records, column_name):
+def _write_key_citation_target_data(app, records, column_name):
     """
     Writes any parsed_metadata to file.
     """
     try:
         with open(file_names[column_name], 'w') as f:
-            [f.write(str(rec.parsed_cited_metadata.get(column_name,''))+"\n") for rec in records]
+            for rec in records:
+                parsed_metadata = get_citation_target_metadata(app, rec['content']).get('parsed', {})
+                if parsed_metadata:
+                    f.write(str(rec['bibcode'])+"\t"+"\t".join(parsed_metadata.get(column_name,''))+"\n")
+
         logger.info("Wrote file {} to disk.".format(column_name))
     except Exception as e:
         logger.error("Failed to write file {} with exception: {}.".format(file_names[column_name],e))
