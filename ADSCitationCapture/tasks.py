@@ -149,7 +149,7 @@ def task_process_new_citation(citation_change, force=False):
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
     
-@app.task(queue='process-github-urls', rate_limit = github_api_limit)
+@app.task(queue='process-github-urls', rate_limit=github_api_limit)
 def task_process_github_urls(citation_change, metadata):
     """
     Process new github urls
@@ -268,7 +268,7 @@ def task_process_updated_associated_works(citation_change, associated_versions, 
     if raw_metadata:
         parsed_metadata = metadata.get('parsed', {})
         citation_target_bibcode = parsed_metadata.get('bibcode', None)
-        no_self_ref_versions = {key:val for key, val in associated_versions.items() if val != citation_target_bibcode}
+        no_self_ref_versions = {key: val for key, val in associated_versions.items() if val != citation_target_bibcode}
         logger.info("Updating associated works for %s", citation_change.content)
         status = metadata.get('status', 'DISCARDED')
         #Forward the update only if status is "REGISTERED" and associated works is not None.
@@ -278,7 +278,7 @@ def task_process_updated_associated_works(citation_change, associated_versions, 
                 original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, parsed_metadata, citations, db_versions = associated_versions)
+                task_output_results.delay(citation_change, parsed_metadata, citations, db_versions=associated_versions)
                 db.update_citation_target_metadata(app, citation_change.content, raw_metadata, parsed_metadata, associated = no_self_ref_versions)
         
 @app.task(queue='process-deleted-citation')
@@ -296,7 +296,7 @@ def task_process_deleted_citation(citation_change, force=False):
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
-            associated_works = db.get_citation_targets_by_doi(app, [citation_change.content])[0].get('associated_works',{"":""})
+            associated_works = db.get_citation_targets_by_doi(app, [citation_change.content])[0].get('associated_works', {"":""})
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
             task_output_results.delay(citation_change, parsed_metadata, citations, db_versions = associated_works)
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
@@ -441,7 +441,7 @@ def task_maintenance_canonical(dois, bibcodes):
         parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
         if parsed_metadata:
             logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-            task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes, db_versions = registered_record.get('associated_works', {"":""}))
+            task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes, db_versions=registered_record.get('associated_works', {"":""}))
 
 @app.task(queue='maintenance_metadata')
 def task_maintenance_metadata(dois, bibcodes, reset = False):

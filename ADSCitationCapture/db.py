@@ -205,7 +205,7 @@ def _get_citation_targets_session(session, only_status='REGISTERED'):
     """
     if only_status:
         records_db = session.query(CitationTarget).filter_by(status=only_status).all()
-        disable_filter = only_status in ['DISCARDED','EMITTABLE']
+        disable_filter = only_status in ['DISCARDED', 'EMITTABLE']
     else:
         records_db = session.query(CitationTarget).all()
         disable_filter = True
@@ -397,12 +397,12 @@ def mark_all_discarded_citations_as_registered(app, content):
             session.add(citation)
         session.commit()
 
-def populate_bibcode_column(main_session, curated = True):
+def populate_bibcode_column(main_session, curated=True):
     """
     Pulls all citation targets from DB and populates the bibcode column using parsed metadata
     """
     logger.debug("Collecting Citation Targets")
-    records = _get_citation_targets_alembic(main_session, only_status = None)
+    records = _get_citation_targets_alembic(main_session, only_status=None)
     for record in records:
         content = record.get('content', None)
         logger.debug("Collecting metadata for {}".format(record.get('content')))
