@@ -568,6 +568,11 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
 - Bibcode updates  
     To help deal with curated metadata, an additional index was added for canonical bibcodes. To keep confirm the bibcodes column is up to date, one can run
 
+    ```
+    #Update bibcodes column for all records.
+    python3 run.py MAINTENANCE --populate-bibcodes
+    ```
+
 - Update associated works:
     - For each record in the database it:
         - Identifies all records that share the same concept record and are also in the database.
@@ -576,20 +581,18 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
 ```
 # Reevaluate associated works for all registered citation targets
 python3 run.py MAINTENANCE --eval-associated
-# Reevaluate associated works for specified doi
+# Reevaluate associated works for specified bibcode
 python3 run.py MAINTENANCE --eval-associated --bibcode 2017zndo....840393W
-# Specific doi (space separated list)
+# Reevaluate associated works for specified bibcode
 python3 run.py MAINTENANCE --eval-associated --doi 10.5281/zenodo.840393
+# File containing dois (tab separated)
+python3 run.py MAINTENANCE --eval-associated --doi /proj/ads/references/links/zenodo_updates_09232019.out
 ```        
 
 ## Potential Race Condition
 ### Linking Associated Works
 When multiple new associated citation targets are processed in the same batch, there is a chance for the associated works to be out of sync between the multiple citation targets. A race condition can occur where associated works are collected from the database before either citation is entered, meaning the two new citations would not be associated with each other. The addition of another associated work in a subsequent batch would fix the problem, as would performing a `MAINTENANCE --eval_associated`.
 
-    ```
-    #Update bibcodes column for all records.
-    python3 run.py MAINTENANCE --populate-bibcodes
-    ```
 # Miscellaneous
 
 ## Alembic
