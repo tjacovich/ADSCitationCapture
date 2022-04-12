@@ -1099,7 +1099,7 @@ class TestWorkers(TestBase):
                                                        status=adsmsg.Status.updated,
                                                        timestamp=datetime.now()
                                                        )
-        associated_versions = {"v2.0.0": "2017zndo....248351D", "v3.3.4": "2021zndo...4475376C"}
+        associated_versions = {"Version v2.0.0": "2017zndo....248351D", "Version v3.3.4": "2021zndo...4475376C"}
         with TestBase.mock_multiple_targets({
             'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value={'status': 'REGISTERED','parsed':{'bibcode': bibcode_id},'raw':{"test":True}}), \
             'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value={"test":True}), \

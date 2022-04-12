@@ -214,10 +214,10 @@ def _get_citation_targets_session(session, only_status='REGISTERED'):
     
 def get_associated_works_by_doi(app, all_versions_doi, only_status='REGISTERED'):
     dois = all_versions_doi['versions']
-    root_doi = all_versions_doi['all_doi'].lower()
+    concept_doi = all_versions_doi['concept_doi'].lower()
     try:
         versions = {"Version "+str(records.get('version', '')): records.get('bibcode', '') for records in get_citation_targets_by_doi(app, dois, only_status)}
-        root_ver = get_citation_targets_by_doi(app, [root_doi], only_status)
+        root_ver = get_citation_targets_by_doi(app, [concept_doi], only_status)
         if root_ver != []:
             root_record = {'Software Source':root_ver[0]['bibcode']}
             versions.update(root_record)
@@ -411,7 +411,7 @@ def populate_bibcode_column(main_session, curated = True):
             logger.debug("Updating Bibcode field for {}".format(record.get('content')))
             raw_metadata = metadata.get('raw', {})
             parsed_metadata = metadata.get('parsed', {})
-            curated_metadata = metadata.get('curated',{})
+            curated_metadata = metadata.get('curated', {})
             status = metadata.get('status', None)
             _update_citation_target_metadata_alembic(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status)
 

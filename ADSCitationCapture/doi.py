@@ -219,12 +219,12 @@ def _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):
             if parsed_all_version is not None:
                 logger.debug("Found Associated Versions: {}".format(parsed_all_version.get('versions',None)))
             #return dois for all versions of the target software and the base doi.
-            versions_json = {'all_doi': parsed_metadata.get('version_of',None)[0], 'versions': parsed_all_version.get('versions',None)}
+            versions_json = {'concept_doi': parsed_metadata.get('version_of',None)[0], 'versions': parsed_all_version.get('versions',None)}
             logger.debug("{} version dict is {}".format(parsed_metadata['bibcode'], parsed_all_version.get('versions',None)))
             return versions_json
         except Exception as e:
             logger.exception("Failed to fetch metadata with Exception: {}".format(e))
-            return {'all_doi': None, 'versions': None}
+            return {'concept_doi': None, 'versions': None}
         
     elif parsed_metadata.get('versions',None) not in (None, [],""):
         #If citation target is base doi for software.
@@ -233,28 +233,11 @@ def _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):
         try:
             #return all versions including the base doi.
             logger.debug("Found Associated Versions: {}".format(parsed_metadata.get('versions',None)))
-            return {'all_doi': parsed_metadata.get('properties')['DOI'], 'versions': parsed_metadata.get('versions',None)}
+            return {'concept_doi': parsed_metadata.get('properties')['DOI'], 'versions': parsed_metadata.get('versions',None)}
         
         except Exception as e:
             logger.exception("Attempt to return versions failed with Exception: {}".format(e))
-            return {'all_doi': None, 'versions': None}
+            return {'concept_doi': None, 'versions': None}
 
     else:
-        return {'all_doi': None, 'versions': None}
-
-def get_version_citation_from_metadata(dois):
-    """
-    Takes a dictionary of DOIs and returns the bibcodes for all available.
-    """
-    bibcodes={}
-    for doi in dois:
-        bibcodes.__setitem__(doi,_get_bibcodes_from_metadata(doi))
-    return bibcodes
-
-def _get_bibcodes_from_metadata(doi):
-    """
-    Takes a DOI and returns the related bibcode from the metadata.
-    """
-    raw_metadata = fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata.get('version_of',None))
-    parsed_metadata = parse_metadata(raw_metadata)
-    return parsed_metada.get('bibcode',None)
+        return {'concept_doi': None, 'versions': None}

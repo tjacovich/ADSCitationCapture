@@ -232,7 +232,7 @@ class TestBase(unittest.TestCase):
                     ]
                     },
                 'status': 'REGISTERED',
-                'versions': {'all_doi': "10.5281/zenodo.592536", 
+                'versions': {'concept_doi': "10.5281/zenodo.592536", 
                     'versions': [
                     "10.5281/zenodo.11451",
                     "10.5281/zenodo.12287",
