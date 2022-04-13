@@ -394,7 +394,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
         # Fetch DOI metadata (if HTTP request fails, an exception is raised
         # and the task will be re-queued (see app.py and adsputils))
 
-        curated_metadata = registered_record.get('curated_metadata', None)
+        curated_metadata = registered_record.get('curated_metadata', {})
 
         logger.debug("Curated metadata for {} is {}".format(registered_record['content'], registered_record['curated_metadata']))    
         raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
@@ -442,6 +442,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                 
                 #Protect curated metadata from being bulldozed by metadata updates. 
                 if not curated_metadata:
+                    logger.info("Re-applying curated metadata for {}".format(registered_record.get('bibcode')))
                     modified_metadata = db.generate_modified_metadata(parsed_metadata, curated_metadata)
                     zenodo_bibstem = "zndo"
                     new_bibcode = doi.build_bibcode(modified_metadata, doi.zenodo_doi_re, zenodo_bibstem)
@@ -453,7 +454,6 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     bibcode = registered_record.get('bibcode')
                     if new_bibcode != registered_record.get('bibcode'):
                         bibcode = new_bibcode
-                        logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
                         if registered_record.get('bibcode') not in alternate_bibcode:
                             #generate complete alt bibcode list including any curated entries
                             alternate_bibcode.append(registered_record.get('bibcode'))
@@ -461,10 +461,11 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                             parsed_metadata['alternate_bibcode'].append(registered_record.get('bibcode'))
                         parsed_metadata['alternate_bibcode'] = list(set(parsed_metadata.get('alternate_bibcode')))
                         modified_metadata['bibcode'] = new_bibcode
+                        logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
                         bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
-                    alt_bibcodes = list(set(alternate_bibcode))
-                    modified_metadata['alternate_bibcode'] = alt_bibcodes
-                    curated_metadata['alternate_bibcode'] = alt_bibcodes
+                        alt_bibcodes = list(set(alternate_bibcode))
+                        curated_metadata['alternate_bibcode'] = alt_bibcodes
+                        modified_metadata['alternate_bibcode'] = alt_bibcodes
                 else:
                     modified_metadata = parsed_metadata
                 
