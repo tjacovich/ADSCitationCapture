@@ -54,6 +54,7 @@ def task_process_new_citation(citation_change, force=False):
         #attempts to sanitize the DOI to make it more likely to be valid
         clean_doi = doi.sanitize_zenodo_doi(citation_change.content)
         if clean_doi:
+            logger.info("Replacing citation_change.content: {} with sanitized version: {}".format(citation_change.content, clean_doi))
             citation_change.content = clean_doi
         else:
             logger.warn("Failed to sanitize DOI for {}".format(citation_change.content))
@@ -796,21 +797,30 @@ def task_maintenance_reevaluate(dois, bibcodes):
         # Fetch DOI metadata (if HTTP request fails, an exception is raised
         # and the task will be re-queued (see app.py and adsputils))
         if previously_discarded_record['content_type'] == 'DOI':
-            raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], previously_discarded_record['content'])
+            #Try and sanitize the DOI before reevaluating
+            clean_doi = doi.sanitize_zenodo_doi(previously_discarded_record.get('content'))
+            if clean_doi:
+                logger.info("Replacing citation_change.content: {} with sanitized version: {}".format(previously_discarded_record.get('content'), clean_doi))
+            else:
+                logger.warn("Failed to sanitize DOI for {}".format(previously_discarded_record.get('content')))
+                clean_doi = previously_discarded_record.get('content')
+            
+            #Fetch metadata and process
+            raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], clean_doi)
             if raw_metadata:
                 parsed_metadata = doi.parse_metadata(raw_metadata)
                 is_software = parsed_metadata.get('doctype', '').lower() == "software"
                 if not is_software:
-                    logger.error("Discarded '%s', it is not 'software'", previously_discarded_record['content'])
+                    logger.error("Discarded '%s', it is not 'software'", clean_doi)
                 elif parsed_metadata.get('bibcode') in (None, ""):
-                    logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", previously_discarded_record['content'])
+                    logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", clean_doi)
                 else:
                     # Create citation target in the DB
-                    updated = db.update_citation_target_metadata(app, previously_discarded_record['content'], raw_metadata, parsed_metadata, status='REGISTERED')
+                    updated = db.update_citation_target_metadata(app, clean_doi, raw_metadata, parsed_metadata, status='REGISTERED')
                     if updated:
-                        db.mark_all_discarded_citations_as_registered(app, previously_discarded_record['content'])
+                        db.mark_all_discarded_citations_as_registered(app, clean_doi)
             if updated:
-                citation_change = adsmsg.CitationChange(content=previously_discarded_record['content'],
+                citation_change = adsmsg.CitationChange(content=clean_doi,
                                                             content_type=getattr(adsmsg.CitationChangeContentType, previously_discarded_record['content_type'].lower()),
                                                             status=adsmsg.Status.new,
                                                             timestamp=datetime.now()
