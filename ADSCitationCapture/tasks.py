@@ -459,9 +459,9 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                             alternate_bibcode.append(registered_record.get('bibcode'))
                             #Add the CC generated bibcode to the parsed metadata
                             parsed_metadata['alternate_bibcode'].append(registered_record.get('bibcode'))
-                    parsed_metadata['alternate_bibcode'] = list(set(parsed_metadata.get('alternate_bibcode')))
-                    modified_metadata['bibcode'] = new_bibcode
-                    bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
+                        parsed_metadata['alternate_bibcode'] = list(set(parsed_metadata.get('alternate_bibcode')))
+                        modified_metadata['bibcode'] = new_bibcode
+                        bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
                     alt_bibcodes = list(set(alternate_bibcode))
                     modified_metadata['alternate_bibcode'] = alt_bibcodes
                     curated_metadata['alternate_bibcode'] = alt_bibcodes
