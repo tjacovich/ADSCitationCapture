@@ -441,7 +441,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     bibcode_replaced = {'previous': registered_record['bibcode'], 'new': parsed_metadata['bibcode'] }
                 
                 #Protect curated metadata from being bulldozed by metadata updates. 
-                if curated_metadata is not {}:
+                if not curated_metadata:
                     modified_metadata = db.generate_modified_metadata(parsed_metadata, curated_metadata)
                     zenodo_bibstem = "zndo"
                     new_bibcode = doi.build_bibcode(modified_metadata, doi.zenodo_doi_re, zenodo_bibstem)
