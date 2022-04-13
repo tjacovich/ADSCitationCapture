@@ -21,6 +21,7 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 dc = DataCiteParser()
 zenodo_doi_re = re.compile(r"^10.\d{4,9}/zenodo\.([0-9]*)$", re.IGNORECASE)
+zenodo_doi_reset = re.compile(r"10.\d{4,9}/zenodo\.([0-9]*)", re.IGNORECASE)
 upper_case_az_character_re = re.compile("[A-Z]")
 
 
@@ -175,6 +176,15 @@ def parse_metadata(raw_metadata):
     None value is returned.
     """
     return _parse_metadata_zenodo_doi(raw_metadata)
+
+def sanitize_zenodo_doi(doi):
+    """
+    Takes the imported citation_change content and tries to sanitize it if it is a zenodo doi.
+    """
+    return _sanitize_zendo_doi(zenodo_doi_reset, doi)
+    
+def _sanitize_zendo_doi(zenodo_doi_reset, doi):
+    return re.search(zenodo_doi_reset, doi).group(0)
 
 def _parse_metadata_zenodo_doi(raw_metadata):
     """

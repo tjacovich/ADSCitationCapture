@@ -49,7 +49,14 @@ def task_process_new_citation(citation_change, force=False):
     content_type = None
     is_link_alive = False
     status = "DISCARDED"
-
+    if citation_change.content_type == adsmsg.CitationChangeContentType.doi \
+        and citation_change.content not in ["", None]:
+        clean_doi = doi.sanitize_zenodo_doi(citation_change.content)
+        if clean_doi:
+            citation_change.content = clean_doi
+        else:
+            logger.warn("Failed to sanitize DOI for {}".format(citation_change.content))
+            
     # Check if we already have the citation target in the DB
     metadata = db.get_citation_target_metadata(app, citation_change.content)
     citation_target_in_db = bool(metadata) # False if dict is empty
