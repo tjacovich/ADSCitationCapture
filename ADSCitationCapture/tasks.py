@@ -434,7 +434,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                         dump_prefix = datetime.now().strftime("%Y%m%d") # "%Y%m%d_%H%M%S"
                         logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], parsed_metadata['bibcode'])
                         task_emit_event.delay(event_data, dump_prefix)
-                    #
+                    # If there is no curated metadata modify record and note replaced bibcode
                     if not curated_metadata:
                         logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'], parsed_metadata.get('bibcode', None))
                         alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])
@@ -450,8 +450,10 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     logger.info("Re-applying curated metadata for {}".format(registered_record.get('bibcode')))
                     modified_metadata = db.generate_modified_metadata(parsed_metadata, curated_metadata)
                     zenodo_bibstem = "zndo"
+                    #generate bibcode for modified metadata
                     bibcode = registered_record.get('bibcode')
                     new_bibcode = doi.build_bibcode(modified_metadata, doi.zenodo_doi_re, zenodo_bibstem)
+                    #Make sure new bibcode still respects the original publication year.
                     new_bibcode = bibcode[:4]+new_bibcode[4:]
                     alternate_bibcode = registered_record.get('alternate_bibcode', [])
                     #confirm new_bibcode not in alternate_bibcode list
@@ -485,7 +487,6 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                         #set curated metadata alt bibcodes sort alt bibcodes or else CC thinks the data has changed.
                         alternate_bibcode.sort()
                         curated_metadata['alternate_bibcode'] = alternate_bibcode
-
                     modified_metadata['alternate_bibcode'] = alternate_bibcode
                 else:
                     modified_metadata = parsed_metadata
