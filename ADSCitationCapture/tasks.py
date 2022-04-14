@@ -480,6 +480,11 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     modified_metadata['alternate_bibcode'] = alternate_bibcode
                 else:
                     modified_metadata = parsed_metadata
+                    #make sure old alternate bibcodes aren't clobbered.
+                    if registered_record.get('alternate_bibcode'):
+                        alternate_bibcode = parsed_metadata.get('alternate_bibcode',[])
+                        alternate_bibcode += registered_record.get('alternate_bibcode')
+                        parsed_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
                 
                 updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata = curated_metadata, bibcode = bibcode)
         
