@@ -182,9 +182,16 @@ def sanitize_zenodo_doi(doi):
     Takes the imported citation_change content and tries to sanitize it if it is a zenodo doi.
     """
     return _sanitize_zendo_doi(zenodo_doi_reset, doi)
-    
+
 def _sanitize_zendo_doi(zenodo_doi_reset, doi):
-    return re.search(zenodo_doi_reset, doi).group(0)
+    doi_root = '10.5281'
+    try:
+        #splits apart any conjoined dois and takes the first full one.
+        spl_doi = doi_root + doi.split(doi_root)[1]
+        return re.search(zenodo_doi_reset, spl_doi).group(0)
+    except:
+        logger.error("Unable to parse content: {}".format(doi))
+        return None
 
 def _parse_metadata_zenodo_doi(raw_metadata):
     """

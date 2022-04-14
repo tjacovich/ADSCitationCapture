@@ -49,15 +49,15 @@ def task_process_new_citation(citation_change, force=False):
     content_type = None
     is_link_alive = False
     status = "DISCARDED"
-    if citation_change.content_type == adsmsg.CitationChangeContentType.doi \
-        and citation_change.content not in ["", None]:
-        #attempts to sanitize the DOI to make it more likely to be valid
-        clean_doi = doi.sanitize_zenodo_doi(citation_change.content)
-        if clean_doi:
-            logger.info("Replacing citation_change.content: {} with sanitized version: {}".format(citation_change.content, clean_doi))
-            citation_change.content = clean_doi
-        else:
-            logger.warn("Failed to sanitize DOI for {}".format(citation_change.content))
+    # if citation_change.content_type == adsmsg.CitationChangeContentType.doi \
+    #     and citation_change.content not in ["", None]:
+    #     #attempts to sanitize the DOI to make it more likely to be valid
+    #     clean_doi = doi.sanitize_zenodo_doi(citation_change.content)
+    #     if clean_doi:
+    #         logger.info("Replacing citation_change.content: {} with sanitized version: {}".format(citation_change.content, clean_doi))
+    #         citation_change.content = clean_doi
+    #     else:
+    #         logger.warn("Failed to sanitize DOI for {}".format(citation_change.content))
 
     # Check if we already have the citation target in the DB
     metadata = db.get_citation_target_metadata(app, citation_change.content)
@@ -816,9 +816,44 @@ def task_maintenance_reevaluate(dois, bibcodes):
                     logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", clean_doi)
                 else:
                     # Create citation target in the DB
-                    updated = db.update_citation_target_metadata(app, clean_doi, raw_metadata, parsed_metadata, status='REGISTERED')
-                    if updated:
-                        db.mark_all_discarded_citations_as_registered(app, clean_doi)
+                    #If the DOI has been sanitized, CC needs to update the content of each citation
+                    if clean_doi != previously_discarded_record.get('content'):
+                        #check to make sure clean doi doesn't already exist
+                        metadata = db.get_citation_target_metadata(app, clean_doi)
+                        citation_target_in_db = bool(metadata)
+                        citation_change = adsmsg.CitationChange(content=clean_doi,
+                                                            content_type=getattr(adsmsg.CitationChangeContentType, previously_discarded_record['content_type'].lower()),
+                                                            status=adsmsg.Status.new,
+                                                            timestamp=datetime.now()
+                                                            )
+                        #Check if sanitized record is already in db
+                        if citation_target_in_db:
+                            logger.warn("Sanitized doi: {} already exists in db. Pointing citations to new target.".format(clean_doi))
+                            stored = True
+                            updated = db.update_citation_target_metadata(app, previously_discarded_record['content_type'], raw_metadata, parsed_metadata, status='SANITIZED')
+                        #Add citation target to database. Update old citation to SANITIZED
+                        else:
+                            stored = db.store_citation_target(app, citation_change, previously_discarded_record['content_type'], raw_metadata, parsed_metadata, status='REGISTERED')
+                            updated = db.update_citation_target_metadata(app, previously_discarded_record['content_type'], raw_metadata, parsed_metadata, status='SANITIZED')
+                        #If stored, go through and find all citations to the old doi and point them to the new record.
+                        if stored:
+                            #Mark all citations to original target as 'REGISTERED'
+                            db.mark_all_discarded_citations_as_registered(app, previously_discarded_record.get('content'))
+                            #Update the content of each citation connected to previously discarded record.
+                            original_citations = db.get_citations(app, citation_change)
+                            for cite in original_citations:
+                                logger.debug("Updating content to {} for citing bibcode: {}".format(clean_doi, cite))
+                                #Fetch full citation object for each citation
+                                citation_data = db.get_citation_data(app, cite, citation_change.content)
+                                #replace content
+                                citation_data.content = clean_doi
+                                #update citation
+                                db.update_citation_content(app, citation_data, previously_discarded_record.get('content'))
+                    #Update the citation target if the content hasn't changed.
+                    else:
+                        updated = db.update_citation_target_metadata(app, clean_doi, raw_metadata, parsed_metadata, status='REGISTERED')
+            
+            #If there are updates to records, send the updates to the master TODO: Should we emit events as well?
             if updated:
                 citation_change = adsmsg.CitationChange(content=clean_doi,
                                                             content_type=getattr(adsmsg.CitationChangeContentType, previously_discarded_record['content_type'].lower()),
@@ -830,6 +865,7 @@ def task_maintenance_reevaluate(dois, bibcodes):
                     original_citations = db.get_citations_by_bibcode(app, parsed_metadata['bibcode'])
                     citations = api.get_canonical_bibcodes(app, original_citations)
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+                    #_emit_citation_change(citation_change, parsed_metadata)
                     task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
 
 @app.task(queue='output-results')

@@ -71,9 +71,9 @@ def _update_citation_target_metadata_session(session, content, raw_metadata, par
             raw_metadata = raw_metadata.decode('utf-8')
         except UnicodeEncodeError:
             pass
-    if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
-            (status is not None and citation_target.status != status) or citation_target.curated_metadata != curated_metadata or \
-            citation_target.bibcode != bibcode:
+
+    if status == 'SANITIZED':
+        #reset status but otherwise leave the citation target alone
         citation_target.raw_cited_metadata = raw_metadata
         citation_target.parsed_cited_metadata = parsed_metadata
         citation_target.curated_metadata = curated_metadata
@@ -85,6 +85,22 @@ def _update_citation_target_metadata_session(session, content, raw_metadata, par
         logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", content, ", ".join(parsed_metadata.get('alternate_bibcode', [])))
         metadata_updated = True
         return metadata_updated
+
+    else:
+        if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
+                (status is not None and citation_target.status != status) or citation_target.curated_metadata != curated_metadata or \
+                citation_target.bibcode != bibcode:
+            citation_target.raw_cited_metadata = raw_metadata
+            citation_target.parsed_cited_metadata = parsed_metadata
+            citation_target.curated_metadata = curated_metadata
+            citation_target.bibcode = bibcode
+            if status is not None:
+                citation_target.status = status
+            session.add(citation_target)
+            session.commit()
+            logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", content, ", ".join(parsed_metadata.get('alternate_bibcode', [])))
+            metadata_updated = True
+            return metadata_updated
 
 def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None):
     """
@@ -285,6 +301,19 @@ def get_citations(app, citation_change):
         citation_bibcodes = [r.citing for r in session.query(Citation).filter_by(content=citation_change.content, status="REGISTERED").all()]
     return citation_bibcodes
 
+def get_citation_data(app, citing_bibcode, content):
+    with app.session_scope() as session:
+        citation_change = session.query(Citation).filter_by(content=content, status="REGISTERED", citing=citing_bibcode).first()
+        if citation_change:
+            citation = Citation()
+            citation.citing = citation_change.citing
+            citation.cited = citation_change.cited
+            citation.content = citation_change.content
+            citation.resolved = citation_change.resolved
+            citation.timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc())
+            citation.status = citation_change.status
+    return citation
+
 def generate_modified_metadata(parsed_metadata, curated_entry):
     """
     modify parsed_metadata with any curated metadata. return results.
@@ -328,6 +357,28 @@ def update_citation(app, citation_change):
         if citation.timestamp < change_timestamp:
             #citation.citing = citation_change.citing # This should not change
             #citation.content = citation_change.content # This should not change
+            citation.cited = citation_change.cited
+            citation.resolved = citation_change.resolved
+            citation.timestamp = change_timestamp
+            session.add(citation)
+            session.commit()
+            updated = True
+            logger.info("Updated citation (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+        else:
+            logger.info("Ignoring citation update (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+    return updated
+
+def update_citation_content(app, citation_change, old_content):
+    """
+    Update citation record information
+    """
+    updated = False
+    with app.session_scope() as session:
+        citation = session.query(Citation).with_for_update().filter_by(citing=citation_change.citing, content=old_content).first()
+        change_timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
+        if citation.timestamp < change_timestamp:
+            #citation.citing = citation_change.citing # This should not change
+            citation.content = citation_change.content # This should not change except in a very specific circumstance related to sanitizing dois
             citation.cited = citation_change.cited
             citation.resolved = citation_change.resolved
             citation.timestamp = change_timestamp
