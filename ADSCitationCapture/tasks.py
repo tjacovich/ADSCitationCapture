@@ -799,8 +799,9 @@ def task_maintenance_reevaluate(dois, bibcodes):
         if previously_discarded_record['content_type'] == 'DOI':
             #Try and sanitize the DOI before reevaluating
             clean_doi = doi.sanitize_zenodo_doi(previously_discarded_record.get('content'))
-            if clean_doi:
-                logger.info("Replacing citation_change.content: {} with sanitized version: {}".format(previously_discarded_record.get('content'), clean_doi))
+            if clean_doi: 
+                if clean_doi != previously_discarded_record.get('content'):
+                    logger.info("Replacing citation_change.content: {} with sanitized version: {}".format(previously_discarded_record.get('content'), clean_doi))
             else:
                 logger.warn("Failed to sanitize DOI for {}".format(previously_discarded_record.get('content')))
                 clean_doi = previously_discarded_record.get('content')
@@ -830,11 +831,11 @@ def task_maintenance_reevaluate(dois, bibcodes):
                         if citation_target_in_db:
                             logger.warn("Sanitized doi: {} already exists in db. Pointing citations to new target.".format(clean_doi))
                             stored = True
-                            updated = db.update_citation_target_metadata(app, previously_discarded_record['content_type'], raw_metadata, parsed_metadata, status='SANITIZED')
+                            updated = db.update_citation_target_metadata(app, previously_discarded_record['content'], raw_metadata, parsed_metadata, status='SANITIZED')
                         #Add citation target to database. Update old citation to SANITIZED
                         else:
                             stored = db.store_citation_target(app, citation_change, previously_discarded_record['content_type'], raw_metadata, parsed_metadata, status='REGISTERED')
-                            updated = db.update_citation_target_metadata(app, previously_discarded_record['content_type'], raw_metadata, parsed_metadata, status='SANITIZED')
+                            updated = db.update_citation_target_metadata(app, previously_discarded_record['content'], raw_metadata, parsed_metadata, status='SANITIZED')
                         #If stored, go through and find all citations to the old doi and point them to the new record.
                         if stored:
                             #Mark all citations to original target as 'REGISTERED'
@@ -845,6 +846,7 @@ def task_maintenance_reevaluate(dois, bibcodes):
                                 logger.debug("Updating content to {} for citing bibcode: {}".format(clean_doi, cite))
                                 #Fetch full citation object for each citation
                                 citation_data = db.get_citation_data(app, cite, citation_change.content)
+                                citation_data.timestamp = datetime.now()
                                 #replace content
                                 citation_data.content = clean_doi
                                 #update citation

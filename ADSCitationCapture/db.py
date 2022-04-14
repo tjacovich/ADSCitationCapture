@@ -77,7 +77,7 @@ def _update_citation_target_metadata_session(session, content, raw_metadata, par
         citation_target.raw_cited_metadata = raw_metadata
         citation_target.parsed_cited_metadata = parsed_metadata
         citation_target.curated_metadata = curated_metadata
-        citation_target.bibcode = bibcode
+        citation_target.bibcode = None
         if status is not None:
             citation_target.status = status
         session.add(citation_target)
@@ -310,7 +310,7 @@ def get_citation_data(app, citing_bibcode, content):
             citation.cited = citation_change.cited
             citation.content = citation_change.content
             citation.resolved = citation_change.resolved
-            citation.timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc())
+            citation.timestamp = citation_change.timestamp
             citation.status = citation_change.status
     return citation
 
@@ -375,19 +375,23 @@ def update_citation_content(app, citation_change, old_content):
     updated = False
     with app.session_scope() as session:
         citation = session.query(Citation).with_for_update().filter_by(citing=citation_change.citing, content=old_content).first()
-        change_timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
-        if citation.timestamp < change_timestamp:
-            #citation.citing = citation_change.citing # This should not change
-            citation.content = citation_change.content # This should not change except in a very specific circumstance related to sanitizing dois
-            citation.cited = citation_change.cited
-            citation.resolved = citation_change.resolved
-            citation.timestamp = change_timestamp
-            session.add(citation)
-            session.commit()
-            updated = True
-            logger.info("Updated citation (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+        #change_timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
+        if citation:
+            if citation.timestamp < citation_change.timestamp:
+                #citation.citing = citation_change.citing # This should not change
+                citation.content = citation_change.content # This should not change except in a very specific circumstance related to sanitizing dois
+                citation.cited = citation_change.cited
+                citation.resolved = citation_change.resolved
+                citation.timestamp = citation_change.timestamp
+                session.add(citation)
+                session.commit()
+                updated = True
+                logger.info("Updated citation (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            else:
+                logger.info("Ignoring citation update (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
         else:
-            logger.info("Ignoring citation update (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            logger.info("Unable to update citation (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+
     return updated
 
 def mark_citation_as_deleted(app, citation_change):
