@@ -513,15 +513,15 @@ Currently only sends newly registered records to Master.
 
 
 ```
-# Curating based on an input file.
-python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
-# Curating based on JSON from a command line argument by bibcode.
-python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --json {'curated_metadata'}
-# Curating based on JSON from a command line argument by DOI.
-python3 run.py MAINTENANCE --curation --doi "10.XYZA/ZENODO.BCDEFG" --json {'curated_metadata'}
-# Clear curated_metadata for a given entry by bibcode
-python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --reset
-# Clear curated_metadata for a given entry by doi
+ # Curating based on an input file.
+ python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
+ # Curating based on JSON from a command line argument by bibcode.
+python3 run.py MAINTENANCE --curation --bibcode "2021zndo...5659382R" --json '{"abstract": "Analysis software for COS observations of PG quasars from QUEST sample: Veilleux et al. 2022, ApJ, 926, 60."}'
+ # Curating based on JSON from a command line argument by DOI.
+python3 run.py MAINTENANCE --curation --doi "10.5281/zenodo.5659382" --json '{"abstract": "Analysis software for COS observations of PG quasars from QUEST sample: Veilleux et al. 2022, ApJ, 926, 60."}'
+ # Clear curated_metadata for a given entry by bibcode
+ python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --reset
+ # Clear curated_metadata for a given entry by doi
 python3 run.py MAINTENANCE --curation --doi "10.XYZA/ZENODO.BCDEFG" --reset
 # Clear curated_metadata by file
 python3 run.py MAINTENANCE --curation --input_filename $/path/to/input_file --reset
