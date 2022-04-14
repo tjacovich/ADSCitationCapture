@@ -164,9 +164,9 @@ def get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED'):
         records_db = []
         for bibcode in bibcodes:
             if only_status:
-                record_db = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata["bibcode"].astext == bibcode).filter_by(status=only_status).first()
+                record_db = session.query(CitationTarget).filter(CitationTarget.bibcode == bibcode).filter_by(status=only_status).first()
             else:
-                record_db = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata["bibcode"].astext == bibcode).first()
+                record_db = session.query(CitationTarget).filter(CitationTarget.bibcode == bibcode).first()
             if record_db:
                 records_db.append(record_db)
 
@@ -270,7 +270,7 @@ def get_citations_by_bibcode(app, bibcode):
     if bibcode is not None:
         with app.session_scope() as session:
             #bibcode = "2015zndo.....14475J"
-            citation_target = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata['bibcode'].astext == bibcode).filter_by(status="REGISTERED").first()
+            citation_target = session.query(CitationTarget).filter(CitationTarget.bibcode == bibcode).filter_by(status="REGISTERED").first()
             if citation_target:
                 dummy_citation_change = CitationChange(content=citation_target.content)
                 citations = get_citations(app, dummy_citation_change)
