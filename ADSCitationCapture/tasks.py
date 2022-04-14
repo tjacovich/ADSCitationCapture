@@ -533,10 +533,13 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
         try:
             if not reset:
                 #only check old metadata if we are adding updates, otherwise ignore.
-                for  key in registered_record['curated_metadata'].keys():
-                    #first apply any previous edits to metadata that are not overwritten by new metadata.
-                    if key not in curated_entry.keys():
-                        curated_entry[key] = registered_record['curated_metadata'][key]
+                if curated_entry != registered_record.get('curated_metadata'):
+                    for  key in registered_record['curated_metadata'].keys():
+                        #first apply any previous edits to metadata that are not overwritten by new metadata.
+                        if key not in curated_entry.keys():
+                            curated_entry[key] = registered_record['curated_metadata'][key]
+                else:
+                    logger.warn("Supplied metadata is identical to previously added metadata. updates will occur.")
                 logger.debug("Curated entry: {}".format(curated_entry))
                 modified_metadata = db.generate_modified_metadata(parsed_metadata, curated_entry)
                 logger.debug("Modified bibcode {}".format(modified_metadata.get('bibcode')))
@@ -634,7 +637,8 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                     citations = api.get_canonical_bibcodes(app, original_citations)
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                     task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced)
-        
+            else:
+                logger.warn("Curated metadata did not result in a change to recorded metadata for {}.".format(registered_record.get('content')))
         except Exception as e:
             logger.error("task_maintenance_curation Failed to update metadata for {} with Exception: {}. Please check that the bibcode or doi matches a target record.".format(curated_entry, e))
             raise
