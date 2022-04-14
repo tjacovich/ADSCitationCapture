@@ -424,7 +424,10 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     # Re-verify if bibcodes are still different (they could be if
                     # name parsing has changed):
                     different_bibcodes = registered_record['bibcode'] != parsed_metadata['bibcode']
-
+                    if not different_bibcodes:
+                        logger.debug("bibcode change limited to bibcode year.")
+                
+                if different_bibcodes:
                     # These two bibcodes are identical and we can signal the broker
                     event_data = webhook.identical_bibcodes_event_data(registered_record['bibcode'], parsed_metadata['bibcode'])
                     if event_data:
