@@ -114,7 +114,7 @@ def maintenance_reevaluate(dois, bibcodes):
 def maintenance_repopulate():
     tasks.task_maintenance_repopulate_bibcode_columns.delay()
 
-def maintenance_curation(filename = None, dois = None, bibcodes = None, json_payload = None, reset = False, show = False):
+def maintenance_curation(filename=None, dois=None, bibcodes=None, json_payload=None, reset=False, show=False):
     """
     Update any manually curated values for a given entry.
     """

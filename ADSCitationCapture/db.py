@@ -62,7 +62,7 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
             stored = True
     return stored
 
-def _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None, associated = None):
+def _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode=None, associated=None):
     """
     Actual calls to database session for update_citation_target_metadata
     """
@@ -90,7 +90,7 @@ def _update_citation_target_metadata_session(session, content, raw_metadata, par
         metadata_updated = True
         return metadata_updated
 
-def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None, associated = None):
+def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata={}, status=None, bibcode=None, associated=None):
     """
     Update metadata for a citation target
     """
@@ -406,7 +406,7 @@ def populate_bibcode_column(main_session, curated=True):
     for record in records:
         content = record.get('content', None)
         logger.debug("Collecting metadata for {}".format(record.get('content')))
-        metadata = _get_citation_target_metadata_alembic(main_session, content, curate = curated)
+        metadata = _get_citation_target_metadata_alembic(main_session, content, curate=curated)
         if metadata:
             logger.debug("Updating Bibcode field for {}".format(record.get('content')))
             raw_metadata = metadata.get('raw', {})
@@ -415,7 +415,7 @@ def populate_bibcode_column(main_session, curated=True):
             status = metadata.get('status', None)
             _update_citation_target_metadata_alembic(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status)
 
-def _update_citation_target_metadata_alembic(session, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None):
+def _update_citation_target_metadata_alembic(session, content, raw_metadata, parsed_metadata, curated_metadata={}, status=None, bibcode=None):
     """
     Update metadata for a citation target when we do not need to
     close the session after completion
