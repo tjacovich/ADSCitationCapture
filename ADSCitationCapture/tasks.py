@@ -832,16 +832,18 @@ def task_maintenance_reevaluate(dois, bibcodes):
                             logger.warn("Sanitized doi: {} already exists in db. Pointing citations to new target.".format(clean_doi))
                             stored = True
                             updated = db.update_citation_target_metadata(app, previously_discarded_record['content'], raw_metadata, parsed_metadata, status='SANITIZED')
+                        
                         #Add citation target to database. Update old citation to SANITIZED
                         else:
                             stored = db.store_citation_target(app, citation_change, previously_discarded_record['content_type'], raw_metadata, parsed_metadata, status='REGISTERED')
                             updated = db.update_citation_target_metadata(app, previously_discarded_record['content'], raw_metadata, parsed_metadata, status='SANITIZED')
+                            logger.debug("Stored is : {} for citation target {}".format(stored, previously_discarded_record['content']))
                         #If stored, go through and find all citations to the old doi and point them to the new record.
                         if stored:
-                            #Mark all citations to original target as 'REGISTERED'
-                            db.mark_all_discarded_citations_as_registered(app, previously_discarded_record.get('content'))
-                            #Update the content of each citation connected to previously discarded record.
-                            original_citations = db.get_citations(app, citation_change)
+                            #Get all DISCARDED citations
+                            citation_change.content = previously_discarded_record.get('content', '')
+                            original_citations = db.get_citations(app, citation_change, status = 'DISCARDED')
+                            logger.debug("Original citations: {}".format(original_citations))
                             for cite in original_citations:
                                 logger.debug("Updating content to {} for citing bibcode: {}".format(clean_doi, cite))
                                 #Fetch full citation object for each citation
@@ -849,8 +851,16 @@ def task_maintenance_reevaluate(dois, bibcodes):
                                 citation_data.timestamp = datetime.now()
                                 #replace content
                                 citation_data.content = clean_doi
-                                #update citation
-                                db.update_citation_content(app, citation_data, previously_discarded_record.get('content'))
+                                #store new citation
+                                new_citation_change = db.citation_data_to_citation_change(citation_data, previously_discarded_record)
+                                try:
+                                    db.store_citation(app, new_citation_change, new_citation_change.content_type, raw_metadata, parsed_metadata, status = 'REGISTERED')
+                                    db.mark_citation_as_sanitized(app, cite, previously_discarded_record['content'])
+                                except Exception as e:
+                                    logger.error("Failed to update citation from {} to {} with error {}. Skipping.".format(cite, clean_doi, e))
+
+                                #mark old citation as SANITIZED
+                    
                     #Update the citation target if the content hasn't changed.
                     else:
                         updated = db.update_citation_target_metadata(app, clean_doi, raw_metadata, parsed_metadata, status='REGISTERED')
