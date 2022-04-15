@@ -508,7 +508,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                         alternate_bibcode += registered_record.get('alternate_bibcode')
                         parsed_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
                 
-                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata = curated_metadata, bibcode = bibcode)
+                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata=curated_metadata, bibcode=bibcode)
         
         if updated:
             citation_change = adsmsg.CitationChange(content=registered_record['content'],
@@ -525,7 +525,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                 task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, readers=readers)     
 
 @app.task(queue='maintenance_metadata')
-def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
+def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
     """
     Maintenance operation:
     - Get all the registered citation targets for the entries specified in curated_entries
@@ -548,7 +548,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
         else:
             logger.error('Unable to retrieve entry for {} from database. Please check input file.'.format(curated_entry))
         
-        metadata = db.get_citation_target_metadata(app, registered_record.get('content', ''), curate = False)
+        metadata = db.get_citation_target_metadata(app, registered_record.get('content', ''), curate=False)
         raw_metadata = metadata.get('raw', '')
         parsed_metadata = metadata.get('parsed', '')
         #remove doi and bibcode from metadata to be stored in db.
@@ -652,7 +652,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                     logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], modified_metadata['bibcode'])
                     task_emit_event.delay(event_data, dump_prefix)
                 
-            updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata = curated_entry, bibcode = modified_metadata.get('bibcode'))
+            updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata=curated_entry, bibcode=modified_metadata.get('bibcode'))
             if updated:
                 citation_change = adsmsg.CitationChange(content=registered_record['content'],
                                                             content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
@@ -772,7 +772,7 @@ def task_maintenance_resend(dois, bibcodes, broker, only_nonbib=False):
                 readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode',''))
                 if [bool(readers), only_nonbib].count(True) == 2 or not only_nonbib:
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers = readers, only_nonbib=True)
+                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
             else:
                 # Only re-emit to the broker
                 # Signal that the target bibcode and the DOI are identical
@@ -904,7 +904,7 @@ def task_process_reader_updates(reader_changes, **kwargs):
                 if parsed_metadata:
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
                     readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode', ''))
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers = readers, only_nonbib=True)
+                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
                 db.store_reader_data(app, changes, status)
 
             elif changes['status'] == "DELETED":
@@ -925,7 +925,7 @@ def task_process_reader_updates(reader_changes, **kwargs):
                 if parsed_metadata:
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
                     readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode', ''))
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers = readers, only_nonbib=True)
+                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
         else:
             logger.info("{} is not a citation_target in the database. Discarding.".format(changes['bibcode']))
             status = "DISCARDED"
