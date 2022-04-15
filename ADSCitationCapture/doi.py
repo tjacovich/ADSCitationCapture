@@ -21,7 +21,6 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 dc = DataCiteParser()
 zenodo_doi_re = re.compile(r"^10.\d{4,9}/zenodo\.([0-9]*)$", re.IGNORECASE)
-zenodo_doi_reset = re.compile(r"10.\d{4,9}/zenodo\.([0-9]*)", re.IGNORECASE)
 upper_case_az_character_re = re.compile("[A-Z]")
 
 
@@ -181,17 +180,25 @@ def sanitize_zenodo_doi(doi):
     """
     Takes the imported citation_change content and tries to sanitize it if it is a zenodo doi.
     """
-    return _sanitize_zendo_doi(zenodo_doi_reset, doi)
+    return _sanitize_zendo_doi(doi)
 
-def _sanitize_zendo_doi(zenodo_doi_reset, doi):
+def _sanitize_zendo_doi(doi):
     doi_root = '10.5281'
+    zenodo_doi_reset = re.compile(r"10.\d{4,9}/zenodo\.([0-9]*)", re.IGNORECASE)
+    zenodo_doi_reset_slash = re.compile(r"10.\d{4,9}/zenodo/([0-9]*)", re.IGNORECASE)
     try:
         #splits apart any conjoined dois and takes the first full one.
         spl_doi = doi_root + doi.split(doi_root)[1]
         return re.search(zenodo_doi_reset, spl_doi).group(0)
-    except:
-        logger.error("Unable to parse content: {}".format(doi))
-        return None
+    except Exception as e:
+        logger.error("Attempt to parse content: {} failed with error: {}. Trying again with alternate regex.".format(doi, e))
+        try:
+            spl_doi = doi_root + doi.split(doi_root)[1]
+            split = re.search(zenodo_doi_reset_slash, spl_doi).group(0).split('/')
+            return doi_root + "/" + "zenodo." + split[2]
+        except Exception as e:
+            logger.error("Attempt to parse content: {} failed with error: {}.".format(doi, e))
+            return None
 
 def _parse_metadata_zenodo_doi(raw_metadata):
     """

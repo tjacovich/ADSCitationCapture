@@ -73,12 +73,7 @@ def _update_citation_target_metadata_session(session, content, raw_metadata, par
 
     if status == 'SANITIZED':
         #reset status but otherwise leave the citation target alone
-        citation_target.raw_cited_metadata = raw_metadata
-        citation_target.parsed_cited_metadata = parsed_metadata
-        citation_target.curated_metadata = curated_metadata
-        citation_target.bibcode = None
-        if status is not None:
-            citation_target.status = status
+        citation_target.status = status
         session.add(citation_target)
         session.commit()
         logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", content, ", ".join(parsed_metadata.get('alternate_bibcode', [])))
@@ -445,7 +440,7 @@ def mark_all_discarded_citations_as_registered(app, content):
 
 def mark_citation_as_sanitized(app, citing, content):
     """
-    Update status to SANITIZED for all discarded citations of a given content
+    Update status to SANITIZED for a single discarded citation
     """
     marked_as_registered = False
     previous_status = None
