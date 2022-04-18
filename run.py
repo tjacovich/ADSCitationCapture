@@ -174,12 +174,12 @@ def maintenance_curation(filename = None, dois = None, bibcodes = None, json_pay
                     raise ValueError(msg)
             try:
                 #convert json line to list of dicts, 1 dict per entry.
-                curated_entries = [json.loads(json_payload)]
+                curated_entries = [json.loads(p) for p in json_payload]
                 if dois:
-                    for ele, doi in enumerate(ele, dois):
+                    for ele, doi in enumerate(dois):
                         curated_entries[ele]['doi'] = doi
                 elif bibcodes:
-                    for ele, bibcode in enumerate(ele, bibcodes):
+                    for ele, bibcode in enumerate(bibcodes):
                         curated_entries[ele]['bibcode'] = bibcode
             except Exception as e:
                 msg = "Parsing json arg: {}, failed with Exception: {}. Please check each entry is properly formatted.".format(json_payload, e)
