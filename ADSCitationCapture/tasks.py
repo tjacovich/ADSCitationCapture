@@ -418,7 +418,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     # to the year of the latest release when it was first ingested
                     # by ADS
                     #parsed_metadata['bibcode'] = registered_record['bibcode']
-                    parsed_metadata['bibcode'] = registered_record['bibcode'][:4]+parsed_metadata['bibcode'][4:]
+                    parsed_metadata['bibcode'] = registered_record['bibcode'][:4] + parsed_metadata['bibcode'][4:]
                     # Temporary bugfix (some bibcodes have non-capital letter at the end):
                     parsed_metadata['bibcode'] = parsed_metadata['bibcode'][:-1] + parsed_metadata['bibcode'][-1].upper()
                     # Re-verify if bibcodes are still different (they could be if
@@ -454,7 +454,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                     bibcode = registered_record.get('bibcode')
                     new_bibcode = doi.build_bibcode(modified_metadata, doi.zenodo_doi_re, zenodo_bibstem)
                     #Make sure new bibcode still respects the original publication year.
-                    new_bibcode = bibcode[:4]+new_bibcode[4:]
+                    new_bibcode = bibcode[:4] + new_bibcode[4:]
                     alternate_bibcode = registered_record.get('alternate_bibcode', [])
                     #confirm new_bibcode not in alternate_bibcode list
                     try:
@@ -549,12 +549,12 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
             if not reset:
                 #only check old metadata if we are adding updates, otherwise ignore.
                 if curated_entry != registered_record.get('curated_metadata'):
-                    for  key in registered_record['curated_metadata'].keys():
+                    for key in registered_record['curated_metadata'].keys():
                         #first apply any previous edits to metadata that are not overwritten by new metadata.
                         if key not in curated_entry.keys():
                             curated_entry[key] = registered_record['curated_metadata'][key]
                 else:
-                    logger.warn("Supplied metadata is identical to previously added metadata. updates will occur.")
+                    logger.warn("Supplied metadata is identical to previously added metadata. No updates will occur.")
                 logger.debug("Curated entry: {}".format(curated_entry))
                 modified_metadata = db.generate_modified_metadata(parsed_metadata, curated_entry)
                 logger.debug("Modified bibcode {}".format(modified_metadata.get('bibcode')))
@@ -885,11 +885,11 @@ def task_output_results(citation_change, parsed_metadata, citations, bibcode_rep
 
     for record, nonbib_record in messages:
         logger.debug('Will forward this record: %s', record)
-        #logger.debug("Calling 'app.forward_message' with '%s'", str(record.toJSON()))
+        logger.debug("Calling 'app.forward_message' with '%s'", str(record.toJSON()))
         if not app.conf['CELERY_ALWAYS_EAGER']:
             app.forward_message(record)
         logger.debug('Will forward this record: %s', nonbib_record)
-        #logger.debug("Calling 'app.forward_message' with '%s'", str(nonbib_record.toJSON()))
+        logger.debug("Calling 'app.forward_message' with '%s'", str(nonbib_record.toJSON()))
         if not app.conf['CELERY_ALWAYS_EAGER']:
             app.forward_message(nonbib_record)
 
