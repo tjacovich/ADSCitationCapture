@@ -143,8 +143,8 @@ def _write_key_citation_reference_data(app, bibcodes):
             for bib in bibcodes:
                 cites=get_citations_by_bibcode(app, bib)
                 for cite in cites:
-                    f.write(str(cite)+"\t"+str(bib)+"\n")
-                    g.write(str(bib)+"\t"+str(cite)+"\n")
+                    g.write(str(cite)+"\t"+str(bib)+"\n")
+                    f.write(str(bib)+"\t"+str(cite)+"\n")
         logger.info("Wrote files {} and {} to disk.".format(file_names['citations'],file_names['references']))
     except Exception as e:
         logger.error("Failed to write files {} and {} with exception: {}.".format(file_names['citations'],file_names['references'],e))
