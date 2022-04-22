@@ -449,18 +449,18 @@ def mark_reader_as_deleted(app, reader_change):
     marked_as_deleted = False
     previous_status = None
     with app.session_scope() as session:
-        reader = session.query(Reader).with_for_update().filter_by(bibcode=reader_change['bibcode'], content=reader_change['reader']).first()
+        reader = session.query(Reader).with_for_update().filter_by(bibcode=reader_change['bibcode'], reader=reader_change['reader']).first()
         previous_status = reader.status
-        change_timestamp = reader_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
-        if reader.timestamp < change_timestamp:
-            reader.status = "DELETED"
-            reader.timestamp = change_timestamp
-            session.add(reader)
-            session.commit()
-            marked_as_deleted = True
-            logger.info("Marked reader as deleted (citing '%s', content '%s' and timestamp '%s')", reader_change['bibcode'], reader_change.reader['reader'], reader_change.timestamp.ToJsonString())
-        else:
-            logger.info("Ignoring reader deletion (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", reader_change['bibcode'], reader_change['reader'], reader_change.timestamp.ToJsonString())
+        #change_timestamp = reader_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
+        #if reader.timestamp < change_timestamp:
+        reader.status = "DELETED"
+        #reader.timestamp = change_timestamp
+        session.add(reader)
+        session.commit()
+        marked_as_deleted = True
+        logger.info("Marked reader as deleted (citing '%s', content '%s')", reader_change['bibcode'], reader_change['reader'])#, reader_change.timestamp.ToJsonString())
+        #else:
+        #    logger.info("Ignoring reader deletion (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", reader_change['bibcode'], reader_change['reader'], reader_change.timestamp.ToJsonString())
     return marked_as_deleted, previous_status
 
 def mark_all_discarded_citations_as_registered(app, content):
