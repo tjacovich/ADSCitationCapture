@@ -161,6 +161,7 @@ class DeltaComputation():
         # Determine previous schema name if any
         if len(filtered_existing_schema_names) > 0:
             filtered_existing_schema_names.sort(reverse=True)
+            filtered_existing_schema_names = [schema_name for schema_name in filtered_existing_schema_names if "reader" not in schema_name]
             self.previous_schema_name = filtered_existing_schema_names[0]
 
             # Verify the data that is going to be imported is newer than the data already imported

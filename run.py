@@ -457,7 +457,7 @@ if __name__ == '__main__':
             elif args.regen_nonbib:
                 maintenance_regenerate_nonbib_files()
             elif args.import_readers:
-                maintenance_readers(args.reader_filename, force = False, diagnose = False)
+                maintenance_readers(args.reader_filename, force=False, diagnose=False)
             elif args.resend_nonbib:
                 maintenance_resend(dois, bibcodes, broker=False, only_nonbib=True)
 
