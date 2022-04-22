@@ -770,9 +770,9 @@ def task_maintenance_resend(dois, bibcodes, broker, only_nonbib=False):
             if not broker:
                 # Only update master
                 readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode',''))
-                if [bool(readers), only_nonbib].count(True) == 2 or not only_nonbib:
-                    logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
+                logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
+                task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=only_nonbib)
+
             else:
                 # Only re-emit to the broker
                 # Signal that the target bibcode and the DOI are identical
@@ -963,11 +963,13 @@ def task_output_results(citation_change, parsed_metadata, citations, bibcode_rep
     messages.append((record, nonbib_record))
 
     for record, nonbib_record in messages:
-        if not app.conf['CELERY_ALWAYS_EAGER'] and not only_nonbib:
-            logger.debug('Will forward this record: %s', record)
+        if not only_nonbib:
+            logger.debug('Will forward bib record: %s', record)    
             logger.debug("Calling 'app.forward_message' with '%s'", str(record.toJSON()))
-            app.forward_message(record)
-
+            if not app.conf['CELERY_ALWAYS_EAGER']:
+                app.forward_message(record)
+        else:
+            logger.debug("Only asked to forward nonbib record")
         logger.debug('Will forward nonbib record: %s', nonbib_record)
         logger.debug("Calling 'app.forward_message' with '%s'", str(nonbib_record.toJSON()))
         if not app.conf['CELERY_ALWAYS_EAGER']:

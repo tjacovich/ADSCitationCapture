@@ -87,7 +87,7 @@ def maintenance_metadata(dois, bibcodes):
     # Send to master updated metadata
     tasks.task_maintenance_metadata.delay(dois, bibcodes)
 
-def maintenance_resend(dois, bibcodes, broker=False):
+def maintenance_resend(dois, bibcodes, broker=False, only_nonbib=False):
     """
     Re-send records to master
     """
@@ -98,20 +98,7 @@ def maintenance_resend(dois, bibcodes, broker=False):
         logger.info("MAINTENANCE task: re-sending '{}' records".format(n_requested))
 
     # Send to master updated metadata
-    tasks.task_maintenance_resend.delay(dois, bibcodes, broker)
-
-def maintenance_resend(dois, bibcodes, broker=False, only_nonbib=True):
-    """
-    Re-send records to master
-    """
-    n_requested = len(dois) + len(bibcodes)
-    if n_requested == 0:
-        logger.info("MAINTENANCE task: re-sending all the registered records")
-    else:
-        logger.info("MAINTENANCE task: re-sending '{}' records".format(n_requested))
-
-    # Send to master updated metadata
-    tasks.task_maintenance_resend.delay(dois, bibcodes, broker, only_nonbib=True)
+    tasks.task_maintenance_resend.delay(dois, bibcodes, broker, only_nonbib=only_nonbib)
 
 def maintenance_regenerate_nonbib_files():
     logger.info("MAINTENANCE task: rewriting all files for DataPipeline")
@@ -445,7 +432,7 @@ if __name__ == '__main__':
             elif args.canonical:
                 maintenance_canonical(dois, bibcodes)
             elif args.resend:
-                maintenance_resend(dois, bibcodes, broker=False)
+                maintenance_resend(dois, bibcodes, broker=False, only_nonbib=False)
             elif args.resend_broker:
                 maintenance_resend(dois, bibcodes, broker=True)
             elif args.reevaluate:
