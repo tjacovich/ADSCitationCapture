@@ -74,9 +74,18 @@ def _update_citation_target_metadata_session(session, content, raw_metadata, par
     if status == 'SANITIZED':
         #reset status but otherwise leave the citation target alone
         citation_target.status = status
+    if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
+            (status is not None and citation_target.status != status) or citation_target.curated_metadata != curated_metadata or \
+        citation_target.bibcode != bibcode:
+        citation_target.raw_cited_metadata = raw_metadata
+        citation_target.parsed_cited_metadata = parsed_metadata
+        citation_target.curated_metadata = curated_metadata
+        citation_target.bibcode = bibcode
+        if status is not None:
+            citation_target.status = status
         session.add(citation_target)
         session.commit()
-        logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", content, ", ".join(parsed_metadata.get('alternate_bibcode', [])))
+        logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", content, ", ".join(curated_metadata.get('alternate_bibcode', [])))
         metadata_updated = True
         return metadata_updated
 
@@ -173,9 +182,9 @@ def get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED'):
         records_db = []
         for bibcode in bibcodes:
             if only_status:
-                record_db = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata["bibcode"].astext == bibcode).filter_by(status=only_status).first()
+                record_db = session.query(CitationTarget).filter(CitationTarget.bibcode == bibcode).filter_by(status=only_status).first()
             else:
-                record_db = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata["bibcode"].astext == bibcode).first()
+                record_db = session.query(CitationTarget).filter(CitationTarget.bibcode == bibcode).first()
             if record_db:
                 records_db.append(record_db)
 
@@ -279,7 +288,7 @@ def get_citations_by_bibcode(app, bibcode):
     if bibcode is not None:
         with app.session_scope() as session:
             #bibcode = "2015zndo.....14475J"
-            citation_target = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata['bibcode'].astext == bibcode).filter_by(status="REGISTERED").first()
+            citation_target = session.query(CitationTarget).filter(CitationTarget.bibcode == bibcode).filter_by(status="REGISTERED").first()
             if citation_target:
                 dummy_citation_change = CitationChange(content=citation_target.content)
                 citations = get_citations(app, dummy_citation_change)
