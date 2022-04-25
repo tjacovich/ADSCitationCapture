@@ -7,6 +7,7 @@ Create Date: 2022-04-14 09:24:42.277371
 """
 from alembic import op
 import sqlalchemy as sa
+from ADSCitationCapture import db
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -17,9 +18,12 @@ depends_on = None
 
 
 def upgrade():
+    session = sa.orm.Session(bind=op.get_bind())
     op.execute('COMMIT')
     op.execute("ALTER TYPE target_status_type ADD VALUE 'SANITIZED'")
     op.execute("ALTER TYPE citation_status_type ADD VALUE 'SANITIZED'")
+    #bugfix correct all parsed_metadata alt_bibcodes to be uppercase
+    db.correct_alternate_bibcodes(session)
 
 
 def downgrade():
