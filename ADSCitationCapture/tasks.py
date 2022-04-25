@@ -571,6 +571,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                 zenodo_bibstem = "zndo"
                 #generates new bibcodes with manual curation data
                 new_bibcode = doi.build_bibcode(modified_metadata, doi.zenodo_doi_re, zenodo_bibstem)
+                new_bibcode = registered_record['bibcode'][:4] + new_bibcode[4:]
                 modified_metadata['bibcode'] = new_bibcode
                 #get the original list of alt bibcodes
                 alternate_bibcode = registered_record.get('alternate_bibcode', [])
