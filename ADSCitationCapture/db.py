@@ -485,7 +485,7 @@ def mark_all_sanitized_citations_as_discarded(app, content):
             session.add(citation)
         session.commit()
 
-def populate_bibcode_column(main_session, curated = True):
+def populate_bibcode_column(main_session, curated = False):
     """
     Pulls all citation targets from DB and populates the bibcode column using parsed metadata
     """
@@ -493,20 +493,17 @@ def populate_bibcode_column(main_session, curated = True):
     records = _get_citation_targets_alembic(main_session, only_status = None)
     for record in records:
         content = record.get('content', None)
+        bibcode = record.get('bibcode', None)
         logger.debug("Collecting metadata for {}".format(record.get('content')))
         metadata = _get_citation_target_metadata_alembic(main_session, content, curate = curated)
         if metadata:
             logger.debug("Updating Bibcode field for {}".format(record.get('content')))
             raw_metadata = metadata.get('raw', {})
             parsed_metadata = metadata.get('parsed', {})
-            curated_metadata = metadata.get('curated',{})
+            curated_metadata = metadata.get('curated', {})
             status = metadata.get('status', None)
-            if not curated_metadata:
-                _update_citation_target_metadata_alembic(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status)
-            else:
-                msg = "This command should never be run on a database with curated metadata. Stopping."
-                logger.error(msg)
-                raise Exception(msg)
+            _update_citation_target_metadata_alembic(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status=status, bibcode=bibcode)
+
 
 def correct_alternate_bibcodes(main_session, curated = False):
     """
@@ -525,7 +522,7 @@ def correct_alternate_bibcodes(main_session, curated = False):
             parsed_metadata = metadata.get('parsed', {})
             curated_metadata = metadata.get('curated',{})
             status = metadata.get('status', None)
-            _update_citation_target_metadata_alembic(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status=status, bibcode=bibcode)
+            _update_citation_target_alt_bibcodes_alembic(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status=status, bibcode=bibcode)
 
 def _update_citation_target_metadata_alembic(session, content, raw_metadata, parsed_metadata, curated_metadata={}, status=None, bibcode=None):
     """
@@ -533,7 +530,11 @@ def _update_citation_target_metadata_alembic(session, content, raw_metadata, par
     close the session after completion
     """
     metadata_updated = False
-    if not bibcode: bibcode = parsed_metadata.get('bibcode', None)
+    if not curated_metadata:
+        modified_metadata = parsed_metadata
+    else: 
+        modified_metadata = generate_modified_metadata(parsed_metadata, curated_metadata)
+    if not bibcode: bibcode = modified_metadata.get('bibcode', None)
     metadata_updated = _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode)    
     return metadata_updated
 
