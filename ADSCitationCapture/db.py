@@ -4,6 +4,7 @@ from psycopg2 import IntegrityError
 from dateutil.tz import tzutc
 from ADSCitationCapture.models import Citation, CitationTarget, Event, Reader
 from adsmsg import CitationChange
+import datetime
 from adsputils import setup_logging
 
 # ============================= INITIALIZATION ==================================== #
@@ -182,7 +183,7 @@ def store_reader_data(app, reader_change, status):
         reads = Reader()
         reads.bibcode = reader_change['bibcode']
         reads.reader = reader_change['reader']
-        #reads.timestamp = reader_change.timestamp.ToDatetime().replace(tzinfo=tzutc())
+        reads.timestamp = reader_change['timestamp']#.ToDatetime().replace(tzinfo=tzutc())
         reads.status = status
         session.add(reads)
         try:
@@ -191,7 +192,7 @@ def store_reader_data(app, reader_change, status):
             # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
             logger.error("Ignoring new reader information (bibcode '%s', reader '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", reader_change['bibcode'], reader_change['readers'], str(e))
         else:
-            logger.info("Stored new reader (bibcode: '%s', reader '%s')", reader_change['bibcode'], reader_change['reader'])
+            logger.info("Stored new reader (bibcode: '%s', reader '%s' timestamp '%s)", reader_change['bibcode'], reader_change['reader'], reader_change['timestamp'])
             stored = True
     return stored
 
@@ -451,16 +452,16 @@ def mark_reader_as_deleted(app, reader_change):
     with app.session_scope() as session:
         reader = session.query(Reader).with_for_update().filter_by(bibcode=reader_change['bibcode'], reader=reader_change['reader']).first()
         previous_status = reader.status
-        #change_timestamp = reader_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
-        #if reader.timestamp < change_timestamp:
-        reader.status = "DELETED"
-        #reader.timestamp = change_timestamp
-        session.add(reader)
-        session.commit()
-        marked_as_deleted = True
-        logger.info("Marked reader as deleted (citing '%s', content '%s')", reader_change['bibcode'], reader_change['reader'])#, reader_change.timestamp.ToJsonString())
-        #else:
-        #    logger.info("Ignoring reader deletion (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", reader_change['bibcode'], reader_change['reader'], reader_change.timestamp.ToJsonString())
+        change_timestamp = reader_change['timestamp']#.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
+        if str(reader.timestamp) < reader_change['timestamp']:
+            reader.status = "DELETED"
+            reader.timestamp = reader_change['timestamp']
+            session.add(reader)
+            session.commit()
+            marked_as_deleted = True
+            logger.info("Marked reader as deleted (citing '%s', content '%s')", reader_change['bibcode'], reader_change['reader'])#, reader_change.timestamp.ToJsonString())
+        else:
+            logger.info("Ignoring reader deletion (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", reader_change['bibcode'], reader_change['reader'], reader_change['timestamp'])
     return marked_as_deleted, previous_status
 
 def mark_all_discarded_citations_as_registered(app, content):

@@ -39,7 +39,10 @@ class Reader(Base):
     id = Column(Integer, primary_key=True)
     bibcode = Column(String())
     reader = Column(Text())
+    timestamp = Column(UTCDateTime)
     status = Column(reader_status_type)
+    created = Column(UTCDateTime, default=get_date)
+    updated = Column(UTCDateTime, onupdate=get_date)
 
 class ReaderChanges(Base):
     __tablename__ = 'reader_changes'

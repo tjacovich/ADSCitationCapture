@@ -117,7 +117,7 @@ class ReaderImport():
             for instance in self._citation_changes_query().offset(self.offset).limit(self.group_changes_in_chunks_of).yield_per(100):
                 # Use new_ or previous_ fields depending if status is NEW/UPDATED or DELETED
                 prefix = "previous_" if instance.status == "DELETED" else "new_"
-                reader_changes.append({'bibcode': getattr(instance,prefix+"bibcode"), 'reader': getattr(instance, prefix+"reader"), 'status': getattr(instance, "status")})    
+                reader_changes.append({'bibcode': getattr(instance,prefix+"bibcode"), 'reader': getattr(instance, prefix+"reader"), 'timestamp': self.last_modification_date, 'status': getattr(instance, "status")})
             self.session.commit()
             self.offset += self.group_changes_in_chunks_of
             return reader_changes
@@ -163,6 +163,7 @@ class ReaderImport():
     def _import(self):
         """Import from file, expand its JSON column and delete duplicates"""
         self._copy_from_file()
+        self._add_datetime()
         self._drop_nonzenodo_records()
         self._delete_dups()
 
@@ -195,6 +196,15 @@ class ReaderImport():
                     "DELETE FROM {0}.{1} \
                         WHERE bibcode NOT LIKE '%%zndo%%' "
         self._execute_sql(drop_row_sql, self.schema_name, self.table_name) 
+
+    def _add_datetime(self):
+        """
+        Adds a datetime column to a given table.
+        """
+        add_datetime_sql = \
+                    "ALTER TABLE {0}.{1} \
+                         ADD COLUMN timestamp TIMESTAMP DEFAULT '{2}'"
+        self._execute_sql(add_datetime_sql, self.schema_name, self.table_name, self.last_modification_date.isoformat()) 
 
     def _delete_dups(self):
         """
@@ -245,9 +255,11 @@ class ReaderImport():
                             {0}.{1}.id as new_id, \
                             {0}.{1}.bibcode as new_bibcode, \
                             {0}.{1}.reader as new_reader, \
+                            {0}.{1}.timestamp as new_timestamp, \
                             cast(null as text) as previous_id, \
                             cast(null as text) as previous_bibcode, \
-                            cast(null as text) as previous_reader \
+                            cast(null as text) as previous_reader, \
+                            cast(null as text) as previous_timestamp \
                         from {0}.{1};"
             self._execute_sql(joint_table_sql, self.schema_name, self.table_name, self.joint_table_name)
         else:
@@ -257,9 +269,11 @@ class ReaderImport():
                             {0}.{2}.id as new_id, \
                             {0}.{2}.bibcode as new_bibcode, \
                             {0}.{2}.reader as new_reader, \
+                            {0}.{2}.timestamp as new_timestamp, \
                             {1}.{3}.id as previous_id, \
                             {1}.{3}.bibcode as previous_bibcode, \
-                            {1}.{3}.reader as previous_reader \
+                            {1}.{3}.reader as previous_reader, \
+                            {1}.{3}.timestamp as previous_timestamp \
                         from {1}.{3} full join {0}.{2} \
                         on \
                             {0}.{2}.bibcode={1}.{3}.bibcode \

@@ -910,7 +910,6 @@ def task_process_reader_updates(reader_changes, **kwargs):
             elif changes['status'] == "DELETED":
                 status = "DELETED"
                 logger.info("Deleting reader {} for bibcode: {} from db.".format(changes['reader'], changes['bibcode']))
-                db.mark_reader_as_deleted(app, changes)
                 readers = db.get_citation_target_readers(app, changes['bibcode'])
                 logger.debug("Found {} Readers for bibcode: {}. {}".format(len(readers), changes['bibcode'], readers))
                 citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
@@ -926,6 +925,8 @@ def task_process_reader_updates(reader_changes, **kwargs):
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
                     readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode', ''))
                     task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
+                db.mark_reader_as_deleted(app, changes)
+
         else:
             logger.info("{} is not a citation_target in the database. Discarding.".format(changes['bibcode']))
             status = "DISCARDED"
