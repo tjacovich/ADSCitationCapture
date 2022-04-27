@@ -955,7 +955,6 @@ class TestWorkers(TestBase):
             self.assertFalse(mocked['webhook_dump_event'].called)
             self.assertFalse(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
 
-
     def test_process_new_citation_changes_doi_http_error(self):
         citation_changes = self._common_citation_changes_doi(adsmsg.Status.new)
         with TestBase.mock_multiple_targets({
@@ -989,37 +988,108 @@ class TestWorkers(TestBase):
                 'webhook_emit_event': patch.object(webhook, 'emit_event', return_value=True), \
                 'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
             tasks.task_process_citation_changes(citation_changes)
-            self.assertTrue(mocked['citation_already_exists'].called)
+
+    def test_process_reader_updates_new(self):
+        doi_id = "10.5281/zenodo.11020" # software
+        registered_record = {
+            'bibcode': self.mock_data[doi_id]['parsed'].get('bibcode',''),
+            'alternate_bibcode': self.mock_data[doi_id]['parsed'].get('alternate_bibcode', []),
+            'content': doi_id,
+            'content_type': 'DOI',
+            'curated_metadata': {},
+        }
+        reader_changes = [{'bibcode':self.mock_data[doi_id]['parsed']['bibcode'], 'reader':'XYZ1243BAY', 'status': "NEW"}]
+        with TestBase.mock_multiple_targets({
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[registered_record]), \
+                'get_citation_target_readers': patch.object(db, 'get_citation_target_readers', return_value=[]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'store_reader_data': patch.object(db, 'store_reader_data', return_value=True), \
+                'mark_reader_as_deleted': patch.object(db, 'mark_reader_as_deleted', return_value=True), \
+               'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_reader_updates(reader_changes)
             self.assertTrue(mocked['get_citation_target_metadata'].called)
-            self.assertTrue(mocked['fetch_metadata'].called)
-            self.assertFalse(mocked['parse_metadata'].called)
-            self.assertFalse(mocked['url_is_alive'].called)
-            self.assertTrue(mocked['get_canonical_bibcode'].called)
-            self.assertFalse(mocked['get_canonical_bibcodes'].called)
+            self.assertTrue(mocked['get_citations_by_bibcode'].called)
+            self.assertTrue(mocked['get_citation_target_readers'].called)
+            self.assertTrue(mocked['forward_message'].called)
+            self.assertTrue(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertTrue(mocked['store_reader_data'].called)
+            self.assertFalse(mocked['mark_reader_as_deleted'].called)
+
+    def test_process_reader_updates_deleted(self):
+        doi_id = "10.5281/zenodo.11020" # software
+        registered_record = {
+            'bibcode': self.mock_data[doi_id]['parsed'].get('bibcode',''),
+            'alternate_bibcode': self.mock_data[doi_id]['parsed'].get('alternate_bibcode', []),
+            'content': doi_id,
+            'content_type': 'DOI',
+            'curated_metadata': {},
+        }
+        reader_changes = [{'bibcode':self.mock_data[doi_id]['parsed']['bibcode'], 'reader':'XYZ1243BAY' ,'status': "DELETED"}]
+        with TestBase.mock_multiple_targets({
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[registered_record]), \
+                'get_citation_target_readers': patch.object(db, 'get_citation_target_readers', return_value=[]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'store_reader_data': patch.object(db, 'store_reader_data', return_value=True), \
+                'mark_reader_as_deleted': patch.object(db, 'mark_reader_as_deleted', return_value=True), \
+               'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_reader_updates(reader_changes)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertTrue(mocked['get_citations_by_bibcode'].called)
+            self.assertTrue(mocked['get_citation_target_readers'].called)
+            self.assertTrue(mocked['forward_message'].called)
+            self.assertTrue(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertFalse(mocked['store_reader_data'].called)
+            self.assertTrue(mocked['mark_reader_as_deleted'].called)
+
+    def test_process_reader_updates_target_not_in_db(self):
+        doi_id = "10.5281/zenodo.11020" # software
+        reader_changes = [{'bibcode':self.mock_data[doi_id]['parsed']['bibcode'], 'reader':'XYZ1243BAY' ,'status': "NEW"}]
+        with TestBase.mock_multiple_targets({
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_target_readers': patch.object(db, 'get_citation_target_readers', return_value=[]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'store_reader_data': patch.object(db, 'store_reader_data', return_value=True), \
+                'mark_reader_as_deleted': patch.object(db, 'mark_reader_as_deleted', return_value=True), \
+               'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_reader_updates(reader_changes)
+            self.assertFalse(mocked['get_citation_target_metadata'].called)
             self.assertFalse(mocked['get_citations_by_bibcode'].called)
-            self.assertTrue(mocked['store_citation_target'].called)
-            self.assertTrue(mocked['store_citation'].called)
-            self.assertFalse(mocked['update_citation'].called)
-            self.assertFalse(mocked['mark_citation_as_deleted'].called)
-            self.assertFalse(mocked['get_citations'].called)
+            self.assertFalse(mocked['get_citation_target_readers'].called)
             self.assertFalse(mocked['forward_message'].called)
-            self.assertFalse(mocked['update_citation_target_metadata'].called)
-            self.assertFalse(mocked['get_citation_target_count'].called)
-            self.assertFalse(mocked['get_citation_count'].called)
-            self.assertFalse(mocked['get_citation_targets_by_bibcode'].called)
-            self.assertFalse(mocked['get_citation_targets_by_doi'].called)
-            self.assertFalse(mocked['get_citation_targets'].called)
-            self.assertFalse(mocked['request_existing_citations'].called)
-            self.assertFalse(mocked['build_bibcode'].called)
-            self.assertFalse(mocked['is_url'].called)
-            self.assertFalse(mocked['citation_change_to_event_data'].called)
-            self.assertFalse(mocked['identical_bibcodes_event_data'].called)
-            self.assertFalse(mocked['identical_bibcode_and_doi_event_data'].called)
-            self.assertFalse(mocked['store_event'].called)
-            self.assertFalse(mocked['webhook_dump_event'].called)
-            self.assertFalse(mocked['webhook_emit_event'].called) # because we don't know if an URL is software
-
-
+            self.assertTrue(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertTrue(mocked['store_reader_data'].called)
+            self.assertFalse(mocked['mark_reader_as_deleted'].called)
+    
+    def test_process_reader_updates_target_has_no_parsed_metadata(self):
+        doi_id = "10.5281/zenodo.11020" # software
+        registered_record = {
+            'bibcode': self.mock_data[doi_id]['parsed'].get('bibcode',''),
+            'alternate_bibcode': self.mock_data[doi_id]['parsed'].get('alternate_bibcode', []),
+            'content': doi_id,
+            'content_type': 'DOI',
+            'curated_metadata': {},
+        }
+        reader_changes = [{'bibcode':self.mock_data[doi_id]['parsed']['bibcode'], 'reader':'XYZ1243BAY' ,'status': "NEW"}]
+        with TestBase.mock_multiple_targets({
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[registered_record]), \
+                'get_citation_target_readers': patch.object(db, 'get_citation_target_readers', return_value=[]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value={}), \
+                'store_reader_data': patch.object(db, 'store_reader_data', return_value=True), \
+                'mark_reader_as_deleted': patch.object(db, 'mark_reader_as_deleted', return_value=True), \
+               'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_reader_updates(reader_changes)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertTrue(mocked['get_citations_by_bibcode'].called)
+            self.assertTrue(mocked['get_citation_target_readers'].called)
+            self.assertFalse(mocked['forward_message'].called)
+            self.assertTrue(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertTrue(mocked['store_reader_data'].called)
+            self.assertFalse(mocked['mark_reader_as_deleted'].called)
+    
     def test_task_output_results(self):
         with patch('ADSCitationCapture.app.ADSCitationCaptureCelery.forward_message', return_value=None) as forward_message:
             citation_change = adsmsg.CitationChange(content_type=adsmsg.CitationChangeContentType.doi, status=adsmsg.Status.active)

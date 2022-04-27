@@ -903,8 +903,11 @@ def task_process_reader_updates(reader_changes, **kwargs):
                 parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
                 if parsed_metadata:
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                    readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode', ''))
+                    readers.append(changes['reader'])
                     task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
+                else:
+                    logger.warn("No parsed metadata for citation_target: {}. Marking reader as discarded.".format(custom_citation_change.content))
+                    status = "DISCARDED"
                 db.store_reader_data(app, changes, status)
 
             elif changes['status'] == "DELETED":
@@ -923,7 +926,7 @@ def task_process_reader_updates(reader_changes, **kwargs):
                 parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
                 if parsed_metadata:
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                    readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode', ''))
+                    readers=[rdr for rdr in readers if not changes['reader']]
                     task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
                 db.mark_reader_as_deleted(app, changes)
 
