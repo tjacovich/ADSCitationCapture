@@ -30,6 +30,21 @@ class TestWorkers(TestBase):
         httpretty.disable()
         httpretty.reset()   # clean up registered urls and request history
 
+    def test_sanitize_doi_trailing_characters(self):
+        unsanitized_id = "10.5281/zenodo.11020__amp__quot;__amp__gt" # software
+        doi_id = "10.5281/zenodo.11020" # software
+        self.assertEqual(doi.sanitize_zenodo_doi(unsanitized_id), doi_id)
+
+    def test_sanitize_doi_conjoined_dois(self):
+        unsanitized_id = "10.5281/zenodo.1102010.5281/zenodo.11020" # software
+        doi_id = "10.5281/zenodo.11020" # software
+        self.assertEqual(doi.sanitize_zenodo_doi(unsanitized_id), doi_id)
+    
+    def test_sanitize_doi_slash_in_dois(self):
+        unsanitized_id = "10.5281/zenodo/11020" # software
+        doi_id = "10.5281/zenodo.11020" # software
+        self.assertEqual(doi.sanitize_zenodo_doi(unsanitized_id), doi_id)
+
     def test_non_software_doi(self):
         doi_id = "10.1016/j.dsr2.2008.10.030" # Not software
         expected_response_content = ''
