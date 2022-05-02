@@ -504,25 +504,6 @@ def populate_bibcode_column(main_session, curated = False):
             status = metadata.get('status', None)
             _update_citation_target_metadata_alembic(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status=status, bibcode=bibcode)
 
-def correct_alternate_bibcodes(main_session, curated = False):
-    """
-    Pulls all citation targets from DB and corrects any lowercase final letters in the alternate bibcodes.
-    """
-    logger.debug("Collecting Citation Targets")
-    records = _get_citation_targets_alembic(main_session, only_status = None)
-    for record in records:
-        bibcode = record.get('bibcode', None)
-        content = record.get('content', None)
-        logger.debug("Collecting metadata for {}".format(record.get('content')))
-        metadata = _get_citation_target_metadata_alembic(main_session, content, curate = curated)
-        if metadata:
-            logger.debug("Calling update alternate_bibcode field for {}".format(record.get('content')))
-            raw_metadata = metadata.get('raw', {})
-            parsed_metadata = metadata.get('parsed', {})
-            curated_metadata = metadata.get('curated',{})
-            status = metadata.get('status', None)
-            _update_citation_target_alt_bibcodes_alembic(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status=status, bibcode=bibcode)
-
 def _update_citation_target_metadata_alembic(session, content, raw_metadata, parsed_metadata, curated_metadata={}, status=None, bibcode=None):
     """
     Update metadata for a citation target when we do not need to
