@@ -20,10 +20,10 @@ logger = setup_logging(__name__, proj_home=proj_home,
                         attach_stdout=config.get('LOG_STDOUT', False))
 
 file_names=OrderedDict()
-file_names['bibcode'] =proj_home+'/logs/bibcodes_CC.can.list'
-file_names['citations'] = proj_home+'/logs/citations_CC.list'
-file_names['references'] = proj_home+'/logs/references_CC.list'
-file_names['authors'] = proj_home+'/logs/facet_authors_CC.list'
+file_names['bibcode'] =proj_home+'/logs/output/bibcodes_CC.can.list'
+file_names['citations'] = proj_home+'/logs/output/citations_CC.list'
+file_names['references'] = proj_home+'/logs/output/references_CC.list'
+file_names['authors'] = proj_home+'/logs/output/facet_authors_CC.list'
 
 
 # =============================== FUNCTIONS ======================================= #
