@@ -895,11 +895,11 @@ def task_maintenance_reevaluate(dois, bibcodes):
                                 new_citation_change = db.citation_data_to_citation_change(citation_data, previously_discarded_record)
                                 try:
                                     db.store_citation(app, new_citation_change, new_citation_change.content_type, raw_metadata, parsed_metadata, status = 'REGISTERED')
+                                    #mark old citation as SANITIZED
                                     db.mark_citation_as_sanitized(app, cite, previously_discarded_record['content'])
                                 except Exception as e:
                                     logger.error("Failed to update citation from {} to {} with error {}. Skipping.".format(cite, clean_doi, e))
 
-                                #mark old citation as SANITIZED
                     
                     #Update the citation target if the content hasn't changed.
                     else:

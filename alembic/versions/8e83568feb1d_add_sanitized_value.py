@@ -18,37 +18,48 @@ depends_on = None
 
 
 def upgrade():
-    session = sa.orm.Session(bind=op.get_bind())
-    op.execute('COMMIT')
+    connection = None
+    if not op.get_context().as_sql:
+        """
+        ALTERING ENUM values cannot be done from transaction blocks. 
+        Changing the isolation_level to autocommit puts the specific calls in individually, preventing the issue.
+        Alembic will warn you about changing isolation level because it has already opened a transaction which is committed.
+        """
+        connection = op.get_bind()
+        connection.execution_options(isolation_level='AUTOCOMMIT')
+    
     op.execute("ALTER TYPE target_status_type ADD VALUE 'SANITIZED'")
     op.execute("ALTER TYPE citation_status_type ADD VALUE 'SANITIZED'")
-    #bugfix correct all parsed_metadata alt_bibcodes to be uppercase
-    db.correct_alternate_bibcodes(session)
 
 
 def downgrade():
 #Move expanded status types to old
     op.execute("ALTER TYPE target_status_type RENAME TO  target_status_type_old")
-    op.execute("CREATE TYPE  target_status_type AS ENUM('REGISTERED', 'DELETED', 'UPDATED', 'EMITTABLE')")
+    op.execute("CREATE TYPE  target_status_type AS ENUM('REGISTERED', 'DELETED', 'DISCARDED', 'UPDATED', 'EMITTABLE')")
     
     #instantiate original status types
     op.execute("ALTER TYPE citation_status_type RENAME TO  citation_status_type_old")
-    op.execute("CREATE TYPE  citation_status_type AS ENUM('REGISTERED', 'DELETED', 'UPDATED', 'EMITTABLE')")
+    op.execute("CREATE TYPE  citation_status_type AS ENUM('REGISTERED', 'DELETED', 'DISCARDED', 'UPDATED', 'EMITTABLE')")
     
-    #DROP expanded status columns
-    op.drop_column('citation_target_version','status')
-    op.drop_column('citation_target','status')    
-    op.drop_column('citation_version','status')
-    op.drop_column('citation','status')
-    
-    #DROP old ENUM types
+    def pgsql_change_type(table_name, column_name, new_enum):
+        return  f"ALTER TABLE {table_name} \
+                ALTER COLUMN {column_name} \
+                SET DATA TYPE {new_enum} \
+                USING ( \
+                    CASE {column_name}::text \
+                        WHEN 'SANITIZED' THEN 'DISCARDED' \
+                        ELSE {column_name}::text \
+                    END \
+                )::{new_enum}"
+
+    #Reset to original ENUM type
+    op.execute(pgsql_change_type('citation_target', 'status', 'target_status_type'))
+    op.execute(pgsql_change_type('citation_target_version', 'status', 'target_status_type'))
+    op.execute(pgsql_change_type('citation', 'status', 'citation_status_type'))
+    op.execute(pgsql_change_type('citation_version', 'status', 'citation_status_type'))
+
+
+    #DROP old (SANITIZED) ENUM types
     op.execute("DROP TYPE target_status_type_old")
     op.execute("DROP TYPE citation_status_type_old")
     
-    #ADD original status columns
-    op.add_column('citation_target',sa.Column('status', postgresql.ENUM('REGISTERED', 'DELETED', 'DISCARDED', 'EMITTABLE', name='target_status_type'), nullable=True))
-    op.add_column('citation_target_version',sa.Column('status', postgresql.ENUM('REGISTERED', 'DELETED', 'DISCARDED', 'EMITTABLE', name='target_status_type'), nullable=True))
-    op.add_column('citation_version',sa.Column('status', postgresql.ENUM('REGISTERED', 'DELETED', 'DISCARDED', 'EMITTABLE', name='citation_status_type'), nullable=True))
-    op.add_column('citation',sa.Column('status', postgresql.ENUM('REGISTERED', 'DELETED', 'DISCARDED', 'EMITTABLE', name='citation_status_type'), nullable=True))
-
-
