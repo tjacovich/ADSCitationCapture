@@ -517,23 +517,6 @@ def _update_citation_target_metadata_alembic(session, content, raw_metadata, par
     if not bibcode: bibcode = modified_metadata.get('bibcode', None)
     metadata_updated = _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode)    
     return metadata_updated
-
-def _update_citation_target_alt_bibcodes_alembic(session, content, raw_metadata, parsed_metadata, curated_metadata={}, status=None, bibcode=None):
-    """
-    Correct alternate bibcode format for a citation target when we do not need to
-    close the session after completion
-    """
-    metadata_updated = False
-    if not bibcode:
-        msg = "bibcode should not be None. Please check entry for {}. Skipping.".format(content)
-        logger.warn(msg)
-        return metadata_updated
-    alt_bibcodes = parsed_metadata.get('alternate_bibcode', [])
-    if alt_bibcodes:
-        alt_bibcodes = [bib[:-1]+bib[-1].upper() for bib in alt_bibcodes]
-        parsed_metadata['alternate_bibcode'] = alt_bibcodes
-        metadata_updated = _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode)    
-    return metadata_updated
             
 def _get_citation_target_metadata_alembic(session, doi, curate=True):
     """
