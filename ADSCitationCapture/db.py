@@ -406,13 +406,14 @@ def populate_bibcode_column(main_session):
     records = _get_citation_targets_session(main_session, only_status = None)
     for record in records:
         content = record.get('content', None)
-        bibcode = record
+        bibcode = record.get('bibcode', None)
+        associated = record.get('associate_works', {})
         logger.debug("Collecting metadata for {}".format(record.get('content')))
         citation_in_db = False
         metadata = {}
         metadata = _get_citation_target_metadata_session(main_session, content, citation_in_db, metadata, curate=False)
         if metadata:
-            logger.debug("Updating Bibcode field for {}".format(record.get('content')))
+            logger.debug("Populating Bibcode field for {}".format(record.get('content')))
             raw_metadata = metadata.get('raw', {})
             parsed_metadata = metadata.get('parsed', {})
             curated_metadata = metadata.get('curated',{})
@@ -426,5 +427,5 @@ def populate_bibcode_column(main_session):
             else:
                 bibcode = parsed_metadata.get('bibcode',None)
 
-            _update_citation_target_metadata_session(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode)
+            _update_citation_target_metadata_session(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode, associated)
 
