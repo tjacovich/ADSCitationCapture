@@ -176,6 +176,12 @@ def parse_metadata(raw_metadata):
     """
     return _parse_metadata_zenodo_doi(raw_metadata)
 
+def renormalize_author_names(authors):
+    normalized_author_names = []
+    for name in authors:
+        normalized_author_names.append(dc.author_names._normalize(name, collaborations_params=dc.author_collaborations_params))
+    return normalized_author_names
+
 def _parse_metadata_zenodo_doi(raw_metadata):
     """
     It expects metadata in datacite format from a zenodo DOI [string] and returns

@@ -548,6 +548,8 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                 continue
         try:
             if not reset:
+                if 'authors' in curated_entry.keys():
+                    curated_entry['normalized_authors'] = doi.renormalize_author_names(curated_entry.get('authors', None))
                 #only check old metadata if we are adding updates, otherwise ignore.
                 if curated_entry != registered_record.get('curated_metadata'):
                     for key in registered_record['curated_metadata'].keys():
@@ -686,7 +688,7 @@ def maintenance_show_metadata(curated_entries):
             except Exception as e:
                 msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
                 logger.error(msg)
-        
+            
         #If no doi, try and retrieve entry by bibcode.
         elif curated_entry.get('bibcode'):
             try:
