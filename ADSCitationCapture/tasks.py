@@ -11,6 +11,7 @@ import ADSCitationCapture.db as db
 import ADSCitationCapture.forward as forward
 import ADSCitationCapture.api as api
 import adsmsg
+import json
 
 # ============================= INITIALIZATION ==================================== #
 
@@ -680,7 +681,7 @@ def maintenance_show_metadata(curated_entries):
             try:
                 parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
                 if parsed_metadata:
-                    print(parsed_metadata)
+                    print(json.dumps(parsed_metadata))
 
             except Exception as e:
                 msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
@@ -704,7 +705,7 @@ def maintenance_show_metadata(curated_entries):
             try:
                 parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
                 if parsed_metadata:
-                    print(parsed_metadata)
+                    print(json.dumps(parsed_metadata))
 
             except Exception as e:
                 msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)

@@ -140,7 +140,7 @@ def maintenance_curation(filename = None, dois = None, bibcodes = None, json_pay
                 raise
 
             #collect dois from entries if available.
-            dois = [entry.get('doi', None) for entry in curated_entries if entry.get('doi', None) is not None]
+            dois = [entry.get('doi', None).lower() for entry in curated_entries if entry.get('doi', None) is not None]
             #collect dois if no bibcode is available.
             bibcodes = [entry.get('bibcode', None) for entry in curated_entries if entry.get('doi', None) is None and entry.get('bibcode', None) is not None]
         
@@ -158,13 +158,13 @@ def maintenance_curation(filename = None, dois = None, bibcodes = None, json_pay
         if reset:
             n_requested = len(dois) + len(bibcodes)
             logger.info("MAINTENANCE task: requested deletion of curated metadata for '{}' records.".format(n_requested))
-            curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"doi":doi} for doi in dois]
+            curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"doi":doi.lower()} for doi in dois]
             tasks.task_maintenance_curation.delay(dois, bibcodes, curated_entries, reset)
         
         elif show:
             n_requested = len(dois) + len(bibcodes)
-            curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"doi":doi} for doi in dois]
-            logger.info("MAINTENANCE task: Displaying current metadata for '{}' record(s).".format(n_requested))
+            curated_entries =[{"bibcode":bib} for bib in bibcodes]+[{"doi":doi.lower()} for doi in dois]
+            logger.debug("MAINTENANCE task: Displaying current metadata for '{}' record(s).".format(n_requested))
             tasks.maintenance_show_metadata(curated_entries)
 
         elif json_payload:
@@ -177,7 +177,7 @@ def maintenance_curation(filename = None, dois = None, bibcodes = None, json_pay
                 curated_entries = [json.loads(p) for p in json_payload]
                 if dois:
                     for ele, doi in enumerate(dois):
-                        curated_entries[ele]['doi'] = doi
+                        curated_entries[ele]['doi'] = doi.lower()
                 elif bibcodes:
                     for ele, bibcode in enumerate(bibcodes):
                         curated_entries[ele]['bibcode'] = bibcode

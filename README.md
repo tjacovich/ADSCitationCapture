@@ -522,11 +522,11 @@ python3 run.py MAINTENANCE --curation --doi "10.5281/zenodo.5659382" --json '{"a
  # Clear curated_metadata for a given entry by bibcode
  python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --reset
  # Clear curated_metadata for a given entry by doi
-python3 run.py MAINTENANCE --curation --doi "10.XYZA/ZENODO.BCDEFG" --reset
+python3 run.py MAINTENANCE --curation --doi "10.XYZA/zenodo.BCDEFG" --reset
 # Clear curated_metadata by file
 python3 run.py MAINTENANCE --curation --input_filename $/path/to/input_file --reset
 # Display current metadata for a given entry by doi as standard output
-python3 run.py MAINTENANCE --curation --doi "10.XYZA/ZENODO.BCDEFG" --show
+python3 run.py MAINTENANCE --curation --doi "10.XYZA/zenodo.BCDEFG" --show
 # Display current metadata for a given entry by bibcode as standard output
 python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --show
 ```
@@ -536,6 +536,23 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
 
 **NOTE: the `json` keys must be contained in `" "` not `' '` or else the entire process will error out.** 
 
+By default. `--show` displays a the metadata as a single line. This is the required format for any metadata updates specified in `--input_filename` or `--json`. To make the text more readable you can pipe the output into `jq`
+
+```
+python3 run.py MAINTENANCE --curation --doi 10.5281/zenodo.123567 --show | jq . 
+```
+
+You can save this to a file by simply running
+
+```
+python3 run.py MAINTENANCE --curation --doi 10.5281/zenodo.123567 --show | jq . > /path/to/output_file.dat
+```
+
+Once any edits have been made, you can convert the output back to a CitationCapture parsable format and append it to an curated input file using
+
+```
+jq -c . /path/to/output_file.dat >> /path/to/curated_metadata_file.dat
+```
 - Curated Example
 
     For a given citation target in the database, the `parsed_cited_metadata` takes the form
@@ -567,6 +584,8 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
 
     {"forks": [], "title": "Some Title", "source": "Zenodo", "authors": ["Some, Name"], "bibcode": "YYYYzndo...BCDEFGS", "doctype": "software", "pubdate": "YYYY-MM-DD", "version": "X.Y", "abstract": "abstract text", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"], "versions": ["list of dois"], "citations": [], "link_alive": true, "properties": {"DOI": "10.XYZA/ZENODO.BCDEFG", "OPEN": 1}, "references": ["doi", "arxiv"], "version_of": ["doi"], "forked_from": [], "affiliations": ["Some Other Institution <ORCID>0000-0001-2345-6789</ORCID>"],"described_by": [],"description_of": [],"normalized_authors": ["Some, N"]}
     ```
+
+
 - Bibcode updates  
     To help deal with curated metadata, an additional index was added for canonical bibcodes. To keep confirm the bibcodes column is up to date, one can run
 
