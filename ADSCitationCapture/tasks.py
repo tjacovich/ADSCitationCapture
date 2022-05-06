@@ -11,6 +11,7 @@ import ADSCitationCapture.db as db
 import ADSCitationCapture.forward as forward
 import ADSCitationCapture.api as api
 import adsmsg
+import json
 
 # ============================= INITIALIZATION ==================================== #
 
@@ -560,6 +561,8 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
                 continue
         try:
             if not reset:
+                if 'authors' in curated_entry.keys():
+                    curated_entry['normalized_authors'] = doi.renormalize_author_names(curated_entry.get('authors', None))
                 #only check old metadata if we are adding updates, otherwise ignore.
                 if curated_entry != registered_record.get('curated_metadata'):
                     for key in registered_record['curated_metadata'].keys():
@@ -695,12 +698,12 @@ def maintenance_show_metadata(curated_entries):
             try:
                 parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
                 if parsed_metadata:
-                    print(parsed_metadata)
+                    print(json.dumps(parsed_metadata))
 
             except Exception as e:
                 msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
                 logger.error(msg)
-        
+            
         #If no doi, try and retrieve entry by bibcode.
         elif curated_entry.get('bibcode'):
             try:
@@ -719,7 +722,7 @@ def maintenance_show_metadata(curated_entries):
             try:
                 parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
                 if parsed_metadata:
-                    print(parsed_metadata)
+                    print(json.dumps(parsed_metadata))
 
             except Exception as e:
                 msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
