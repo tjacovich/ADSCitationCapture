@@ -167,7 +167,7 @@ def get_github_metadata(app, citation_url):
         github_api = None
         try:
             path = urllib.parse.urlparse(citation_url).path.split("/")
-            github_api = app.conf['GITHUB_API_URL']+"repos/{}/{}/license".format(path[1],path[2])
+            github_api = app.conf['GITHUB_API_URL']+"repos/{}/{}/license".format(path[1],path[2]) if path[1] else None
 
         except Exception as e:
             msg = "Failed to parse :{} with Exception: {}".format(citation_url,e)

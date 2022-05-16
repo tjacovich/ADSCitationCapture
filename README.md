@@ -284,9 +284,9 @@ Download the compiled version of montysolr and run it:
 
 ```
 https://github.com/romanchyla/montysolr/releases
-wget -c https://github.com/romanchyla/montysolr/releases/download/v63.1.0.36/montysolr.zip
+wget -c https://github.com/romanchyla/montysolr/releases/download/v77.1.1.4/montysolr.zip
 unzip montysolr.zip
-cd montysolr/
+cd montysolr/ #(In Linux, unzip may not create the containing folder and instead unzip the contents into the current directory.)
 bash bin/solr start -f -p 8984
 ```
 
@@ -598,6 +598,27 @@ jq -c . /path/to/output_file.dat >> /path/to/curated_metadata_file.dat
     #Update bibcodes column for all records.
     python3 run.py MAINTENANCE --populate-bibcodes
     ```
+
+- Update associated works:
+    - For each record in the database it:
+        - Identifies all records that share the same concept record and are also in the database.
+        - Collects bibcodes and version numbers for all associated records, including the concept record if it exists in the database.
+        - Updates the nonbib_record for the original record and forwards it to Master pipeline.
+```
+# Reevaluate associated works for all registered citation targets
+python3 run.py MAINTENANCE --eval-associated
+# Reevaluate associated works for specified bibcode
+python3 run.py MAINTENANCE --eval-associated --bibcode 2017zndo....840393W
+# Reevaluate associated works for specified bibcode
+python3 run.py MAINTENANCE --eval-associated --doi 10.5281/zenodo.840393
+# File containing dois (tab separated)
+python3 run.py MAINTENANCE --eval-associated --doi /proj/ads/references/links/zenodo_updates_09232019.out
+```        
+
+## Potential Race Condition
+### Linking Associated Works
+When multiple new associated citation targets are processed in the same batch, there is a chance for the associated works to be out of sync between the multiple citation targets. A race condition can occur where associated works are collected from the database before either citation is entered, meaning the two new citations would not be associated with each other. The addition of another associated work in a subsequent batch would fix the problem, as would performing a `MAINTENANCE --eval_associated`.
+
 # Miscellaneous
 
 ## Alembic

@@ -114,7 +114,7 @@ def maintenance_reevaluate(dois, bibcodes):
 def maintenance_repopulate():
     tasks.task_maintenance_repopulate_bibcode_columns.delay()
 
-def maintenance_curation(filename = None, dois = None, bibcodes = None, json_payload = None, reset = False, show = False):
+def maintenance_curation(filename=None, dois=None, bibcodes=None, json_payload=None, reset=False, show=False):
     """
     Update any manually curated values for a given entry.
     """
@@ -194,6 +194,16 @@ def maintenance_curation(filename = None, dois = None, bibcodes = None, json_pay
     else:
         logger.error("MAINTENANCE task: manual curation failed. Please specify a file containing the modified citations.")
 
+def maintentance_reevaluate_associated_works(dois, bibcodes):
+    """
+    Update associated software records for citation targets already in the database.
+    """
+    n_requested = len(dois) + len(bibcodes)
+    if n_requested == 0:
+        logger.info("MAINTENANCE task: checking all the registered records for associated works")
+    else:
+        logger.info("MAINTENANCE task: checking '{}' records for associated works".format(n_requested))
+    tasks.task_maintenance_reevaluate_associated_works.delay(dois, bibcodes)
 
 def diagnose(bibcodes, json):
     citation_count = db.get_citation_count(tasks.app)
@@ -274,6 +284,12 @@ if __name__ == '__main__':
                         default=False,
                         help='Re-evaluate discarded citation targets fetching metadata and ingesting software records')
     maintenance_parser.add_argument(
+                        '--eval-associated',
+                        dest='eval_associated',
+                        action='store_true',
+                        default=False,
+                        help='Re-evaluate citation targets to determine associated works in already in database.')
+    maintenance_parser.add_argument(
                         '--canonical',
                         dest='canonical',
                         action='store_true',
@@ -347,7 +363,7 @@ if __name__ == '__main__':
 
     elif args.action == "MAINTENANCE":
         if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not\
-         args.reevaluate and not args.curation and not args.repopulate:
+         args.reevaluate and not args.curation and not args.repopulate and not args.eval_associated:
             maintenance_parser.error("nothing to be done since no task has been selected")
         else:
             # Read files if provided (instead of a direct list of DOIs)
@@ -379,6 +395,8 @@ if __name__ == '__main__':
                 maintenance_curation(args.input_filename, dois, bibcodes, args.json_payload, args.reset, args.show)
             elif args.repopulate:
                 maintenance_repopulate()
+            elif args.eval_associated:
+                maintentance_reevaluate_associated_works(dois, bibcodes)
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)
