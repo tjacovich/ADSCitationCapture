@@ -25,7 +25,11 @@ def upgrade():
     op.add_column('citation_target_version',sa.Column('curated_metadata', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
     op.add_column('citation_target',sa.Column('bibcode', sa.Text(), nullable=True))
     op.add_column('citation_target_version',sa.Column('bibcode', sa.Text(), nullable=True))
-    db.populate_bibcode_column(session)
+    
+    pgrsql_populate_bibcode_column ="UPDATE public.citation_target \
+	SET bibcode = parsed_cited_metadata->>'bibcode' \
+	WHERE parsed_cited_metadata->>'bibcode' is not NULL"
+    op.execute(pgrsql_populate_bibcode_column)
 
 def downgrade():
     op.drop_column('citation_target','curated_metadata')

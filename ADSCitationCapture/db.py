@@ -36,7 +36,7 @@ def store_event(app, data):
             stored = True
     return stored
 
-def store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
+def store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status, associated=None):
     """
     Stores a new citation target in the DB
     """
@@ -50,6 +50,7 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
         citation_target.curated_metadata = {}
         citation_target.status = status
         citation_target.bibcode = parsed_metadata.get("bibcode", None)
+        citation_target.associated_works = associated
         session.add(citation_target)
         try:
             session.commit()
@@ -61,7 +62,7 @@ def store_citation_target(app, citation_change, content_type, raw_metadata, pars
             stored = True
     return stored
 
-def _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None):
+def _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode=None, associated=None):
     """
     Actual calls to database session for update_citation_target_metadata
     """
@@ -82,6 +83,9 @@ def _update_citation_target_metadata_session(session, content, raw_metadata, par
         citation_target.parsed_cited_metadata = parsed_metadata
         citation_target.curated_metadata = curated_metadata
         citation_target.bibcode = bibcode
+        if(citation_target.associated_works != associated):
+                logger.debug("associated works set for {} set from {} to {}".format(citation_target.content, citation_target.associated_works, associated))
+                citation_target.associated_works = associated
         if status is not None:
             citation_target.status = status
         session.add(citation_target)
@@ -90,30 +94,14 @@ def _update_citation_target_metadata_session(session, content, raw_metadata, par
         metadata_updated = True
         return metadata_updated
 
-    else:
-        if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
-                (status is not None and citation_target.status != status) or citation_target.curated_metadata != curated_metadata or \
-                citation_target.bibcode != bibcode:
-            citation_target.raw_cited_metadata = raw_metadata
-            citation_target.parsed_cited_metadata = parsed_metadata
-            citation_target.curated_metadata = curated_metadata
-            citation_target.bibcode = bibcode
-            if status is not None:
-                citation_target.status = status
-            session.add(citation_target)
-            session.commit()
-            logger.info("Updated metadata for citation target '%s' (alternative bibcodes '%s')", content, ", ".join(parsed_metadata.get('alternate_bibcode', [])))
-            metadata_updated = True
-            return metadata_updated
-
-def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata = {}, status=None, bibcode = None):
+def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata, curated_metadata={}, status=None, bibcode=None, associated=None):
     """
     Update metadata for a citation target
     """
     metadata_updated = False
     if not bibcode: bibcode = parsed_metadata.get('bibcode', None)
     with app.session_scope() as session:
-        metadata_updated =  _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode)
+        metadata_updated =  _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status=status, bibcode=bibcode, associated=associated)
     return metadata_updated
 
 def store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
@@ -166,9 +154,11 @@ def _extract_key_citation_target_data(records_db, disable_filter=False):
         {
             'bibcode': record_db.bibcode,
             'alternate_bibcode': record_db.parsed_cited_metadata.get('alternate_bibcode', []),
+            'version': record_db.parsed_cited_metadata.get('version', None),
             'content': record_db.content,
             'content_type': record_db.content_type,
             'curated_metadata': record_db.curated_metadata if record_db.curated_metadata is not None else {},
+            'associated_works': record_db.associated_works,
         }
         for record_db in records_db
         if disable_filter or record_db.parsed_cited_metadata.get('bibcode', None) is not None
@@ -218,13 +208,31 @@ def _get_citation_targets_session(session, only_status='REGISTERED'):
     """
     if only_status:
         records_db = session.query(CitationTarget).filter_by(status=only_status).all()
-        disable_filter = only_status in ['DISCARDED','EMITTABLE']
+        disable_filter = only_status in ['DISCARDED', 'EMITTABLE']
     else:
         records_db = session.query(CitationTarget).all()
         disable_filter = True
     records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
-
+    
+def get_associated_works_by_doi(app, all_versions_doi, only_status='REGISTERED'):
+    dois = all_versions_doi['versions']
+    concept_doi = all_versions_doi['concept_doi'].lower()
+    try:
+        versions = {"Version "+str(records.get('version', '')): records.get('bibcode', '') for records in get_citation_targets_by_doi(app, dois, only_status)}
+        root_ver = get_citation_targets_by_doi(app, [concept_doi], only_status)
+        if root_ver != []:
+            root_record = {'Software Source':root_ver[0]['bibcode']}
+            versions.update(root_record)
+        if versions != {}:
+            return versions
+        else:
+            logger.info('No associated works for %s in database', dois[0])
+            return None
+    except:
+        logger.info('No associated works for %s in database', dois[0])
+        return None
+        
 def get_citation_targets(app, only_status='REGISTERED'):
     """
     Return a list of dict with all citation targets (or only the registered ones)
@@ -495,12 +503,13 @@ def populate_bibcode_column(main_session):
     for record in records:
         content = record.get('content', None)
         bibcode = record.get('bibcode', None)
+        associated = record.get('associate_works', {})
         logger.debug("Collecting metadata for {}".format(record.get('content')))
         citation_in_db = False
         metadata = {}
         metadata = _get_citation_target_metadata_session(main_session, content, citation_in_db, metadata, curate=False)
         if metadata:
-            logger.debug("Updating Bibcode field for {}".format(record.get('content')))
+            logger.debug("Populating Bibcode field for {}".format(record.get('content')))
             raw_metadata = metadata.get('raw', {})
             parsed_metadata = metadata.get('parsed', {})
             curated_metadata = metadata.get('curated',{})
@@ -514,5 +523,5 @@ def populate_bibcode_column(main_session):
             else:
                 bibcode = parsed_metadata.get('bibcode',None)
 
-            _update_citation_target_metadata_session(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode)
+            _update_citation_target_metadata_session(main_session, content, raw_metadata, parsed_metadata, curated_metadata, status, bibcode, associated)
 

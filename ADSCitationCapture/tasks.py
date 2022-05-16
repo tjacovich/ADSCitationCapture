@@ -1,4 +1,3 @@
-
 import os
 from kombu import Queue
 from google.protobuf.json_format import MessageToDict
@@ -11,6 +10,7 @@ import ADSCitationCapture.db as db
 import ADSCitationCapture.forward as forward
 import ADSCitationCapture.api as api
 import adsmsg
+import json
 
 # ============================= INITIALIZATION ==================================== #
 
@@ -28,6 +28,7 @@ app.conf.CELERY_QUEUES = (
     Queue('maintenance_metadata', app.exchange, routing_key='maintenance_metadata'),
     Queue('maintenance_resend', app.exchange, routing_key='maintenance_resend'),
     Queue('maintenance_reevaluate', app.exchange, routing_key='maintenance_reevaluate'),
+    Queue('maintenance_associated_works', app.exchange, routing_key='maintenance_associated_works'),
     Queue('output-results', app.exchange, routing_key='output-results'),
 )
 
@@ -64,6 +65,8 @@ def task_process_new_citation(citation_change, force=False):
     citation_target_in_db = bool(metadata) # False if dict is empty
     raw_metadata = metadata.get('raw', None)
     parsed_metadata = metadata.get('parsed', {})
+    associated_version_bibcodes = metadata.get('associated', None)
+
     if citation_target_in_db:
         status = metadata.get('status', 'DISCARDED') # "REGISTERED" if it is a software record
 
@@ -72,7 +75,6 @@ def task_process_new_citation(citation_change, force=False):
         and citation_change.content not in ["", None]:
         # Default values
         content_type = "DOI"
-        #
         if not citation_target_in_db:
             # Fetch DOI metadata (if HTTP request fails, an exception is raised
             # and the task will be re-queued (see app.py and adsputils))
@@ -82,8 +84,9 @@ def task_process_new_citation(citation_change, force=False):
                 is_software = parsed_metadata.get('doctype', '').lower() == "software"
                 if parsed_metadata.get('bibcode') not in (None, "") and is_software:
                     status = "REGISTERED"
+                    associated_version_bibcodes = _collect_associated_works(citation_change, parsed_metadata)
 
-    #ASCL
+    #PID
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
         content_type = "PID"
@@ -113,7 +116,10 @@ def task_process_new_citation(citation_change, force=False):
     if status not in [None, "EMITTABLE"]:
         if not citation_target_in_db:
             # Create citation target in the DB
-            target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
+            target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status, associated_version_bibcodes)
+            #If citation target successfully created, update associated records.
+            if target_stored:
+                _update_associated_citation_targets(citation_change, parsed_metadata, associated_version_bibcodes)
 
         if status == "REGISTERED":
             #Connects new bibcode to canonical bibcode and DOI
@@ -145,8 +151,7 @@ def task_process_new_citation(citation_change, force=False):
                     citations.append(canonical_citing_bibcode)
 
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, parsed_metadata, citations)
-
+                task_output_results.delay(citation_change, parsed_metadata, citations, associated_version_bibcodes)
             logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
 
             _emit_citation_change(citation_change, parsed_metadata)
@@ -154,7 +159,7 @@ def task_process_new_citation(citation_change, force=False):
         # this task can be re-run in the future without key collisions in the database
         stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
     
-@app.task(queue='process-github-urls', rate_limit = github_api_limit)
+@app.task(queue='process-github-urls', rate_limit=github_api_limit)
 def task_process_github_urls(citation_change, metadata):
     """
     Process new github urls
@@ -210,14 +215,82 @@ def task_process_updated_citation(citation_change, force=False):
     # Emit/forward the update only if status is "REGISTERED"
     if updated and status == 'REGISTERED':
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+            associated_works = _collect_associated_works(citation_change, parsed_metadata)
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+            no_self_ref_versions = {key:val for key, val in associated_works.items() if val != citation_target_bibcode} if associated_works else None
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-            task_output_results.delay(citation_change, parsed_metadata, citations)
+            task_output_results.delay(citation_change, parsed_metadata, citations, db_versions = no_self_ref_versions)
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
         _emit_citation_change(citation_change, parsed_metadata)
 
+def _collect_associated_works(citation_change, parsed_metadata):
+    """
+    Fetches metadata for concept doi and searches database for associated versions for the given record.
+    """
+    versions_in_db = None
+    try:
+        all_versions_doi = doi.fetch_all_versions_doi(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata)
+    except:
+        logger.error("Unable to recover related versions for {}",citation_change)
+        all_versions_doi = None
+    #fetch additional versions from db if they exist.
+    if all_versions_doi['versions'] not in (None,[]):
+        logger.info("Found {} versions for {}".format(len(all_versions_doi['versions']), citation_change.content))
+        versions_in_db = db.get_associated_works_by_doi(app, all_versions_doi)
+        #Only add bibcodes if there are versions in db, otherwise leave as None.
+    return versions_in_db     
+
+def _update_associated_citation_targets(citation_change, parsed_metadata, versions_in_db):
+    """
+    Updates associated works for all associated records of citation_change.content in database.
+    """
+    if versions_in_db not in (None, [None]):
+        logger.info("Found {} versions in database for {}".format(len(versions_in_db),citation_change.content))
+        #adds the new citation target bibcode because it will not be in the db yet, 
+        # and then appends the versions already in the db.
+        associated_version_bibcodes = {'Version '+str(parsed_metadata.get('version')): parsed_metadata.get('bibcode')}
+        associated_version_bibcodes.update(versions_in_db)
+        logger.debug("{}: associated_versions_bibcodes".format(associated_version_bibcodes))
+        for bibcode in versions_in_db.values():
+            associated_registered_record = db.get_citation_targets_by_bibcode(app, [bibcode])[0] 
+            associated_citation_change = adsmsg.CitationChange(content=associated_registered_record['content'],
+                                    content_type=getattr(adsmsg.CitationChangeContentType, associated_registered_record['content_type'].lower()),
+                                    status=adsmsg.Status.updated,
+                                    timestamp=datetime.now()
+                                    )
+            #update associated works for all versions in db
+            logger.info('Calling task process_updated_associated_works')
+            task_process_updated_associated_works.delay(associated_citation_change, associated_version_bibcodes)    
+
+@app.task(queue='process-updated-citation')
+def task_process_updated_associated_works(citation_change, associated_versions, force=False):
+    """
+    Update associated works in citation record
+    Do not emit to broker as changes to associated works are not propagated
+    """
+    #check if associated works is not empty
+    updated = bool(associated_versions)
+    metadata = db.get_citation_target_metadata(app, citation_change.content)
+    raw_metadata = metadata.get('raw', {})
+    
+    if raw_metadata:
+        parsed_metadata = metadata.get('parsed', {})
+        citation_target_bibcode = parsed_metadata.get('bibcode', None)
+        no_self_ref_versions = {key: val for key, val in associated_versions.items() if val != citation_target_bibcode}
+        logger.info("Updating associated works for %s", citation_change.content)
+        status = metadata.get('status', 'DISCARDED')
+        #Forward the update only if status is "REGISTERED" and associated works is not None.
+        if status == 'REGISTERED' and updated:
+            if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
+                # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
+                original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
+                citations = api.get_canonical_bibcodes(app, original_citations)
+                logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+                task_output_results.delay(citation_change, parsed_metadata, citations, db_versions=associated_versions)
+                db.update_citation_target_metadata(app, citation_change.content, raw_metadata, parsed_metadata, associated=no_self_ref_versions)
+        
 @app.task(queue='process-deleted-citation')
 def task_process_deleted_citation(citation_change, force=False):
     """
@@ -233,8 +306,9 @@ def task_process_deleted_citation(citation_change, force=False):
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
+            associated_works = db.get_citation_targets_by_doi(app, [citation_change.content])[0].get('associated_works', {"":""})
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-            task_output_results.delay(citation_change, parsed_metadata, citations)
+            task_output_results.delay(citation_change, parsed_metadata, citations, db_versions=associated_works)
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
         _emit_citation_change(citation_change, parsed_metadata)
 
@@ -353,7 +427,6 @@ def task_maintenance_canonical(dois, bibcodes):
     - For each, get their citations bibcodes and transform them to their canonical form
     - Send to master an update with the new list of citations canonical bibcodes
     """
-
     n_requested = len(dois) + len(bibcodes)
     if n_requested == 0:
         registered_records = db.get_citation_targets(app, only_status='REGISTERED')
@@ -378,10 +451,10 @@ def task_maintenance_canonical(dois, bibcodes):
         parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
         if parsed_metadata:
             logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-            task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes)
+            task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes, db_versions=registered_record.get('associated_works', {"":""}))
 
 @app.task(queue='maintenance_metadata')
-def task_maintenance_metadata(dois, bibcodes, reset = False):
+def task_maintenance_metadata(dois, bibcodes, reset=False):
     """
     Maintenance operation:
     - Get all the registered citation targets (or only a subset of them if DOIs and/or bibcodes are specified)
@@ -505,7 +578,7 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                         alternate_bibcode += registered_record.get('alternate_bibcode')
                         parsed_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
                 
-                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata = curated_metadata, bibcode = bibcode)
+                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata=curated_metadata, bibcode=bibcode, associated=registered_record.get('associated_works', {"":""}))
         
         if updated:
             citation_change = adsmsg.CitationChange(content=registered_record['content'],
@@ -518,10 +591,10 @@ def task_maintenance_metadata(dois, bibcodes, reset = False):
                 original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced)     
+                task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, associated=registered_record.get('associated_works', {"":""}))     
 
 @app.task(queue='maintenance_metadata')
-def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
+def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
     """
     Maintenance operation:
     - Get all the registered citation targets for the entries specified in curated_entries
@@ -544,7 +617,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
         else:
             logger.error('Unable to retrieve entry for {} from database. Please check input file.'.format(curated_entry))
         
-        metadata = db.get_citation_target_metadata(app, registered_record.get('content', ''), curate = False)
+        metadata = db.get_citation_target_metadata(app, registered_record.get('content', ''), curate=False)
         raw_metadata = metadata.get('raw', '')
         parsed_metadata = metadata.get('parsed', '')
         #remove doi and bibcode from metadata to be stored in db.
@@ -556,6 +629,8 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                 continue
         try:
             if not reset:
+                if 'authors' in curated_entry.keys():
+                    curated_entry['normalized_authors'] = doi.renormalize_author_names(curated_entry.get('authors', None))
                 #only check old metadata if we are adding updates, otherwise ignore.
                 if curated_entry != registered_record.get('curated_metadata'):
                     for key in registered_record['curated_metadata'].keys():
@@ -649,7 +724,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                     logger.debug("Calling 'task_emit_event' for '%s' IsIdenticalTo '%s'", registered_record['bibcode'], modified_metadata['bibcode'])
                     task_emit_event.delay(event_data, dump_prefix)
                 
-            updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata = curated_entry, bibcode = modified_metadata.get('bibcode'))
+            updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata=curated_entry, bibcode=modified_metadata.get('bibcode'), associated=registered_record.get('associated_works', {"":""}))
             if updated:
                 citation_change = adsmsg.CitationChange(content=registered_record['content'],
                                                             content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
@@ -661,7 +736,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset = False):
                     original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
                     citations = api.get_canonical_bibcodes(app, original_citations)
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                    task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced)
+                    task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=registered_record.get('associated_works', {"":""}))
             else:
                 logger.warn("Curated metadata did not result in a change to recorded metadata for {}.".format(registered_record.get('content')))
         except Exception as e:
@@ -690,12 +765,12 @@ def maintenance_show_metadata(curated_entries):
             try:
                 parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
                 if parsed_metadata:
-                    print(parsed_metadata)
+                    print(json.dumps(parsed_metadata))
 
             except Exception as e:
                 msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
                 logger.error(msg)
-        
+            
         #If no doi, try and retrieve entry by bibcode.
         elif curated_entry.get('bibcode'):
             try:
@@ -714,7 +789,7 @@ def maintenance_show_metadata(curated_entries):
             try:
                 parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', None)
                 if parsed_metadata:
-                    print(parsed_metadata)
+                    print(json.dumps(parsed_metadata))
 
             except Exception as e:
                 msg = "Failed to load metadata for citation {}. Please confirm information is correct and citation target is in database.".format(curated_entry)
@@ -766,7 +841,7 @@ def task_maintenance_resend(dois, bibcodes, broker):
             if not broker:
                 # Only update master
                 logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                task_output_results.delay(custom_citation_change, parsed_metadata, citations)
+                task_output_results.delay(custom_citation_change, parsed_metadata, citations, db_versions = registered_record.get('associated_works',{"":""}))
             else:
                 # Only re-emit to the broker
                 # Signal that the target bibcode and the DOI are identical
@@ -918,11 +993,66 @@ def task_maintenance_reevaluate(dois, bibcodes):
                     original_citations = db.get_citations_by_bibcode(app, parsed_metadata['bibcode'])
                     citations = api.get_canonical_bibcodes(app, original_citations)
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                    #_emit_citation_change(citation_change, parsed_metadata)
-                    task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced)
+                    task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=previously_discarded_record.get('associated_works',{"":""}))
+
+@app.task(queue='maintenance_associated_works')
+def task_maintenance_reevaluate_associated_works(dois, bibcodes):
+    """
+    Maintenance operation:
+    - Get all the registered citation targets (or only a subset of them if DOIs and/or bibcodes are specified)
+    - For each, retreive metadata and:
+        - Get associated works from metadata.
+        - Determine which associated works are currently in the db.
+        - Send updates to master with the added associated works.
+    """
+    n_requested = len(dois) + len(bibcodes)
+    if n_requested == 0:
+        registered_records = db.get_citation_targets(app, only_status='REGISTERED')
+    else:
+        registered_records = db.get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED')
+        registered_records += db.get_citation_targets_by_doi(app, dois, only_status='REGISTERED')
+        registered_records = _remove_duplicated_dict_in_list(registered_records)
+
+    #convert record into citation_change message
+    for registered_record in registered_records:
+        citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
+        custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                       content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                       status=adsmsg.Status.updated,
+                                                       timestamp=datetime.now()
+                                                       )
+        metadata = db.get_citation_target_metadata(app, registered_record['content'])
+        raw_metadata = metadata.get('raw', {})
+
+        #confirm citation is registered software, then check for associated works.
+        if raw_metadata:
+            parsed_metadata = metadata.get('parsed', {})
+            is_software = parsed_metadata.get('doctype', '').lower() == "software"
+            if not is_software:
+                logger.error("Discarded '%s', it is not 'software'", registered_record['content'])
+            elif parsed_metadata.get('bibcode') in (None, ""):
+                logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", registered_record['content'])
+            else:
+                logger.debug("Checking associated records for '%s'", custom_citation_change)
+                #Check for additional versions
+                try:
+                    all_versions_doi = doi.fetch_all_versions_doi(app.conf['DOI_URL'], app.conf['DATACITE_URL'], parsed_metadata)
+                except:
+                    logger.error("Unable to recover related versions for {}", custom_citation_change)
+                    all_versions_doi = None
+                #fetch additional versions from db if they exist.
+                if all_versions_doi['versions'] not in (None,[]):
+                    logger.debug("Found {} versions for {}".format(len(all_versions_doi['versions']), custom_citation_change.content))
+                    versions_in_db = db.get_associated_works_by_doi(app, all_versions_doi)
+                    #Only add bibcodes if there are versions in db, otherwise leave as None.
+                    if versions_in_db not in (None, [None]) and registered_record.get('associated_works', None) != versions_in_db:
+                        logger.info("Found {} versions in database for {}".format(len(versions_in_db), custom_citation_change.content))
+                        logger.debug("{}: associated_versions_bibcodes".format(versions_in_db))
+                        task_process_updated_associated_works.delay(custom_citation_change, versions_in_db)
+                    
 
 @app.task(queue='output-results')
-def task_output_results(citation_change, parsed_metadata, citations, bibcode_replaced={}):
+def task_output_results(citation_change, parsed_metadata, citations, db_versions={"":""}, bibcode_replaced={}):
     """
     This worker will forward results to the outside
     exchange (typically an ADSMasterPipeline) to be
@@ -931,7 +1061,14 @@ def task_output_results(citation_change, parsed_metadata, citations, bibcode_rep
     :param citation_change: contains citation changes
     :return: no return
     """
-    entry_date = db.get_citation_target_entry_date(app, citation_change.content)
+    try:
+        entry_date = db.get_citation_target_entry_date(app, citation_change.content)
+    except:
+        try:
+            entry_date = db.get_citation_target_entry_date(app, citation_change['content'])
+        except Exception as e:
+            logger.error("Failed to retrieve entry date for {}".format(citation_change))
+
     messages = []
     if bibcode_replaced:
         # Bibcode was replaced, this is not a simple update
@@ -945,10 +1082,10 @@ def task_output_results(citation_change, parsed_metadata, citations, bibcode_rep
         delete_parsed_metadata = parsed_metadata.copy()
         delete_parsed_metadata['bibcode'] = bibcode_replaced['previous']
         delete_parsed_metadata['alternate_bibcode'] = [x for x in delete_parsed_metadata.get('alternate_bibcode', []) if x not in (bibcode_replaced['previous'], bibcode_replaced['new'])]
-        delete_record, delete_nonbib_record = forward.build_record(app, custom_citation_change, delete_parsed_metadata, citations, entry_date=entry_date)
+        delete_record, delete_nonbib_record = forward.build_record(app, custom_citation_change, delete_parsed_metadata, citations, db_versions=parsed_metadata.get('associated',{"":""}),entry_date=entry_date)
         messages.append((delete_record, delete_nonbib_record))
     # Main message:
-    record, nonbib_record = forward.build_record(app, citation_change, parsed_metadata, citations, entry_date=entry_date)
+    record, nonbib_record = forward.build_record(app, citation_change, parsed_metadata, citations, db_versions, entry_date=entry_date)
     messages.append((record, nonbib_record))
 
     for record, nonbib_record in messages:

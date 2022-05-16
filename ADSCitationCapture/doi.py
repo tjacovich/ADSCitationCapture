@@ -200,6 +200,17 @@ def _sanitize_zendo_doi(doi):
             logger.error("Attempt to parse content: {} failed with error: {}.".format(doi, e))
             return None
 
+def renormalize_author_names(authors):
+    """
+    A wrapper function dc.author_names._normalize that allows CitationCapture 
+    to renormalize author names from curated metadata.
+    """
+    normalized_author_names = []
+    for name in authors:
+        norm_author_name = dc.author_names._normalize(name, collaborations_params=dc.author_collaborations_params)
+        normalized_author_names.append(norm_author_name)
+    return normalized_author_names
+
 def _parse_metadata_zenodo_doi(raw_metadata):
     """
     It expects metadata in datacite format from a zenodo DOI [string] and returns
@@ -222,3 +233,46 @@ def _parse_metadata_zenodo_doi(raw_metadata):
             parsed_metadata['bibcode'] = bibcode
     return parsed_metadata
 
+def fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):  
+    """
+    Takes zenodo parsed metadata and fetches DOI for all versions of zenodo repository
+    """
+    return _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata)
+
+def _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):
+    """
+    Takes zenodo parsed metadata and fetches DOI for base repository as well as DOI for all versions.
+    """
+
+    if parsed_metadata.get('version_of', None) not in (None,"",[],''):
+    #check if target is a software version and not the base doi.
+        try:
+            logger.info("{} is version of: {}".format(parsed_metadata['bibcode'], parsed_metadata.get('version_of', None)))
+            #try to recover the base doi for the target
+            raw_metadata = fetch_metadata(base_doi_url, base_datacite_url, parsed_metadata.get('version_of')[0])
+            parsed_all_version = parse_metadata(raw_metadata)
+            if parsed_all_version is not None:
+                logger.debug("Found Associated Versions: {}".format(parsed_all_version.get('versions', None)))
+            #return dois for all versions of the target software and the base doi.
+            versions_json = {'concept_doi': parsed_metadata.get('version_of', None)[0], 'versions': parsed_all_version.get('versions', None)}
+            logger.debug("{} version dict is {}".format(parsed_metadata['bibcode'], parsed_all_version.get('versions', None)))
+            return versions_json
+        except Exception as e:
+            logger.exception("Failed to fetch metadata with Exception: {}".format(e))
+            return {'concept_doi': None, 'versions': None}
+        
+    elif parsed_metadata.get('versions',None) not in (None, [],""):
+        #If citation target is base doi for software.
+        logger.info("{} is the root version".format(parsed_metadata["properties"]['DOI']))
+
+        try:
+            #return all versions including the base doi.
+            logger.debug("Found Associated Versions: {}".format(parsed_metadata.get('versions',None)))
+            return {'concept_doi': parsed_metadata.get('properties')['DOI'], 'versions': parsed_metadata.get('versions',None)}
+        
+        except Exception as e:
+            logger.exception("Attempt to return versions failed with Exception: {}".format(e))
+            return {'concept_doi': None, 'versions': None}
+
+    else:
+        return {'concept_doi': None, 'versions': None}

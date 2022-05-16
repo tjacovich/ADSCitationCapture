@@ -94,7 +94,12 @@ class TestWorkers(TestBase):
         parsed_metadata['normalized_authors'][0] = "4" + parsed_metadata['normalized_authors'][0]
         bibcode = doi.build_bibcode(parsed_metadata, zenodo_doi_re, zenodo_bibstem)
         self.assertEqual(bibcode, expected_bibcode)
-
+    
+    def test_fetch_all_versions_doi(self):
+        expected_output = self.mock_data["10.5281/zenodo.4475376"]["versions"]
+        parsed_metadata = self.mock_data["10.5281/zenodo.4475376"]["parsed"]
+        output = doi.fetch_all_versions_doi(self.app.conf['DOI_URL'], self.app.conf['DATACITE_URL'], parsed_metadata)
+        self.assertEqual(expected_output,output)
 
 
 
