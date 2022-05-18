@@ -1113,7 +1113,7 @@ class TestWorkers(TestBase):
             'get_citation_target_count': patch.object(db, 'get_citation_target_count', return_value=0), \
             'get_citation_count': patch.object(db, 'get_citation_count', return_value=0), \
             'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=self.mock_data["2017zndo....248351D"]), \
-            'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[]), \
+            'get_citation_targets_by_doi': patch.object(db, 'get_citation_targets_by_doi', return_value=[{"bibcode":bibcode_id}]), \
             'get_citation_targets': patch.object(db, 'get_citation_targets', return_value=[]), \
             'get_canonical_bibcodes': patch.object(api, 'get_canonical_bibcodes', return_value=[]), \
             'request_existing_citations': patch.object(api, 'request_existing_citations', return_value=[]), \
@@ -1139,7 +1139,7 @@ class TestWorkers(TestBase):
         self.assertTrue(mocked['update_citation_target_metadata'].called)
         self.assertFalse(mocked['get_citation_target_count'].called)
         self.assertFalse(mocked['get_citation_count'].called)
-        self.assertFalse(mocked['get_citation_targets_by_doi'].called)
+        self.assertTrue(mocked['get_citation_targets_by_doi'].called)
         self.assertFalse(mocked['get_citation_targets'].called)
         self.assertFalse(mocked['request_existing_citations'].called)
         self.assertFalse(mocked['build_bibcode'].called)
