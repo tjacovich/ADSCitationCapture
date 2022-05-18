@@ -270,7 +270,6 @@ def task_process_updated_associated_works(citation_change, associated_versions, 
         parsed_metadata = metadata.get('parsed', {})
         citation_target_bibcode = parsed_metadata.get('bibcode', None)
         no_self_ref_versions = {key: val for key, val in associated_versions.items() if val != citation_target_bibcode}
-        logger.info("Updating associated works for %s", citation_change.content)
         status = metadata.get('status', 'DISCARDED')
         #Forward the update only if status is "REGISTERED" and associated works is not None.
         if status == 'REGISTERED' and updated:
@@ -280,6 +279,7 @@ def task_process_updated_associated_works(citation_change, associated_versions, 
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                 task_output_results.delay(citation_change, parsed_metadata, citations, db_versions=associated_versions)
+                logger.info("Updating associated works for %s", citation_change.content)
                 db.update_citation_target_metadata(app, citation_change.content, raw_metadata, parsed_metadata, associated=no_self_ref_versions)
         
 @app.task(queue='process-deleted-citation')

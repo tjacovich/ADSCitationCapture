@@ -75,14 +75,14 @@ def _update_citation_target_metadata_session(session, content, raw_metadata, par
             pass
     if citation_target.raw_cited_metadata != raw_metadata or citation_target.parsed_cited_metadata != parsed_metadata or \
             (status is not None and citation_target.status != status) or citation_target.curated_metadata != curated_metadata or \
-        citation_target.bibcode != bibcode:
+        citation_target.bibcode != bibcode or citation_target.associated_works != associated:
         citation_target.raw_cited_metadata = raw_metadata
         citation_target.parsed_cited_metadata = parsed_metadata
         citation_target.curated_metadata = curated_metadata
         citation_target.bibcode = bibcode
         if(citation_target.associated_works != associated):
-                logger.debug("associated works set for {} set from {} to {}".format(citation_target.content, citation_target.associated_works, associated))
-                citation_target.associated_works = associated
+            logger.debug("associated works set for {} set from {} to {}".format(citation_target.content, citation_target.associated_works, associated))
+            citation_target.associated_works = associated
         if status is not None:
             citation_target.status = status
         session.add(citation_target)
