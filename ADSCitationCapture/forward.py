@@ -99,7 +99,6 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         'keyword_facet': keywords,
         'keyword_norm': ["-"]*n_keywords,
         'keyword_schema': ["-"]*n_keywords,
-        'property': ["ESOURCE", "NONARTICLE", "NOT REFEREED", "PUB_OPENACCESS", "OPENACCESS"],
         'pub': source,
         'pub_raw': source,
         'pubdate': pubdate,
@@ -124,6 +123,12 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         record_dict['status'] = status
     else:
         status = 0 # active
+
+    if db_versions:
+        record_dict['property']=["ESOURCE", "NONARTICLE", "NOT REFEREED", "PUB_OPENACCESS", "OPENACCESS", "ASSOCIATED"]
+    else:
+        record_dict['property']=["ESOURCE", "NONARTICLE", "NOT REFEREED", "PUB_OPENACCESS", "OPENACCESS"]
+
     record = DenormalizedRecord(**record_dict)
     nonbib_record = _build_nonbib_record(app, citation_change, record, db_versions, status)
     return record, nonbib_record
