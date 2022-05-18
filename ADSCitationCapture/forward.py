@@ -124,6 +124,8 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         record_dict['status'] = status
     else:
         status = 0 # active
+    if db_versions not in [{"":""}, None]:
+        record_dict['property'].append('ASSOCIATED')
     record = DenormalizedRecord(**record_dict)
     nonbib_record = _build_nonbib_record(app, citation_change, record, db_versions, status)
     return record, nonbib_record
