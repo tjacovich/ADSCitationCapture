@@ -123,8 +123,7 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         record_dict['status'] = status
     else:
         status = 0 # active
-
-    if db_versions:
+    if db_versions not in [{"":""}, None]:
         record_dict['property']=["ESOURCE", "NONARTICLE", "NOT REFEREED", "PUB_OPENACCESS", "OPENACCESS", "ASSOCIATED"]
     else:
         record_dict['property']=["ESOURCE", "NONARTICLE", "NOT REFEREED", "PUB_OPENACCESS", "OPENACCESS"]
