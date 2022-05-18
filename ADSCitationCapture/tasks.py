@@ -263,12 +263,13 @@ def task_process_updated_associated_works(citation_change, associated_versions, 
     """
     #check if associated works is not empty
     updated = bool(associated_versions)
-    metadata = db.get_citation_target_metadata(app, citation_change.content)
+    metadata = db.get_citation_target_metadata(app, citation_change.content, curate=False)
     raw_metadata = metadata.get('raw', {})
     
     if raw_metadata:
+        citation_target_bibcode = db.get_citation_targets_by_doi(app,[citation_change.content])[0].get('bibcode', None)
         parsed_metadata = metadata.get('parsed', {})
-        citation_target_bibcode = parsed_metadata.get('bibcode', None)
+        curated_metadata = metadata.get('curated', {})
         no_self_ref_versions = {key: val for key, val in associated_versions.items() if val != citation_target_bibcode}
         status = metadata.get('status', 'DISCARDED')
         #Forward the update only if status is "REGISTERED" and associated works is not None.
@@ -280,7 +281,7 @@ def task_process_updated_associated_works(citation_change, associated_versions, 
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                 task_output_results.delay(citation_change, parsed_metadata, citations, db_versions=associated_versions)
                 logger.info("Updating associated works for %s", citation_change.content)
-                db.update_citation_target_metadata(app, citation_change.content, raw_metadata, parsed_metadata, associated=no_self_ref_versions)
+                db.update_citation_target_metadata(app, citation_change.content, raw_metadata, parsed_metadata, curated_metadata=curated_metadata, associated=no_self_ref_versions, bibcode=citation_target_bibcode)
         
 @app.task(queue='process-deleted-citation')
 def task_process_deleted_citation(citation_change, force=False):
