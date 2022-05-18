@@ -39,6 +39,19 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
     normalized_authors = parsed_metadata.get('normalized_authors', [])
     affiliations = parsed_metadata.get('affiliations', ['-']*len(authors))
     pubdate = parsed_metadata.get('pubdate', get_date().strftime("%Y-%m-%d"))
+    try:
+        solr_date=(datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    except:
+        try:
+            #In the event only a year is specified, the date is assumed to be January 1st of the given year.
+            logger.warn("Publication date does not conform to Y-m-d format. Assuming only year is specified.")
+            pubdate = pubdate+"-01"+"-01"
+            solr_date=(datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        except:
+            #If above fails, just set it to the current date. Running maintenance_metadata could fix the bad publication date in the future if it is updated upstream.
+            logger.warn("Cannot parse publication date. Setting to current datetime.")
+            solr_date=date2solrstamp(entry_date)
+
     source = parsed_metadata.get('source', "Unknown")
     version = parsed_metadata.get('version', "")
     doctype = parsed_metadata.get('doctype', "software")
@@ -79,7 +92,7 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         'database': ['general', 'astronomy'],
         'entry_date': date2solrstamp(entry_date), # date2solrstamp(get_date()),
         'year': year,
-        'date': (datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), # TODO: Why this date has to be 30 minutes in advance? This is based on ADSImportPipeline SolrAdapter
+        'date': solr_date, # TODO: Why this date has to be 30 minutes in advance? This is based on ADSImportPipeline SolrAdapter
         'doctype': doctype,
         'doctype_facet_hier': ["0/Non-Article", "1/Non-Article/Software"],
         'doi': [doi],
