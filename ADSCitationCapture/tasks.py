@@ -279,7 +279,7 @@ def task_process_updated_associated_works(citation_change, associated_versions, 
                 original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, parsed_metadata, citations, db_versions=associated_versions)
+                task_output_results.delay(citation_change, parsed_metadata, citations, db_versions=no_self_ref_versions)
                 logger.info("Updating associated works for %s", citation_change.content)
                 db.update_citation_target_metadata(app, citation_change.content, raw_metadata, parsed_metadata, curated_metadata=curated_metadata, associated=no_self_ref_versions, bibcode=citation_target_bibcode)
         

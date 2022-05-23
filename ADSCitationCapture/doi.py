@@ -237,7 +237,7 @@ def _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):
             logger.exception("Failed to fetch metadata with Exception: {}".format(e))
             return {'concept_doi': None, 'versions': None}
         
-    elif parsed_metadata.get('versions',None) not in (None, [],""):
+    elif parsed_metadata.get('versions', None) not in (None, [],""):
         #If citation target is base doi for software.
         logger.info("{} is the root version".format(parsed_metadata["properties"]['DOI']))
 

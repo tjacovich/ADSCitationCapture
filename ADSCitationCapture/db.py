@@ -257,6 +257,7 @@ def _get_citation_target_metadata_session(session, doi, citation_in_db, metadata
             if citation_target.bibcode: metadata['parsed'].update({'bibcode': citation_target.bibcode})
         else:
             metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
+        metadata['associated'] = citation_target.associated_works
     return metadata
 
 def get_citation_target_metadata(app, doi, curate=True):
