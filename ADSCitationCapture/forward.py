@@ -31,6 +31,11 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         raise Exception("Only records with a bibcode can be forwarded to master")
     if entry_date is None:
         entry_date = citation_change.timestamp.ToDatetime()
+    #Check if doi points to a concept record or to a specific version
+    if parsed_metadata.get('version_of', None) not in (None,"",[],''): 
+        is_release = True
+    else:
+        is_release = False
     alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])
     abstract = parsed_metadata.get('abstract', "")
     title = parsed_metadata.get('title', "")
@@ -126,6 +131,9 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         status = 0 # active
     if db_versions not in [{"":""}, None]:
         record_dict['property'].append('ASSOCIATED')
+    if is_release:
+        record_dict['property'].append('RELEASE')
+
     record = DenormalizedRecord(**record_dict)
     nonbib_record = _build_nonbib_record(app, citation_change, record, db_versions, status)
     return record, nonbib_record
