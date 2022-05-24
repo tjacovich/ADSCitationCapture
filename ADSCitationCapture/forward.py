@@ -142,7 +142,7 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         record_dict['status'] = status
     else:
         status = 0 # active
-    if db_versions not in [{"":""}, None]:
+    if db_versions not in [{"":""}, {}, None]:
         record_dict['property'].append('ASSOCIATED')
     if is_release:
         record_dict['property'].append('RELEASE')
@@ -173,7 +173,7 @@ def _build_nonbib_record(app, citation_change, record, db_versions, status):
         'simbad_objects': [],
         'total_link_counts': 0 # Only used for DATA and not for ESOURCES
     }
-    if db_versions not in [{"":""}, None]:
+    if db_versions not in [{"":""}, {}, None]:
         nonbib_record_dict['data_links_rows'].append({'link_type': 'ASSOCIATED', 'link_sub_type': '', 
                      'url': db_versions.values(), 'title': db_versions.keys(), 'item_count':0})
     nonbib_record = NonBibRecord(**nonbib_record_dict)
