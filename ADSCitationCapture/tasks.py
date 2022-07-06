@@ -363,6 +363,63 @@ def task_process_citation_changes(citation_changes, force=False):
                 logger.debug("Calling 'task_process_deleted_citation' with '%s'", citation_change)
                 task_process_deleted_citation.delay(citation_change)
 
+@app.task(queue='process-citation-changes')
+def task_process_reader_updates(reader_changes, **kwargs):
+    for changes in reader_changes:
+        registered_records = db.get_citation_targets_by_bibcode(app, [changes['bibcode']])
+        
+        if registered_records:
+            registered_record = registered_records[0]
+            logger.info("Updating reader data for {}.".format(changes['bibcode']))
+            
+            if changes['status'] == "NEW":
+                status = "REGISTERED"
+                logger.info("Adding new reader for bibcode: {} to database.".format(changes['bibcode']))
+                readers = db.get_citation_target_readers(app, changes['bibcode'])
+                logger.debug("Found {} Readers for bibcode: {}. {}".format(len(readers), changes['bibcode'], readers))
+                citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
+                
+                custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                       content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                       status=adsmsg.Status.updated,
+                                                       timestamp=datetime.now()
+                                                       )
+                
+                parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
+                if parsed_metadata:
+                    logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
+                    readers.append(changes['reader'])
+                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
+                else:
+                    logger.warn("No parsed metadata for citation_target: {}. Marking reader as discarded.".format(custom_citation_change.content))
+                    status = "DISCARDED"
+                db.store_reader_data(app, changes, status)
+
+            elif changes['status'] == "DELETED":
+                status = "DELETED"
+                logger.info("Deleting reader {} for bibcode: {} from db.".format(changes['reader'], changes['bibcode']))
+                readers = db.get_citation_target_readers(app, changes['bibcode'])
+                logger.debug("Found {} Readers for bibcode: {}. {}".format(len(readers), changes['bibcode'], readers))
+                citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
+                
+                custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                       content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                       status=adsmsg.Status.updated,
+                                                       timestamp=datetime.now()
+                                                       )
+                
+                parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
+                if parsed_metadata:
+                    logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
+                    readers=[rdr for rdr in readers if not changes['reader']]
+                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
+                db.mark_reader_as_deleted(app, changes)
+
+        else:
+            logger.info("{} is not a citation_target in the database. Discarding.".format(changes['bibcode']))
+            status = "DISCARDED"
+            db.store_reader_data(app, changes, status)
+
 @app.task(queue='process-citation_changes')
 def task_write_nonbib_files(results):
     logger.info("Writing nonbib files to disk")
@@ -953,64 +1010,7 @@ def task_maintenance_generate_nonbib_files():
     Write DataPipeline files based on the current state of the CC database.
     """
     logger.info("Rewriting nonbib files to disk")
-    db.write_citation_target_data(app, only_status='REGISTERED')
-
-@app.task(queue='process-citation-changes')
-def task_process_reader_updates(reader_changes, **kwargs):
-    for changes in reader_changes:
-        registered_records = db.get_citation_targets_by_bibcode(app, [changes['bibcode']])
-        
-        if registered_records:
-            registered_record = registered_records[0]
-            logger.info("Updating reader data for {}.".format(changes['bibcode']))
-            
-            if changes['status'] == "NEW":
-                status = "REGISTERED"
-                logger.info("Adding new reader for bibcode: {} to database.".format(changes['bibcode']))
-                readers = db.get_citation_target_readers(app, changes['bibcode'])
-                logger.debug("Found {} Readers for bibcode: {}. {}".format(len(readers), changes['bibcode'], readers))
-                citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
-                
-                custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
-                                                       content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
-                                                       status=adsmsg.Status.updated,
-                                                       timestamp=datetime.now()
-                                                       )
-                
-                parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
-                if parsed_metadata:
-                    logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                    readers.append(changes['reader'])
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
-                else:
-                    logger.warn("No parsed metadata for citation_target: {}. Marking reader as discarded.".format(custom_citation_change.content))
-                    status = "DISCARDED"
-                db.store_reader_data(app, changes, status)
-
-            elif changes['status'] == "DELETED":
-                status = "DELETED"
-                logger.info("Deleting reader {} for bibcode: {} from db.".format(changes['reader'], changes['bibcode']))
-                readers = db.get_citation_target_readers(app, changes['bibcode'])
-                logger.debug("Found {} Readers for bibcode: {}. {}".format(len(readers), changes['bibcode'], readers))
-                citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
-                
-                custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
-                                                       content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
-                                                       status=adsmsg.Status.updated,
-                                                       timestamp=datetime.now()
-                                                       )
-                
-                parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
-                if parsed_metadata:
-                    logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                    readers=[rdr for rdr in readers if not changes['reader']]
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
-                db.mark_reader_as_deleted(app, changes)
-
-        else:
-            logger.info("{} is not a citation_target in the database. Discarding.".format(changes['bibcode']))
-            status = "DISCARDED"
-            db.store_reader_data(app, changes, status)                                                     
+    db.write_citation_target_data(app, only_status='REGISTERED')                                                     
 
 @app.task(queue='maintenance_associated_works')
 def task_maintenance_reevaluate_associated_works(dois, bibcodes):
@@ -1098,7 +1098,7 @@ def task_output_results(citation_change, parsed_metadata, citations, db_versions
         delete_parsed_metadata = parsed_metadata.copy()
         delete_parsed_metadata['bibcode'] = bibcode_replaced['previous']
         delete_parsed_metadata['alternate_bibcode'] = [x for x in delete_parsed_metadata.get('alternate_bibcode', []) if x not in (bibcode_replaced['previous'], bibcode_replaced['new'])]
-        delete_record, delete_nonbib_record = forward.build_record(app, custom_citation_change, delete_parsed_metadata, citations, db_versions=parsed_metadata.get('associated',{"":""}),entry_date=entry_date)
+        delete_record, delete_nonbib_record = forward.build_record(app, custom_citation_change, delete_parsed_metadata, citations, db_versions=parsed_metadata.get('associated',{"":""}), entry_date=entry_date)
         messages.append((delete_record, delete_nonbib_record))
     # Main message:
     record, nonbib_record = forward.build_record(app, citation_change, parsed_metadata, citations, db_versions, readers=readers, entry_date=entry_date)
