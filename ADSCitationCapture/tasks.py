@@ -389,7 +389,8 @@ def task_process_reader_updates(reader_changes, **kwargs):
                 if parsed_metadata:
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
                     readers.append(changes['reader'])
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
+                    associated_works = db.get_citation_targets_by_doi(app, [custom_citation_change.content])[0].get('associated_works', {"":""})
+                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True, db_versions=associated_works)
                 else:
                     logger.warn("No parsed metadata for citation_target: {}. Marking reader as discarded.".format(custom_citation_change.content))
                     status = "DISCARDED"
@@ -412,7 +413,8 @@ def task_process_reader_updates(reader_changes, **kwargs):
                 if parsed_metadata:
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
                     readers=[rdr for rdr in readers if not changes['reader']]
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True)
+                    associated_works = db.get_citation_targets_by_doi(app, [custom_citation_change.content])[0].get('associated_works', {"":""})
+                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True, db_versions=associated_works)
                 db.mark_reader_as_deleted(app, changes)
 
         else:

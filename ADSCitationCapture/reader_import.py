@@ -117,7 +117,7 @@ class ReaderImport():
             for instance in self._citation_changes_query().offset(self.offset).limit(self.group_changes_in_chunks_of).yield_per(100):
                 # Use new_ or previous_ fields depending if status is NEW/UPDATED or DELETED
                 prefix = "previous_" if instance.status == "DELETED" else "new_"
-                reader_changes.append({'bibcode': getattr(instance,prefix+"bibcode"), 'reader': getattr(instance, prefix+"reader"), 'timestamp': self.last_modification_date, 'status': getattr(instance, "status")})
+                reader_changes.append({'bibcode': getattr(instance, prefix+"bibcode"), 'reader': getattr(instance, prefix+"reader"), 'timestamp': self.last_modification_date, 'status': getattr(instance, "status")})
             self.session.commit()
             self.offset += self.group_changes_in_chunks_of
             return reader_changes
