@@ -24,11 +24,11 @@ logger = setup_logging(__name__, proj_home=proj_home,
 # =============================== FUNCTIONS ======================================= #
 def build_record(app, citation_change, parsed_metadata, citations, db_versions, readers=[], entry_date=None):
     if citation_change.content_type != CitationChangeContentType.doi:
-        raise Exception("Only DOI records can be forwarded to master")
+        raise ValueError("Only DOI records can be forwarded to master")
     # Extract required values
     bibcode = parsed_metadata.get('bibcode')
     if bibcode is None:
-        raise Exception("Only records with a bibcode can be forwarded to master")
+        raise ValueError("Only records with a valid bibcode can be forwarded to master")
     if entry_date is None:
         entry_date = citation_change.timestamp.ToDatetime()
     #Check if doi points to a concept record or to a specific version

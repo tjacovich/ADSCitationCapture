@@ -372,55 +372,51 @@ def task_process_reader_updates(reader_changes, **kwargs):
             registered_record = registered_records[0]
             logger.info("Updating reader data for {}.".format(changes['bibcode']))
             
-            if changes['status'] == "NEW":
-                status = "REGISTERED"
-                logger.info("Adding new reader for bibcode: {} to database.".format(changes['bibcode']))
-                readers = db.get_citation_target_readers(app, changes['bibcode'])
-                logger.debug("Found {} Readers for bibcode: {}. {}".format(len(readers), changes['bibcode'], readers))
-                citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
-                
-                custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+            custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
                                                        content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
                                                        status=adsmsg.Status.updated,
                                                        timestamp=datetime.now()
                                                        )
+            parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
+            
+            if changes['status'] == "NEW":
+                status = "REGISTERED"
+                logger.info("Adding new reader for bibcode: {} to database.".format(changes['bibcode']))
                 
-                parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
                 if parsed_metadata:
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                    readers.append(changes['reader'])
-                    associated_works = db.get_citation_targets_by_doi(app, [custom_citation_change.content])[0].get('associated_works', {"":""})
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True, db_versions=associated_works)
                 else:
-                    logger.warn("No parsed metadata for citation_target: {}. Marking reader as discarded.".format(custom_citation_change.content))
+                    logger.warning("No parsed metadata for citation_target: {}. Marking reader as discarded.".format(custom_citation_change.content))
                     status = "DISCARDED"
                 db.store_reader_data(app, changes, status)
 
             elif changes['status'] == "DELETED":
                 status = "DELETED"
-                logger.info("Deleting reader {} for bibcode: {} from db.".format(changes['reader'], changes['bibcode']))
-                readers = db.get_citation_target_readers(app, changes['bibcode'])
-                logger.debug("Found {} Readers for bibcode: {}. {}".format(len(readers), changes['bibcode'], readers))
-                citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
-                
-                custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
-                                                       content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
-                                                       status=adsmsg.Status.updated,
-                                                       timestamp=datetime.now()
-                                                       )
-                
-                parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
-                if parsed_metadata:
-                    logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                    readers=[rdr for rdr in readers if not changes['reader']]
-                    associated_works = db.get_citation_targets_by_doi(app, [custom_citation_change.content])[0].get('associated_works', {"":""})
-                    task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True, db_versions=associated_works)
+                logger.info("Deleting reader {} for bibcode: {} from db.".format(changes['reader'], changes['bibcode']))                
                 db.mark_reader_as_deleted(app, changes)
 
         else:
             logger.info("{} is not a citation_target in the database. Discarding.".format(changes['bibcode']))
             status = "DISCARDED"
             db.store_reader_data(app, changes, status)
+
+    registered_records = db.get_citation_targets_by_bibcode(app, [reader_changes[0]['bibcode']])
+    if registered_records:
+        registered_record = registered_records[0]
+        #We take the custom citation change for the last change in reader_changes and then use that to output all the changes to readers at the same time.
+        custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
+                                                        content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
+                                                        status=adsmsg.Status.updated,
+                                                        timestamp=datetime.now()
+                                                        )
+
+        citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])   
+        readers = db.get_citation_target_readers(app, registered_record['bibcode'])
+        associated_works = registered_record.get('associated_works', {"":""})
+        logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)    
+        task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True, db_versions=associated_works)
+    else:
+        logger.warning("Bibcode: {reader_changes[0]['bibcode']} is not a target in the database. Cannot forward nonbib record to master.")
 
 @app.task(queue='process-citation_changes')
 def task_write_nonbib_files(results):
@@ -581,7 +577,7 @@ def task_maintenance_metadata(dois, bibcodes, reset=False):
                         task_emit_event.delay(event_data, dump_prefix)
                     # If there is no curated metadata modify record and note replaced bibcode
                     if not curated_metadata:
-                        logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'], parsed_metadata.get('bibcode', None))
+                        logger.warning("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'], parsed_metadata.get('bibcode', None))
                         alternate_bibcode = parsed_metadata.get('alternate_bibcode', [])
                         alternate_bibcode += registered_record.get('alternate_bibcode', [])
                         if registered_record['bibcode'] not in alternate_bibcode:
@@ -617,7 +613,7 @@ def task_maintenance_metadata(dois, bibcodes, reset=False):
                             alternate_bibcode.append(parsed_metadata.get('bibcode'))
                             #Add the CC generated bibcode to the parsed metadata
                             parsed_metadata['alternate_bibcode'].append(parsed_metadata.get('bibcode'))
-                            logger.warn("Parsing the curated metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", parsed_metadata['bibcode'], new_bibcode)
+                            logger.warning("Parsing the curated metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", parsed_metadata['bibcode'], new_bibcode)
                         #Remove duplicate bibcodes
                         parsed_metadata['alternate_bibcode'] = list(set(parsed_metadata.get('alternate_bibcode')))
                         #Sort bibcodes so CC doesn't think the data has changed and call for an unnecessary update.
@@ -689,7 +685,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
             try:
                 curated_entry.pop(key)
             except KeyError as e:
-                logger.warn("Failed to remove key: {} with error {}. Key likely not in curated_metadata.".format(key, e))
+                logger.warning("Failed to remove key: {} with error {}. Key likely not in curated_metadata.".format(key, e))
                 continue
         try:
             if not reset:
@@ -702,7 +698,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
                         if key not in curated_entry.keys():
                             curated_entry[key] = registered_record['curated_metadata'][key]
                 else:
-                    logger.warn("Supplied metadata is identical to previously added metadata. No updates will occur.")
+                    logger.warning("Supplied metadata is identical to previously added metadata. No updates will occur.")
                 logger.debug("Curated entry: {}".format(curated_entry))
                 modified_metadata = db.generate_modified_metadata(parsed_metadata, curated_entry)
                 logger.debug("Modified bibcode {}".format(modified_metadata.get('bibcode')))
@@ -726,7 +722,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
                     pass
                 #checks if bibcode has changed due to manual curation metadata
                 if new_bibcode != registered_record.get('bibcode'):
-                    logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
+                    logger.warning("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
                     if registered_record.get('bibcode') not in alternate_bibcode:
                         #generate complete alt bibcode list including any curated entries
                         alternate_bibcode.append(registered_record.get('bibcode'))
@@ -759,7 +755,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
                     parsed_metadata['alternate_bibcode'] = registered_record.get('alternate_bibcode', [])
                     #reset bibcode if changed
                     if new_bibcode != registered_record.get('bibcode'):
-                        logger.warn("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
+                        logger.warning("Parsing the new metadata for citation target '%s' produced a different bibcode: '%s'. The former will be moved to the 'alternate_bibcode' list, and the new one will be used as the main one.", registered_record['bibcode'],new_bibcode)
                         #Add old bibcode to alt bibcodes
                         if registered_record.get('bibcode') not in alternate_bibcode:
                             alternate_bibcode.append(registered_record.get('bibcode'))
@@ -777,7 +773,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
                     curated_entry = {}
                 else:
                     modified_metadata = parsed_metadata
-                    logger.warn("Cannot delete curated metadata for {}. No curated metadata exists.".format(registered_record.get('content', '')))
+                    logger.warning("Cannot delete curated metadata for {}. No curated metadata exists.".format(registered_record.get('content', '')))
             
             different_bibcodes = registered_record['bibcode'] != modified_metadata['bibcode']
             if different_bibcodes:
@@ -802,7 +798,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                     task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=registered_record.get('associated_works', {"":""}), readers=readers)
             else:
-                logger.warn("Curated metadata did not result in a change to recorded metadata for {}.".format(registered_record.get('content')))
+                logger.warning("Curated metadata did not result in a change to recorded metadata for {}.".format(registered_record.get('content')))
         
         except Exception as e:
             logger.error("task_maintenance_curation Failed to update metadata for {} with Exception: {}. Please check that the bibcode or doi matches a target record.".format(curated_entry, e))

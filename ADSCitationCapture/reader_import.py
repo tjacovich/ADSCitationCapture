@@ -52,6 +52,7 @@ class ReaderImport():
         self.input_reader_filename = None
         self.group_changes_in_chunks_of=group_changes_in_chunks_of
         self.offset = 0
+        self.ref_bibcode = ""
         self.n_changes = 0
         self.force = force
         self.last_modification_date = None
@@ -114,13 +115,25 @@ class ReaderImport():
         else:
             reader_changes = []
             # Get citation changes from DB
-            for instance in self._citation_changes_query().offset(self.offset).limit(self.group_changes_in_chunks_of).yield_per(100):
+            temp_offset = 0
+            #set the reference bibcode if it is not set already
+            if self.ref_bibcode == "": 
+                instance = self._citation_changes_query().offset(self.offset).yield_per(1)[0]
+                prefix = "previous_" if instance.status == "DELETED" else "new_"
+                self.ref_bibcode = getattr(instance, prefix+"bibcode")
+            
+            for instance in self._citation_changes_query().offset(self.offset).yield_per(100):
                 # Use new_ or previous_ fields depending if status is NEW/UPDATED or DELETED
                 prefix = "previous_" if instance.status == "DELETED" else "new_"
-                reader_changes.append({'bibcode': getattr(instance, prefix+"bibcode"), 'reader': getattr(instance, prefix+"reader"), 'timestamp': self.last_modification_date, 'status': getattr(instance, "status")})
-            self.session.commit()
-            self.offset += self.group_changes_in_chunks_of
-            return reader_changes
+                #Append reader change if is for the reference bibcode.
+                if self.ref_bibcode ==  getattr(instance, prefix+"bibcode"):
+                    reader_changes.append({'bibcode': getattr(instance, prefix+"bibcode"), 'reader': getattr(instance, prefix+"reader"), 'timestamp': self.last_modification_date, 'status': getattr(instance, "status")})
+                    temp_offset += 1
+                else:
+                    self.ref_bibcode = getattr(instance, prefix+"bibcode")
+                    self.offset += temp_offset
+                    self.session.commit()
+                    return reader_changes
 
     def _setup_schemas(self):
         """

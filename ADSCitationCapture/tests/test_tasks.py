@@ -1213,7 +1213,9 @@ class TestWorkers(TestBase):
                 'store_reader_data': patch.object(db, 'store_reader_data', return_value=True), \
                 'mark_reader_as_deleted': patch.object(db, 'mark_reader_as_deleted', return_value=True), \
                'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
-            tasks.task_process_reader_updates(reader_changes)
+            import pytest
+            with pytest.raises(ValueError):
+                tasks.task_process_reader_updates(reader_changes)
             self.assertTrue(mocked['get_citation_target_metadata'].called)
             self.assertTrue(mocked['get_citations_by_bibcode'].called)
             self.assertTrue(mocked['get_citation_target_readers'].called)
