@@ -43,13 +43,19 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
     authors = parsed_metadata.get('authors', [])
     normalized_authors = parsed_metadata.get('normalized_authors', [])
     affiliations = parsed_metadata.get('affiliations', ['-']*len(authors))
+    pubdate = parsed_metadata.get('pubdate', get_date().strftime("%Y-%m-%d"))
     try:
-        pubdate = parsed_metadata.get('pubdate', get_date().strftime("%Y-%m-%d"))
-        forward_time = (datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-    except Exception as e:
-        logger.error("Extracting publication date for {} failed with Exception {}. Setting to Current Time.".format(bibcode, e))
-        pubdate = get_date().strftime("%Y-%m-%d")
-        forward_time = (datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')        
+        solr_date=(datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    except ValueError:
+        try:
+            #In the event only a year is specified, the date is assumed to be January 1st of the given year.
+            logger.warn("Publication date does not conform to Y-m-d format. Assuming only year is specified.")
+            pubdate = pubdate+"-01"+"-01"
+            solr_date=(datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        except ValueError:
+            #If above fails, just set it to the current date. Running maintenance_metadata could fix the bad publication date in the future if it is updated upstream.
+            logger.warn("Cannot parse publication date. Setting to current datetime.")
+            solr_date=date2solrstamp(entry_date)
 
     source = parsed_metadata.get('source', "Unknown")
     version = parsed_metadata.get('version', "")
@@ -91,7 +97,7 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         'database': ['general', 'astronomy'],
         'entry_date': date2solrstamp(entry_date), # date2solrstamp(get_date()),
         'year': year,
-        'date': (datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), # TODO: Why this date has to be 30 minutes in advance? This is based on ADSImportPipeline SolrAdapter
+        'date': solr_date, # TODO: Why this date has to be 30 minutes in advance? This is based on ADSImportPipeline SolrAdapter
         'doctype': doctype,
         'doctype_facet_hier': ["0/Non-Article", "1/Non-Article/Software"],
         'doi': [doi],
@@ -136,7 +142,7 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         record_dict['status'] = status
     else:
         status = 0 # active
-    if db_versions not in [{"":""}, None]:
+    if db_versions not in [{"":""}, {}, None]:
         record_dict['property'].append('ASSOCIATED')
     if is_release:
         record_dict['property'].append('RELEASE')
@@ -167,7 +173,7 @@ def _build_nonbib_record(app, citation_change, record, db_versions, status, read
         'simbad_objects': [],
         'total_link_counts': 0 # Only used for DATA and not for ESOURCES
     }
-    if db_versions not in [{"":""}, None]:
+    if db_versions not in [{"":""}, {}, None]:
         nonbib_record_dict['data_links_rows'].append({'link_type': 'ASSOCIATED', 'link_sub_type': '', 
                      'url': db_versions.values(), 'title': db_versions.keys(), 'item_count':0})
     nonbib_record = NonBibRecord(**nonbib_record_dict)
