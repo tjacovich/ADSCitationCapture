@@ -131,9 +131,11 @@ class ReaderImport():
                     temp_offset += 1
                 else:
                     self.ref_bibcode = getattr(instance, prefix+"bibcode")
-                    self.offset += temp_offset
                     self.session.commit()
-                    return reader_changes
+                    break
+            
+            self.offset += temp_offset
+            return reader_changes
 
     def _setup_schemas(self):
         """

@@ -378,7 +378,7 @@ def task_process_reader_updates(reader_changes, **kwargs):
                                                        timestamp=datetime.now()
                                                        )
             parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
-            
+
             if changes['status'] == "NEW":
                 status = "REGISTERED"
                 logger.info("Adding new reader for bibcode: {} to database.".format(changes['bibcode']))
@@ -416,7 +416,7 @@ def task_process_reader_updates(reader_changes, **kwargs):
         logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)    
         task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True, db_versions=associated_works)
     else:
-        logger.warning("Bibcode: {reader_changes[0]['bibcode']} is not a target in the database. Cannot forward nonbib record to master.")
+        logger.warning("Bibcode: {} is not a target in the database. Cannot forward nonbib record to master.".format(reader_changes[0]['bibcode']))
 
 @app.task(queue='process-citation_changes')
 def task_write_nonbib_files(results):
