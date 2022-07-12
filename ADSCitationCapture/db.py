@@ -101,7 +101,6 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
         metadata_updated =  _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status=status, bibcode=bibcode, associated=associated)
     return metadata_updated
 
-
 def store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
     """
     Stores a new citation in the DB
@@ -319,7 +318,7 @@ def generate_modified_metadata(parsed_metadata, curated_entry):
     bad_keys=[]
     if not modified_metadata.get('alternate_bibcode', None): modified_metadata.update({'alternate_bibcode':[]})
     for key in curated_entry.keys():
-        if key not in ['bibcode', 'doi']:
+        if key not in ['bibcode', 'doi', 'error']:
             if key in modified_metadata.keys():
                 try:
                     modified_metadata[key] = curated_entry[key]
