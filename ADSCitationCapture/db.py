@@ -20,6 +20,7 @@ logger = setup_logging(__name__, proj_home=proj_home,
                         level=config.get('LOGGING_LEVEL', 'INFO'),
                         attach_stdout=config.get('LOG_STDOUT', False))
 
+#Dictionary that defines the output files for ADSDataPipeline
 file_names=OrderedDict()
 file_names['bibcode'] =proj_home+'/logs/output/bibcodes_CC.can.list'
 file_names['citations'] = proj_home+'/logs/output/citations_CC.list'
