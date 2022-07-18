@@ -101,6 +101,27 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
         metadata_updated =  _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status=status, bibcode=bibcode, associated=associated)
     return metadata_updated
 
+def _update_citation_target_curator_message_session(session, content, msg):
+    """
+    Actual calls to database session for update_citation_target_metadata
+    """
+    citation_target = session.query(CitationTarget).filter(CitationTarget.content == content).first()
+    if citation_target:
+        citation_target.curated_metadata = msg
+        session.add(citation_target)
+        session.commit()
+        msg_updated = True
+        return msg_updated
+
+def update_citation_target_curator_message(app, content, msg):
+    """
+    Update metadata for a citation target
+    """
+    msg_updated = False
+    with app.session_scope() as session:
+        msg_updated =  _update_citation_target_curator_message_session(session, content, msg)
+    return msg_updated
+
 def store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
     """
     Stores a new citation in the DB
