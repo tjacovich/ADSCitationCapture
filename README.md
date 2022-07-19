@@ -533,7 +533,7 @@ python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --show
 
 If the `"authors"` key is specified, CitationCapture will recalculate the `"normalized_authors"` field automatically.
 
-**NOTE: Any attribute that has a list specified as the value must be given the entire list including any unedited entries ie. If you edit a single author name, the entire author list must be included in the `curated_metadata`.**
+**NOTE: Any attribute that has a list specified as the value must be given the entire list including any unedited entries ie. If you edit a single author name, the entire author list must be included in the `curated_metadata`. The lone exception being `alternate_bibcode`**
 
 For clearing `curated_metadata` by input file, only the `doi` or `bibcode` needs to be specified in the file. Any other details entered into the entry will be ignored.
 
@@ -541,7 +541,9 @@ Alternate bibcodes are handled in a slightly different manner. Any bibcode that 
 
 **NOTE: the `json` keys must be contained in `" "` not `' '` or else the entire process will error out. `--show` now returns the proper format by default.** 
 
-By default. `--show` displays a the metadata as a single line. This is the required format for any metadata updates specified in `--input_filename` or `--json`. To make the text more readable you can pipe the output into `jq`
+If an error occurs during curation, the error will be saved into the `curated_metadata` field. Any previous curated metadata will be retained and `--show` will return the current metadata as well as the error message on a separate line.
+
+By default. `--show` displays the metadata as a single line. This is the required format for any metadata updates specified in `--input_filename` or `--json`. To make the text more readable you can pipe the output into `jq`
 
 ```
 python3 run.py MAINTENANCE --curation --doi 10.5281/zenodo.123567 --show | jq . 
