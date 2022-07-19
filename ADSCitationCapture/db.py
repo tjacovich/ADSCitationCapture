@@ -113,6 +113,10 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
 def write_citation_target_data(app, only_status=None):
     """
     Writes Canonical bibcodes to file for DataPipeline
+    returns: Reference Network File
+             Citation Network File
+             Canonical Bibcodes File
+             Facet Authors File
     """
     with app.session_scope() as session:
         if only_status:
@@ -127,24 +131,31 @@ def write_citation_target_data(app, only_status=None):
             f.write("\n".join(bibcodes))
         _write_key_citation_reference_data(app, bibcodes)
         logger.info("Writing author data for {} records".format(len(records)))
-        _write_key_citation_target_data(app, records, 'authors')
+        _write_key_citation_target_authors(app, records)
 
-def _write_key_citation_target_data(app, records, column_name):
+def _write_key_citation_target_authors(app, records):
     """
-    Writes any parsed_metadata to file.
+    Writes author data to file.
     """
     try:
-        with open(file_names[column_name], 'w') as f:
+        with open(file_names['authors'], 'w') as f:
             for rec in records:
                 parsed_metadata = get_citation_target_metadata(app, rec['content']).get('parsed', {})
                 if parsed_metadata:
-                    f.write(str(rec['bibcode'])+"\t"+"\t".join(parsed_metadata.get(column_name,''))+"\n")
+                    f.write(str(rec['bibcode'])+"\t"+"\t".join(parsed_metadata.get('authors',''))+"\n")
 
-        logger.info("Wrote file {} to disk.".format(column_name))
+        logger.info("Wrote file {} to disk.".format('authors'))
     except Exception as e:
-        logger.error("Failed to write file {} with exception: {}.".format(file_names[column_name],e))
+        logger.error("Failed to write file {} with exception: {}.".format(file_names['authors'], e))
 
 def _write_key_citation_reference_data(app, bibcodes):
+    """
+    Write the two network files:
+    Citation Network File: X cites software record
+    Reference Network File: software record is cited by X
+
+    Both are needed to integrate software records into classic record metrics.
+    """
     try:
         with open(file_names['citations'], 'w') as f, open(file_names['references'], 'w') as g:
             for bib in bibcodes:
