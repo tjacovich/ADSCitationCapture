@@ -365,12 +365,12 @@ def task_process_citation_changes(citation_changes, force=False):
 
 @app.task(queue='process-citation-changes')
 def task_process_reader_updates(reader_changes, **kwargs):
-    for changes in reader_changes:
-        registered_records = db.get_citation_targets_by_bibcode(app, [changes['bibcode']])
+    for change in reader_changes:
+        registered_records = db.get_citation_targets_by_bibcode(app, [change['bibcode']])
         
         if registered_records:
             registered_record = registered_records[0]
-            logger.info("Updating reader data for {}.".format(changes['bibcode']))
+            logger.info("Updating reader data for {}.".format(change['bibcode']))
             
             custom_citation_change = adsmsg.CitationChange(content=registered_record['content'],
                                                        content_type=getattr(adsmsg.CitationChangeContentType, registered_record['content_type'].lower()),
@@ -379,26 +379,26 @@ def task_process_reader_updates(reader_changes, **kwargs):
                                                        )
             parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
 
-            if changes['status'] == "NEW":
+            if change['status'] == "NEW":
                 status = "REGISTERED"
-                logger.info("Adding new reader for bibcode: {} to database.".format(changes['bibcode']))
+                logger.info("Adding new reader for bibcode: {} to database.".format(change['bibcode']))
                 
                 if parsed_metadata:
                     logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
                 else:
                     logger.warning("No parsed metadata for citation_target: {}. Marking reader as discarded.".format(custom_citation_change.content))
                     status = "DISCARDED"
-                db.store_reader_data(app, changes, status)
+                db.store_reader_data(app, change, status)
 
-            elif changes['status'] == "DELETED":
+            elif change['status'] == "DELETED":
                 status = "DELETED"
-                logger.info("Deleting reader {} for bibcode: {} from db.".format(changes['reader'], changes['bibcode']))                
-                db.mark_reader_as_deleted(app, changes)
+                logger.info("Deleting reader {} for bibcode: {} from db.".format(change['reader'], change['bibcode']))                
+                db.mark_reader_as_deleted(app, change)
 
         else:
-            logger.info("{} is not a citation_target in the database. Discarding.".format(changes['bibcode']))
+            logger.info("{} is not a citation_target in the database. Discarding.".format(change['bibcode']))
             status = "DISCARDED"
-            db.store_reader_data(app, changes, status)
+            db.store_reader_data(app, change, status)
 
     registered_records = db.get_citation_targets_by_bibcode(app, [reader_changes[0]['bibcode']])
     if registered_records:

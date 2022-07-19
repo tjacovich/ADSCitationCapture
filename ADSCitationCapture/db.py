@@ -127,18 +127,23 @@ def write_citation_target_data(app, only_status=None):
             disable_filter = True
         bibcodes = [r.bibcode for r in records_db]
         records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
-        with open(file_names['bibcode'], 'w') as f:
+        #writes canonical bibcodes to file.
+        with open(file_names['bibcode']+".tmp", 'w') as f:
             f.write("\n".join(bibcodes))
+        logger.info("Writing Citation/Reference Network Files.")
         _write_key_citation_reference_data(app, bibcodes)
         logger.info("Writing author data for {} records".format(len(records)))
         _write_key_citation_target_authors(app, records)
+        for file in file_names:
+            os.system('cp {} {}'.format(file+".tmp", file))
+            logger.debug("Copied {}.tmp to {}".format(file, file))
 
 def _write_key_citation_target_authors(app, records):
     """
-    Writes author data to file.
+    Writes facet author data to file.
     """
     try:
-        with open(file_names['authors'], 'w') as f:
+        with open(file_names['authors']+".tmp", 'w') as f:
             for rec in records:
                 parsed_metadata = get_citation_target_metadata(app, rec['content']).get('parsed', {})
                 if parsed_metadata:
@@ -146,7 +151,8 @@ def _write_key_citation_target_authors(app, records):
 
         logger.info("Wrote file {} to disk.".format('authors'))
     except Exception as e:
-        logger.error("Failed to write file {} with exception: {}.".format(file_names['authors'], e))
+        logger.exception("Failed to write file {}.".format(file_names['authors']+".tmp"))
+        raise Exception("Failed to write file {}.".format(file_names['authors']+".tmp"))
 
 def _write_key_citation_reference_data(app, bibcodes):
     """
@@ -157,15 +163,16 @@ def _write_key_citation_reference_data(app, bibcodes):
     Both are needed to integrate software records into classic record metrics.
     """
     try:
-        with open(file_names['citations'], 'w') as f, open(file_names['references'], 'w') as g:
+        with open(file_names['citations']+".tmp", 'w') as f, open(file_names['references']+".tmp", 'w') as g:
             for bib in bibcodes:
                 cites=get_citations_by_bibcode(app, bib)
                 for cite in cites:
                     g.write(str(cite)+"\t"+str(bib)+"\n")
                     f.write(str(bib)+"\t"+str(cite)+"\n")
-        logger.info("Wrote files {} and {} to disk.".format(file_names['citations'],file_names['references']))
+        logger.info("Wrote files {} and {} to disk.".format(file_names['citations'], file_names['references']))
     except Exception as e:
-        logger.error("Failed to write files {} and {} with exception: {}.".format(file_names['citations'],file_names['references'],e))
+        logger.exception("Failed to write files {} and {}.".format(file_names['citations']+".tmp", file_names['references']+".tmp"))
+        raise Exception("Failed to write files {} and {}.".format(file_names['citations']+".tmp", file_names['references']+".tmp"))
 
 def store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
     """
