@@ -404,6 +404,9 @@ def task_process_reader_updates(reader_changes, **kwargs):
             db.store_reader_data(app, change, status)
 
     registered_records = db.get_citation_targets_by_bibcode(app, [reader_changes[0]['bibcode']])
+    if not registered_records:
+        registered_records = db.get_citation_targets_by_alt_bibcode(app, [change['bibcode']])
+        
     if registered_records:
         registered_record = registered_records[0]
         #We take the custom citation change for the last change in reader_changes and then use that to output all the changes to readers at the same time.

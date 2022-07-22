@@ -1081,6 +1081,34 @@ class TestWorkers(TestBase):
             self.assertTrue(mocked['store_reader_data'].called)
             self.assertFalse(mocked['mark_reader_as_deleted'].called)
 
+    def test_process_reader_updates_new_alt_bibcode(self):
+        doi_id = "10.5281/zenodo.11021" # software
+        registered_record = {
+            'bibcode': self.mock_data[doi_id]['parsed'].get('bibcode',''),
+            'alternate_bibcode': self.mock_data[doi_id]['parsed'].get('alternate_bibcode', []),
+            'content': doi_id,
+            'content_type': 'DOI',
+            'curated_metadata': {},
+        }
+        reader_changes = [{'bibcode':self.mock_data[doi_id]['parsed']['alternate_bibcode'][0], 'reader':'XYZ1243BAY', 'status': "NEW"}]
+        with TestBase.mock_multiple_targets({
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_bibcode', return_value=[]), \
+                'get_citation_targets_by_bibcode': patch.object(db, 'get_citation_targets_by_alt_bibcode', return_value=[registered_record]), \
+                'get_citation_target_readers': patch.object(db, 'get_citation_target_readers', return_value=[]), \
+                'get_citations_by_bibcode': patch.object(db, 'get_citations_by_bibcode', return_value=[]), \
+                'get_citation_target_metadata': patch.object(db, 'get_citation_target_metadata', return_value=self.mock_data[doi_id]), \
+                'store_reader_data': patch.object(db, 'store_reader_data', return_value=True), \
+                'mark_reader_as_deleted': patch.object(db, 'mark_reader_as_deleted', return_value=True), \
+               'forward_message': patch.object(app.ADSCitationCaptureCelery, 'forward_message', return_value=True)}) as mocked:
+            tasks.task_process_reader_updates(reader_changes)
+            self.assertTrue(mocked['get_citation_target_metadata'].called)
+            self.assertTrue(mocked['get_citations_by_bibcode'].called)
+            self.assertTrue(mocked['get_citation_target_readers'].called)
+            self.assertTrue(mocked['forward_message'].called)
+            self.assertTrue(mocked['get_citation_targets_by_bibcode'].called)
+            self.assertTrue(mocked['store_reader_data'].called)
+            self.assertFalse(mocked['mark_reader_as_deleted'].called)
+
     def test_process_reader_updates_deleted(self):
         doi_id = "10.5281/zenodo.11020" # software
         registered_record = {
