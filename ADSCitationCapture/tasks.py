@@ -137,7 +137,7 @@ def task_process_new_citation(citation_change, force=False):
                 original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 #Get readers from db if available.
-                readers = db.get_citation_target_readers(app, citation_target_bibcode)
+                readers = db.get_citation_target_readers(app, citation_target_bibcode, parsed_metadata.get('alternate_bibcode', []))
 
                 # Add canonical bibcode of current detected citation
                 if canonical_citing_bibcode and canonical_citing_bibcode not in citations:
@@ -205,7 +205,7 @@ def task_process_updated_citation(citation_change, force=False):
     parsed_metadata = metadata.get('parsed', {})
     citation_target_bibcode = parsed_metadata.get('bibcode', None)
     status = metadata.get('status', 'DISCARDED')
-    readers = db.get_citation_target_readers(app, citation_target_bibcode)
+    readers = db.get_citation_target_readers(app, citation_target_bibcode, parsed_metadata.get('alternate_bibcode', []))
     # Emit/forward the update only if status is "REGISTERED"
     if updated and status == 'REGISTERED':
         if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
@@ -301,7 +301,7 @@ def task_process_deleted_citation(citation_change, force=False):
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
-            readers = db.get_citation_target_readers(app, citation_target_bibcode)
+            readers = db.get_citation_target_readers(app, citation_target_bibcode, parsed_metadata.get('alternate_bibcode', []))
             associated_works = db.get_citation_targets_by_doi(app, [citation_change.content])[0].get('associated_works', {"":""})
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
             task_output_results.delay(citation_change, parsed_metadata, citations, db_versions=associated_works, readers=readers)
@@ -368,6 +368,9 @@ def task_process_reader_updates(reader_changes, **kwargs):
     for change in reader_changes:
         registered_records = db.get_citation_targets_by_bibcode(app, [change['bibcode']])
         
+        if not registered_records:
+            registered_records = db.get_citation_targets_by_alt_bibcode(app, [change['bibcode']])
+
         if registered_records:
             registered_record = registered_records[0]
             logger.info("Updating reader data for {}.".format(change['bibcode']))
@@ -409,9 +412,10 @@ def task_process_reader_updates(reader_changes, **kwargs):
                                                         status=adsmsg.Status.updated,
                                                         timestamp=datetime.now()
                                                         )
+        parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
 
         citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])   
-        readers = db.get_citation_target_readers(app, registered_record['bibcode'])
+        readers = db.get_citation_target_readers(app, registered_record['bibcode'], parsed_metadata.get('alternate_bibcode', []))
         associated_works = registered_record.get('associated_works', {"":""})
         logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)    
         task_output_results.delay(custom_citation_change, parsed_metadata, citations, readers=readers, only_nonbib=True, db_versions=associated_works)
@@ -497,7 +501,6 @@ def task_maintenance_canonical(dois, bibcodes):
             # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
             original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
             existing_citation_bibcodes = api.get_canonical_bibcodes(app, original_citations)
-            readers = db.get_citation_target_readers(app, registered_record['bibcode'])
 
         except:
             logger.exception("Failed API request to retreive existing citations for bibcode '{}'".format(registered_record['bibcode']))
@@ -508,6 +511,8 @@ def task_maintenance_canonical(dois, bibcodes):
                                                        timestamp=datetime.now()
                                                        )
         parsed_metadata = db.get_citation_target_metadata(app, custom_citation_change.content).get('parsed', {})
+        readers = db.get_citation_target_readers(app, registered_record['bibcode'], parsed_metadata.get('alternate_bibcode', []))
+
         if parsed_metadata:
             logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
             task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes, db_versions=registered_record.get('associated_works', {"":""}), readers=readers)
@@ -649,7 +654,7 @@ def task_maintenance_metadata(dois, bibcodes, reset=False):
                 # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                 original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
                 citations = api.get_canonical_bibcodes(app, original_citations)
-                readers = db.get_citation_target_readers(app, registered_record['bibcode'])
+                readers = db.get_citation_target_readers(app, registered_record['bibcode'], parsed_metadata.get('alternate_bibcode', []))
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                 task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, associated=registered_record.get('associated_works', {"":""}), readers=readers)     
 
@@ -811,7 +816,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
                         # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                         original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
                         citations = api.get_canonical_bibcodes(app, original_citations)
-                        readers = db.get_citation_target_readers(app, registered_record['bibcode'])
+                        readers = db.get_citation_target_readers(app, registered_record['bibcode'], parsed_metadata.get('alternate_bibcode', []))
                         logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                         task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, associated=registered_record.get('associated_works', {"":""}), readers=readers)    
                 else:
@@ -930,7 +935,7 @@ def task_maintenance_resend(dois, bibcodes, broker, only_nonbib=False):
         if parsed_metadata:
             if not broker:
                 # Only update master
-                readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode',''))
+                readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode',''), parsed_metadata.get('alternate_bibcode', []))
                 logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
                 task_output_results.delay(custom_citation_change, parsed_metadata, citations, db_versions = registered_record.get('associated_works',{"":""}), readers=readers, only_nonbib=only_nonbib)
 
@@ -1027,7 +1032,7 @@ def task_maintenance_reevaluate(dois, bibcodes):
                     # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
                     original_citations = db.get_citations_by_bibcode(app, parsed_metadata['bibcode'])
                     citations = api.get_canonical_bibcodes(app, original_citations)
-                    readers = db.get_citation_target_readers(app, parsed_metadata['bibcode'])
+                    readers = db.get_citation_target_readers(app, parsed_metadata['bibcode'], parsed_metadata.get('alternate_bibcode', []))
                     logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                     task_output_results.delay(citation_change, parsed_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=previously_discarded_record.get('associated_works',{"":""}), readers=readers)
 

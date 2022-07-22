@@ -298,6 +298,27 @@ def get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED'):
         records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
 
+def get_citation_targets_by_alt_bibcode(app, alt_bibcodes, only_status='REGISTERED'):
+    """
+    Return a list of dict with the requested citation targets based on their bibcode
+    """
+    with app.session_scope() as session:
+        records_db = []
+        for alt_bibcode in alt_bibcodes:
+            if only_status:
+                record_db = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata['alternate_bibcode'].contains([alt_bibcode])).filter_by(status=only_status).first()
+            else:
+                record_db = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata['alternate_bibcode'].contains([alt_bibcode])).first()
+            if record_db:
+                records_db.append(record_db)
+
+        if only_status:
+            disable_filter = only_status == 'DISCARDED'
+        else:
+            disable_filter = True
+        records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
+    return records
+
 def get_citation_targets_by_doi(app, dois, only_status='REGISTERED'):
     """
     Return a list of dict with the requested citation targets based on their DOI
@@ -424,13 +445,16 @@ def get_citations(app, citation_change):
         citation_bibcodes = [r.citing for r in session.query(Citation).filter_by(content=citation_change.content, status="REGISTERED").all()]
     return citation_bibcodes
 
-def get_citation_target_readers(app, bibcode):
+def get_citation_target_readers(app, bibcode, alt_bibcodes):
     """
     Return all the Reader hashes for a given content.
     It will ignore DELETED and DISCARDED hashes.
     """
     with app.session_scope() as session:
         reader_hashes = [r.reader for r in session.query(Reader).filter_by(bibcode=bibcode, status="REGISTERED").all()]
+        for alt_bibcode in alt_bibcodes:
+            reader_hashes = reader_hashes + [r.reader for r in session.query(Reader).filter_by(bibcode=alt_bibcode, status="REGISTERED").all()]
+
     return reader_hashes
 
 def generate_modified_metadata(parsed_metadata, curated_entry):
