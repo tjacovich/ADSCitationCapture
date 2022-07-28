@@ -740,7 +740,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
                                                                 )
                     if citation_change.content_type == adsmsg.CitationChangeContentType.doi:
                         # Get citations from the database and transform the stored bibcodes into their canonical ones as registered in Solr.
-                        original_citations = db.get_citations_by_bibcode(app, registered_record['bibcode'])
+                        original_citations = db.get_citations(app, citation_change)
                         citations = api.get_canonical_bibcodes(app, original_citations)
                         logger.debug("Calling 'task_output_results' with '%s'", citation_change)
                         task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=registered_record.get('associated_works', {"":""}))
