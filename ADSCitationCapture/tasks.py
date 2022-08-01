@@ -743,6 +743,8 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
                         original_citations = db.get_citations(app, citation_change)
                         citations = api.get_canonical_bibcodes(app, original_citations)
                         logger.debug("Calling 'task_output_results' with '%s'", citation_change)
+                        if registered_record.get('associated_works') and different_bibcodes:
+                             _update_associated_citation_targets(citation_change, parsed_metadata, registered_record.get('associated_works'))
                         task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=registered_record.get('associated_works', {"":""}))
                 else:
                     logger.warn("Curated metadata did not result in a change to recorded metadata for {}.".format(registered_record.get('content')))
