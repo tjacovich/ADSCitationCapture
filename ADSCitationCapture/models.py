@@ -53,6 +53,7 @@ class Citation(Base):
     )
     __versioned__ = {}  # Must be added to all models that are to be versioned
     id = Column(Integer, primary_key=True)
+    raw_content = Column(Text())
     content = Column(Text(), ForeignKey('public.citation_target.content'))
     citing = Column(Text())                         # Bibcode of the article that is citing a target
     cited = Column(Text())                          # Probably not necessary to keep

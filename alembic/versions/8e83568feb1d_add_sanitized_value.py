@@ -30,7 +30,8 @@ def upgrade():
     
     op.execute("ALTER TYPE target_status_type ADD VALUE 'SANITIZED'")
     op.execute("ALTER TYPE citation_status_type ADD VALUE 'SANITIZED'")
-
+    op.add_column('citation', sa.Column('raw_content', sa.Text(), nullable=True))
+    op.add_column('citation_version', sa.Column('raw_content', sa.Text(), nullable=True))
 
 def downgrade():
 #Move expanded status types to old
@@ -57,6 +58,8 @@ def downgrade():
     op.execute(pgsql_change_type('citation_target_version', 'status', 'target_status_type'))
     op.execute(pgsql_change_type('citation', 'status', 'citation_status_type'))
     op.execute(pgsql_change_type('citation_version', 'status', 'citation_status_type'))
+    op.drop_column('citation', sa.Column('raw_content', sa.Text(), nullable=True))
+    op.drop_column('citation_version', sa.Column('raw_content', sa.Text(), nullable=True))
 
 
     #DROP old (SANITIZED) ENUM types

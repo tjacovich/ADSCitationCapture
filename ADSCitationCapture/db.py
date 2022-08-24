@@ -125,7 +125,7 @@ def update_citation_target_curator_message(app, content, msg):
         msg_updated =  _update_citation_target_curator_message_session(session, content, msg)
     return msg_updated
 
-def store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status):
+def store_citation(app, citation_change, raw_content, content_type, raw_metadata, parsed_metadata, status):
     """
     Stores a new citation in the DB
     """
@@ -135,6 +135,7 @@ def store_citation(app, citation_change, content_type, raw_metadata, parsed_meta
         citation.citing = citation_change.citing
         citation.cited = citation_change.cited
         citation.content = citation_change.content
+        citation.raw_content = raw_content
         citation.resolved = citation_change.resolved
         citation.timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc())
         citation.status = status

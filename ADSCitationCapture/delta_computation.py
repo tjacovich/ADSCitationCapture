@@ -191,8 +191,10 @@ class DeltaComputation():
         # Reconstruct expanded raw table from the official citation table
         drop_reconstructed_previous_expanded_table = "DROP TABLE IF EXISTS {0}.{1};"
         self._execute_sql(drop_reconstructed_previous_expanded_table, self.previous_schema_name, self.recreated_previous_expanded_table_name)
-        reconstruct_previous_expanded_table = "CREATE TABLE {0}.{1} AS SELECT id, citing, cited, CASE WHEN citation_target.content_type = 'DOI' THEN true ELSE false END AS doi, CASE WHEN citation_target.content_type = 'PID' THEN true ELSE false END AS pid, CASE WHEN citation_target.content_type = 'URL' THEN true ELSE false END AS url, citation.content, citation.resolved, citation.timestamp FROM citation INNER JOIN citation_target ON citation.content = citation_target.content WHERE citation.status != 'DELETED';"
+        reconstruct_previous_expanded_table = "CREATE TABLE {0}.{1} AS SELECT id, citing, cited, CASE WHEN citation_target.content_type = 'DOI' THEN true ELSE false END AS doi, CASE WHEN citation_target.content_type = 'PID' THEN true ELSE false END AS pid, CASE WHEN citation_target.content_type = 'URL' THEN true ELSE false END AS url, citation.raw_content, citation.resolved, citation.timestamp FROM citation INNER JOIN citation_target ON citation.content = citation_target.content WHERE citation.status != 'DELETED';"
         self._execute_sql(reconstruct_previous_expanded_table, self.previous_schema_name, self.recreated_previous_expanded_table_name)
+        rename_raw_content_column_previous_expanded_table = "ALTER TABLE {0}.{1} RENAME COLUMN raw_content TO content"
+        self._execute_sql(rename_raw_content_column_previous_expanded_table, self.previous_schema_name, self.recreated_previous_expanded_table_name)
 
     def _find_not_processed_records_from_previous_run(self):
         """

@@ -54,11 +54,13 @@ def task_process_new_citation(citation_change, force=False):
         and citation_change.content not in ["", None]:
         #attempts to sanitize the DOI to make it more likely to be valid
         clean_doi = doi.sanitize_zenodo_doi(citation_change.content)
-        if clean_doi and clean_doi != citation_change.content:
+        if clean_doi:
             logger.info("Replacing citation_change.content: {} with sanitized version: {}".format(citation_change.content, clean_doi))
+            raw_content = citation_change.content
             citation_change.content = clean_doi
         elif not clean_doi:
             logger.warn("Failed to sanitize DOI for {}".format(citation_change.content))
+            raw_content = citation_change.content
 
     # Check if we already have the citation target in the DB
     metadata = db.get_citation_target_metadata(app, citation_change.content)
@@ -157,7 +159,7 @@ def task_process_new_citation(citation_change, force=False):
             _emit_citation_change(citation_change, parsed_metadata)
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
-        stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
+        stored = db.store_citation(app, citation_change, raw_content, content_type, raw_metadata, parsed_metadata, status)
     
 @app.task(queue='process-github-urls', rate_limit=github_api_limit)
 def task_process_github_urls(citation_change, metadata):
@@ -199,7 +201,7 @@ def task_process_github_urls(citation_change, metadata):
             _emit_citation_change(citation_change, parsed_metadata)
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
-        stored = db.store_citation(app, citation_change, content_type, raw_metadata, parsed_metadata, status)
+        stored = db.store_citation(app, citation_change, citation_change.content, content_type, raw_metadata, parsed_metadata, status)
 
 @app.task(queue='process-updated-citation')
 def task_process_updated_citation(citation_change, force=False):
@@ -946,11 +948,13 @@ def task_maintenance_reevaluate(dois, bibcodes):
             clean_doi = doi.sanitize_zenodo_doi(previously_discarded_record.get('content'))
             if clean_doi: 
                 if clean_doi != previously_discarded_record.get('content'):
+                    raw_content = previously_discarded_record.get('content')
                     logger.info("Replacing citation_change.content: {} with sanitized version: {}".format(previously_discarded_record.get('content'), clean_doi))
             else:
                 logger.warn("Failed to sanitize DOI for {}".format(previously_discarded_record.get('content')))
                 clean_doi = previously_discarded_record.get('content')
-            
+                raw_content = previously_discarded_record.get('content')
+
             #Fetch metadata and process
             raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], clean_doi)
             if raw_metadata:
@@ -999,7 +1003,7 @@ def task_maintenance_reevaluate(dois, bibcodes):
                                 #store new citation
                                 new_citation_change = db.citation_data_to_citation_change(citation_data, previously_discarded_record)
                                 try:
-                                    db.store_citation(app, new_citation_change, new_citation_change.content_type, raw_metadata, parsed_metadata, status = 'REGISTERED')
+                                    db.store_citation(app, new_citation_change, raw_content, new_citation_change.content_type, raw_metadata, parsed_metadata, status = 'REGISTERED')
                                     #mark old citation as SANITIZED
                                     db.mark_citation_as_sanitized(app, cite, previously_discarded_record['content'])
                                 except Exception as e:
