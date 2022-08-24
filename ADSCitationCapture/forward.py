@@ -46,13 +46,13 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
     pubdate = parsed_metadata.get('pubdate', get_date().strftime("%Y-%m-%d"))
     try:
         solr_date=(datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-    except:
+    except ValueError:
         try:
             #In the event only a year is specified, the date is assumed to be January 1st of the given year.
             logger.warn("Publication date does not conform to Y-m-d format. Assuming only year is specified.")
             pubdate = pubdate+"-01"+"-01"
             solr_date=(datetime.datetime.strptime(pubdate, "%Y-%m-%d")+datetime.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-        except:
+        except ValueError:
             #If above fails, just set it to the current date. Running maintenance_metadata could fix the bad publication date in the future if it is updated upstream.
             logger.warn("Cannot parse publication date. Setting to current datetime.")
             solr_date=date2solrstamp(entry_date)
