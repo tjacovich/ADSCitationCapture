@@ -73,16 +73,18 @@ def task_process_new_citation(citation_change, force=False):
     parsed_metadata = metadata.get('parsed', {})
     associated_version_bibcodes = metadata.get('associated', None)
 
-    #Do the same for the raw change if different
-    if raw_content != citation_change.content:
-        raw_status = 'SANITIZED'
-        orig_metadata = db.get_citation_target_metadata(app, raw_content)
-        raw_citation_target_in_db = bool(orig_metadata) # False if dict is empty
-        orig_raw_metadata = orig_metadata.get('raw', None)
-        raw_parsed_metadata = orig_metadata.get('parsed', {})
-        raw_associated_version_bibcodes = orig_metadata.get('associated', None)
-        if raw_citation_target_in_db:
-            raw_status = orig_metadata.get('status', 'SANITIZED') # "REGISTERED" if it is a software record
+    if citation_change.content_type == adsmsg.CitationChangeContentType.doi \
+        and citation_change.content not in ["", None]:
+        #Do the same for the raw change if different
+        if raw_content != citation_change.content:
+            raw_status = 'SANITIZED'
+            orig_metadata = db.get_citation_target_metadata(app, raw_content)
+            raw_citation_target_in_db = bool(orig_metadata) # False if dict is empty
+            orig_raw_metadata = orig_metadata.get('raw', None)
+            raw_parsed_metadata = orig_metadata.get('parsed', {})
+            raw_associated_version_bibcodes = orig_metadata.get('associated', None)
+            if raw_citation_target_in_db:
+                raw_status = orig_metadata.get('status', 'SANITIZED') # "REGISTERED" if it is a software record
 
     if citation_target_in_db:
         status = metadata.get('status', 'DISCARDED') # "REGISTERED" if it is a software record
