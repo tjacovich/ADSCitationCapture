@@ -11,6 +11,7 @@ import ADSCitationCapture.forward as forward
 import ADSCitationCapture.api as api
 import adsmsg
 import json
+import copy
 
 # ============================= INITIALIZATION ==================================== #
 
@@ -50,6 +51,8 @@ def task_process_new_citation(citation_change, force=False):
     content_type = None
     is_link_alive = False
     status = "DISCARDED"
+    raw_status = "DISCARDED"
+    raw_citation_change = copy.deepcopy(citation_change)
     if citation_change.content_type == adsmsg.CitationChangeContentType.doi \
         and citation_change.content not in ["", None]:
         #attempts to sanitize the DOI to make it more likely to be valid
@@ -58,6 +61,7 @@ def task_process_new_citation(citation_change, force=False):
             logger.info("Replacing citation_change.content: {} with sanitized version: {}".format(citation_change.content, clean_doi))
             raw_content = citation_change.content
             citation_change.content = clean_doi
+            
         elif not clean_doi:
             logger.warn("Failed to sanitize DOI for {}".format(citation_change.content))
             raw_content = citation_change.content
@@ -68,6 +72,17 @@ def task_process_new_citation(citation_change, force=False):
     raw_metadata = metadata.get('raw', None)
     parsed_metadata = metadata.get('parsed', {})
     associated_version_bibcodes = metadata.get('associated', None)
+
+    #Do the same for the raw change if different
+    if raw_content != citation_change.content:
+        raw_status = 'SANITIZED'
+        orig_metadata = db.get_citation_target_metadata(app, raw_content)
+        raw_citation_target_in_db = bool(orig_metadata) # False if dict is empty
+        orig_raw_metadata = orig_metadata.get('raw', None)
+        raw_parsed_metadata = orig_metadata.get('parsed', {})
+        raw_associated_version_bibcodes = orig_metadata.get('associated', None)
+        if raw_citation_target_in_db:
+            raw_status = orig_metadata.get('status', 'SANITIZED') # "REGISTERED" if it is a software record
 
     if citation_target_in_db:
         status = metadata.get('status', 'DISCARDED') # "REGISTERED" if it is a software record
@@ -87,7 +102,17 @@ def task_process_new_citation(citation_change, force=False):
                 if parsed_metadata.get('bibcode') not in (None, "") and is_software:
                     status = "REGISTERED"
                     associated_version_bibcodes = _collect_associated_works(citation_change, parsed_metadata)
-
+        if raw_content != citation_change.content:
+            if not raw_citation_target_in_db:
+                # Fetch DOI metadata (if HTTP request fails, an exception is raised
+                # and the task will be re-queued (see app.py and adsputils))
+                orig_raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], raw_citation_change.content)
+                if orig_raw_metadata:
+                    raw_parsed_metadata = doi.parse_metadata(orig_raw_metadata)
+                    raw_is_software = raw_parsed_metadata.get('doctype', '').lower() == "software"
+                    if raw_parsed_metadata.get('bibcode') not in (None, "") and raw_is_software:
+                        raw_status = "REGISTERED"
+                        raw_associated_version_bibcodes = _collect_associated_works(raw_citation_change, raw_parsed_metadata)
     #PID
     elif citation_change.content_type == adsmsg.CitationChangeContentType.pid \
         and citation_change.content not in ["", None]:
@@ -117,11 +142,15 @@ def task_process_new_citation(citation_change, force=False):
     #Generates entry for Zenodo citations and notifies web broker
     if status not in [None, "EMITTABLE"]:
         if not citation_target_in_db:
-            # Create citation target in the DB
+            #Create citation target in the DB
             target_stored = db.store_citation_target(app, citation_change, content_type, raw_metadata, parsed_metadata, status, associated_version_bibcodes)
             #If citation target successfully created, update associated records.
             if target_stored:
                 _update_associated_citation_targets(citation_change, parsed_metadata, associated_version_bibcodes)
+
+        if raw_content != citation_change.content and not raw_citation_target_in_db:
+            #Create raw citation_target (Needed mainly for downgrades to function properly.)
+            raw_target_stored = db.store_citation_target(app, raw_citation_change, content_type, orig_raw_metadata, raw_parsed_metadata, raw_status, raw_associated_version_bibcodes)
 
         if status == "REGISTERED":
             #Connects new bibcode to canonical bibcode and DOI
@@ -159,6 +188,7 @@ def task_process_new_citation(citation_change, force=False):
             _emit_citation_change(citation_change, parsed_metadata)
         # Store the citation at the very end, so that if an exception is raised before
         # this task can be re-run in the future without key collisions in the database
+        if citation_change.content != raw_content and status == 'REGISTERED': status = 'SANITIZED'
         stored = db.store_citation(app, citation_change, raw_content, content_type, raw_metadata, parsed_metadata, status)
     
 @app.task(queue='process-github-urls', rate_limit=github_api_limit)
@@ -962,6 +992,28 @@ def task_maintenance_reevaluate(dois, bibcodes):
                 is_software = parsed_metadata.get('doctype', '').lower() == "software"
                 if not is_software:
                     logger.error("Discarded '%s', it is not 'software'", clean_doi)
+                    if clean_doi != raw_content:
+                        citation_change = adsmsg.CitationChange(content=raw_content,
+                                                                content_type=getattr(adsmsg.CitationChangeContentType, previously_discarded_record['content_type'].lower()),
+                                                                status=adsmsg.Status.new,
+                                                                timestamp=datetime.now()
+                                                                )
+                        original_citations = db.get_citations(app, citation_change, status = 'DISCARDED')
+                        logger.debug("Original citations: {}".format(original_citations))
+                        for cite in original_citations:
+                            logger.debug("Updating content to {} for citing bibcode: {}".format(clean_doi, cite))
+                            #Fetch full citation object for each citation
+                            citation_data = db.get_citation_data(app, cite, citation_change.content)
+                            citation_data.timestamp = datetime.now()
+                            #replace content
+                            citation_data.content = clean_doi
+                            #store new citation
+                            new_citation_change = db.citation_data_to_citation_change(citation_data, previously_discarded_record)
+                            try:
+                                #mark old citation as SANITIZED
+                                db.mark_sanitized_citation(app, cite, clean_doi, previously_discarded_record['content'], status='DISCARDED')
+                            except Exception as e:
+                                logger.error("Failed to update citation from {} to {} with error {}. Skipping.".format(cite, clean_doi, e))
                 elif parsed_metadata.get('bibcode') in (None, ""):
                     logger.error("The metadata for '%s' could not be parsed correctly and it did not correctly compute a bibcode", clean_doi)
                 else:
@@ -980,12 +1032,12 @@ def task_maintenance_reevaluate(dois, bibcodes):
                         if citation_target_in_db:
                             logger.warn("Sanitized doi: {} already exists in db. Pointing citations to new target.".format(clean_doi))
                             stored = True
-                            updated = db.update_citation_target_metadata(app, previously_discarded_record['content'], raw_metadata, parsed_metadata, status='SANITIZED')
+                            updated = db.update_citation_target_metadata(app, raw_content, parsed_metadata={}, raw_metadata=None, status='SANITIZED')
                         
                         #Add citation target to database. Update old citation to SANITIZED
                         else:
-                            stored = db.store_citation_target(app, citation_change, previously_discarded_record['content_type'], raw_metadata, parsed_metadata, status='REGISTERED')
-                            updated = db.update_citation_target_metadata(app, previously_discarded_record['content'], raw_metadata, parsed_metadata, status='SANITIZED')
+                            stored = db.store_citation_target(app, citation_change, clean_doi, raw_metadata, parsed_metadata, status='REGISTERED')
+                            updated = db.update_citation_target_metadata(app, previously_discarded_record['content'], parsed_metadata={}, raw_metadata=None, status='SANITIZED')
                             logger.debug("Stored is : {} for citation target {}".format(stored, previously_discarded_record['content']))
                         #If stored, go through and find all citations to the old doi and point them to the new record.
                         if stored:
@@ -1003,9 +1055,8 @@ def task_maintenance_reevaluate(dois, bibcodes):
                                 #store new citation
                                 new_citation_change = db.citation_data_to_citation_change(citation_data, previously_discarded_record)
                                 try:
-                                    db.store_citation(app, new_citation_change, raw_content, new_citation_change.content_type, raw_metadata, parsed_metadata, status = 'REGISTERED')
                                     #mark old citation as SANITIZED
-                                    db.mark_citation_as_sanitized(app, cite, previously_discarded_record['content'])
+                                    db.mark_sanitized_citation(app, cite, clean_doi, previously_discarded_record['content'])
                                 except Exception as e:
                                     logger.error("Failed to update citation from {} to {} with error {}. Skipping.".format(cite, clean_doi, e))
 

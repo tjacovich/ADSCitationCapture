@@ -419,21 +419,18 @@ def citation_data_to_citation_change(citation_data, previously_discarded_record)
 
     return citation_change
 
-def update_citation_content(app, citation_change, old_content):
+def update_citation_content(app, citation_change, raw_content):
     """
     Update citation record information
     """
     updated = False
     with app.session_scope() as session:
-        citation = session.query(Citation).with_for_update().filter_by(citing=citation_change.citing, content=old_content).first()
-        #change_timestamp = citation_change.timestamp.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
+        citation = session.query(Citation).with_for_update().filter_by(citing=citation_change.citing, content=raw_content).first()
         if citation:
             if citation.timestamp < citation_change.timestamp:
                 #citation.citing = citation_change.citing # This should not change
-                citation.content = citation_change.content # This should not change except in a very specific circumstance related to sanitizing dois
-                citation.cited = citation_change.cited
-                citation.resolved = citation_change.resolved
-                citation.timestamp = citation_change.timestamp
+                citation.raw_content = raw_content
+                citation.content = citation_change.content
                 session.add(citation)
                 session.commit()
                 updated = True
@@ -479,15 +476,17 @@ def mark_all_discarded_citations_as_registered(app, content):
             session.add(citation)
         session.commit()
 
-def mark_citation_as_sanitized(app, citing, content):
+def mark_sanitized_citation(app, citing, content, raw_content, status='SANITIZED'):
     """
     Update status to SANITIZED for a single discarded citation
     """
     marked_as_registered = False
     previous_status = None
     with app.session_scope() as session:
-        citation = session.query(Citation).with_for_update().filter_by(status='DISCARDED', citing=citing, content=content).first()
-        citation.status = 'SANITIZED'
+        citation = session.query(Citation).with_for_update().filter_by(status='DISCARDED', citing=citing, content=raw_content).first()
+        citation.status = status
+        citation.content = content
+        citation.raw_content = raw_content
         session.add(citation)
         session.commit()
 
