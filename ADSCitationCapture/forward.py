@@ -22,13 +22,13 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 
 # =============================== FUNCTIONS ======================================= #
-def build_record(app, citation_change, parsed_metadata, citations, db_versions, entry_date=None):
+def build_record(app, citation_change, parsed_metadata, citations, db_versions, readers=[], entry_date=None):
     if citation_change.content_type != CitationChangeContentType.doi:
-        raise Exception("Only DOI records can be forwarded to master")
+        raise ValueError("Only DOI records can be forwarded to master")
     # Extract required values
     bibcode = parsed_metadata.get('bibcode')
     if bibcode is None:
-        raise Exception("Only records with a bibcode can be forwarded to master")
+        raise ValueError("Only records with a valid bibcode can be forwarded to master")
     if entry_date is None:
         entry_date = citation_change.timestamp.ToDatetime()
     #Check if doi points to a concept record or to a specific version
@@ -122,7 +122,7 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         'pub_raw': source,
         'pubdate': pubdate,
         'pubnote': [],
-        'read_count': 0,
+        'read_count': len(readers),
         'title': [title],
         'publisher': source,
         'version': version
@@ -148,11 +148,11 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         record_dict['property'].append('RELEASE')
 
     record = DenormalizedRecord(**record_dict)
-    nonbib_record = _build_nonbib_record(app, citation_change, record, db_versions, status)
+    nonbib_record = _build_nonbib_record(app, citation_change, record, db_versions, status, readers=readers)
     return record, nonbib_record
 
 
-def _build_nonbib_record(app, citation_change, record, db_versions, status):
+def _build_nonbib_record(app, citation_change, record, db_versions, status, readers=[]):
     doi = citation_change.content
     nonbib_record_dict = {
         'status': status,
@@ -169,7 +169,7 @@ def _build_nonbib_record(app, citation_change, record, db_versions, status):
         'ned_objects': [],
         'norm_cites': 0, # log10-normalized count of citations computed on the classic site but not currently used
         'read_count': record.read_count,
-        'readers': [],
+        'readers': readers,
         'simbad_objects': [],
         'total_link_counts': 0 # Only used for DATA and not for ESOURCES
     }

@@ -7,6 +7,7 @@ import json
 from astropy.io import ascii
 from ADSCitationCapture import tasks, db
 from ADSCitationCapture.delta_computation import DeltaComputation
+from ADSCitationCapture.reader_import import ReaderImport
 
 # ============================= INITIALIZATION ==================================== #
 
@@ -85,7 +86,7 @@ def maintenance_metadata(dois, bibcodes):
     # Send to master updated metadata
     tasks.task_maintenance_metadata.delay(dois, bibcodes)
 
-def maintenance_resend(dois, bibcodes, broker=False):
+def maintenance_resend(dois, bibcodes, broker=False, only_nonbib=False):
     """
     Re-send records to master
     """
@@ -96,7 +97,11 @@ def maintenance_resend(dois, bibcodes, broker=False):
         logger.info("MAINTENANCE task: re-sending '{}' records".format(n_requested))
 
     # Send to master updated metadata
-    tasks.task_maintenance_resend.delay(dois, bibcodes, broker)
+    tasks.task_maintenance_resend.delay(dois, bibcodes, broker, only_nonbib=only_nonbib)
+
+def maintenance_regenerate_nonbib_files():
+    logger.info("MAINTENANCE task: rewriting all files for DataPipeline")
+    tasks.task_maintenance_generate_nonbib_files()
 
 def maintenance_reevaluate(dois, bibcodes):
     """
@@ -194,6 +199,40 @@ def maintenance_curation(filename=None, dois=None, bibcodes=None, json_payload=N
     else:
         logger.error("MAINTENANCE task: manual curation failed. Please specify a file containing the modified citations.")
 
+def maintenance_readers(readers_filename, **kwargs):
+    logger.info('Loading records from: %s', readers_filename)
+
+    force = kwargs.get('force', False)
+    diagnose = kwargs.get('diagnose', False)
+    if diagnose:
+        schema_prefix = "diagnose_citation_capture_readers_"
+    else:
+        schema_prefix = kwargs.get('schema_prefix', "citation_capture_readers_")
+
+    # Engine
+    sqlachemy_url = kwargs.get('sqlalchemy_url', config.get('SQLALCHEMY_URL', 'postgres://user:password@localhost:5432/citation_capture_pipeline'))
+    sqlalchemy_echo = config.get('SQLALCHEMY_ECHO', False)
+    readers = ReaderImport(sqlachemy_url, sqlalchemy_echo=sqlalchemy_echo, group_changes_in_chunks_of=1, schema_prefix=schema_prefix, force=force)
+    readers.compute(readers_filename)
+
+    # Step through changes in readers and write them to public. Send nonbib updates to master as necessary.
+    for changes in readers:
+        if diagnose:
+            print("Calling 'task_process_reader_updates' with '{}'".format(str(changes)))
+        logger.debug("Calling 'task_process_reader_updates' with '%s'", str(changes))
+        try:
+            tasks.task_process_reader_updates.delay(changes, force=force)
+        except:
+            # In asynchronous mode, no exception is expected
+            # In synchronous mode (for debugging purposes), exception may happen (e.g., failures to fetch metadata)
+            logger.exception('Exception produced while processing citation changes')
+    if diagnose:
+        readers._execute_sql("drop schema {0} cascade;", readers.schema_name)
+    readers.connection.close()
+
+def maintenance_resend_readers(dois, bibcodes):
+    tasks.task_maintenance_resend_readers.delay(dois, bibcodes)
+
 def maintentance_reevaluate_associated_works(dois, bibcodes):
     """
     Update associated software records for citation targets already in the database.
@@ -247,18 +286,18 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help='commands', dest="action")
-    process_parser = subparsers.add_parser('PROCESS', help='Process input file, compare to previous data in database, and execute insertion/deletions/updates of citations')
+    process_parser = subparsers.add_parser('PROCESS', help='Process input file, compare to previous data in database, and execute insertion/deletions/updates of citations.')
     process_parser.add_argument('input_filename',
                         action='store',
                         type=str,
-                        help='Path to the input file (e.g., refids.dat) file that contains the citation list')
-    maintenance_parser = subparsers.add_parser('MAINTENANCE', help='Execute maintenance task')
+                        help='Path to the input file (e.g., refids.dat) file that contains the citation list.')
+    maintenance_parser = subparsers.add_parser('MAINTENANCE', help='Execute maintenance task.')
     maintenance_parser.add_argument(
                         '--resend',
                         dest='resend',
                         action='store_true',
                         default=False,
-                        help='Re-send registered citations and targets to the master pipeline')
+                        help='Re-send registered citations and targets to the master pipeline.')
     maintenance_parser.add_argument(
                         '--curation',
                         dest='curation',
@@ -270,19 +309,31 @@ if __name__ == '__main__':
                         dest='repopulate',
                         action='store_true',
                         default=False,
-                        help="Populate citation target bibcode column with canonical bibcodes")
+                        help="Populate citation target bibcode column with canonical bibcodes.")
+    maintenance_parser.add_argument(
+                        '--regenerate-nonbib',
+                        dest='regen_nonbib',
+                        action='store_true',
+                        default=False,
+                        help='Rewrite files for DataPipeline based on the current state of the Database.')
     maintenance_parser.add_argument(
                         '--resend-broker',
                         dest='resend_broker',
                         action='store_true',
                         default=False,
-                        help='Re-send registered citations and targets to the broker')
+                        help='Re-send registered citations and targets to the broker.')    
+    maintenance_parser.add_argument(
+                        '--resend-nonbib',
+                        dest='resend_nonbib',
+                        action='store_true',
+                        default=False,
+                        help='Re-send nonbib record including updated reader data.')
     maintenance_parser.add_argument(
                         '--reevaluate',
                         dest='reevaluate',
                         action='store_true',
                         default=False,
-                        help='Re-evaluate discarded citation targets fetching metadata and ingesting software records')
+                        help='Re-evaluate discarded citation targets fetching metadata and ingesting software records.')
     maintenance_parser.add_argument(
                         '--eval-associated',
                         dest='eval_associated',
@@ -294,38 +345,49 @@ if __name__ == '__main__':
                         dest='canonical',
                         action='store_true',
                         default=False,
-                        help='Update citations with canonical bibcodes')
+                        help='Update citations with canonical bibcodes.')
     maintenance_parser.add_argument(
                         '--metadata',
                         dest='metadata',
                         action='store_true',
                         default=False,
-                        help='Update DOI metadata for the provided list of citation target bibcodes, or if none is provided, for all the current existing citation targets')
+                        help='Update DOI metadata for the provided list of citation target bibcodes, or if none is provided, for all the current existing citation targets.')
+    maintenance_parser.add_argument(
+                        '--readers',
+                        dest='import_readers',
+                        action='store_true',
+                        default=False,
+                        help='Calls maintenance task to import reader data for all records.')
+    maintenance_parser.add_argument('--reader_filename',
+                        dest='reader_filename',
+                        action='store',
+                        type=str,
+                        help='Path to the input file that contains reader data for all records.')
     maintenance_parser.add_argument(
                         '--doi',
                         dest='dois',
                         nargs='+',
                         action='store',
                         default=[],
-                        help='Space separated DOI list (e.g., 10.5281/zenodo.10598), if no list is provided then the full database is considered')
+                        help='Space separated DOI list (e.g., 10.5281/zenodo.10598), if no list is provided then the full database is considered.')
     maintenance_parser.add_argument(
                         '--bibcode',
                         dest='bibcodes',
                         nargs='+',
                         action='store',
                         default=[],
-                        help='Space separated bibcode list, if no list is provided then the full database is considered')
+                        help='Space separated bibcode list, if no list is provided then the full database is considered.')
     maintenance_parser.add_argument(
                         '--json',
                         dest='json_payload',
                         nargs='+',
                         action='store',
                         default=None,
-                        help='Space delimited list of json curated metadata')
+                        help='Space delimited list of json curated metadata.')
     maintenance_parser.add_argument('--input_filename',
                         action='store',
                         type=str,
-                        help='Path to the input file that contains the curated metadata')
+                        help='Path to the input file that contains the curated metadata.')
     maintenance_parser.add_argument('--reset',
                         action='store_true',
                         default=False,
@@ -334,21 +396,21 @@ if __name__ == '__main__':
                         action='store_true',
                         default=False,
                         help='Show current metadata for a given citation target.')
-    diagnose_parser = subparsers.add_parser('DIAGNOSE', help='Process data for diagnosing infrastructure')
+    diagnose_parser = subparsers.add_parser('DIAGNOSE', help='Process data for diagnosing infrastructure.')
     diagnose_parser.add_argument(
                         '--bibcodes',
                         dest='bibcodes',
                         nargs='+',
                         action='store',
                         default=None,
-                        help='Space delimited list of bibcodes')
+                        help='Space delimited list of bibcodes.')
     diagnose_parser.add_argument(
                         '--json',
                         dest='json',
                         nargs='+',
                         action='store',
                         default=None,
-                        help='Space delimited list of json citation data')
+                        help='Space delimited list of json citation data.')
 
     args = parser.parse_args()
 
@@ -363,7 +425,8 @@ if __name__ == '__main__':
 
     elif args.action == "MAINTENANCE":
         if not args.canonical and not args.metadata and not args.resend and not args.resend_broker and not\
-         args.reevaluate and not args.curation and not args.repopulate and not args.eval_associated:
+        args.reevaluate and not args.curation and not args.repopulate and not args.regen_nonbib and not\
+        args.import_readers and not args.resend_nonbib and not args.eval_associated:
             maintenance_parser.error("nothing to be done since no task has been selected")
         else:
             # Read files if provided (instead of a direct list of DOIs)
@@ -386,7 +449,7 @@ if __name__ == '__main__':
             elif args.canonical:
                 maintenance_canonical(dois, bibcodes)
             elif args.resend:
-                maintenance_resend(dois, bibcodes, broker=False)
+                maintenance_resend(dois, bibcodes, broker=False, only_nonbib=False)
             elif args.resend_broker:
                 maintenance_resend(dois, bibcodes, broker=True)
             elif args.reevaluate:
@@ -395,8 +458,15 @@ if __name__ == '__main__':
                 maintenance_curation(args.input_filename, dois, bibcodes, args.json_payload, args.reset, args.show)
             elif args.repopulate:
                 maintenance_repopulate()
+            elif args.regen_nonbib:
+                maintenance_regenerate_nonbib_files()
+            elif args.import_readers:
+                maintenance_readers(args.reader_filename, force=False, diagnose=False)
+            elif args.resend_nonbib:
+                maintenance_resend(dois, bibcodes, broker=False, only_nonbib=True)
             elif args.eval_associated:
                 maintentance_reevaluate_associated_works(dois, bibcodes)
+                
     elif args.action == "DIAGNOSE":
         logger.info("DIAGNOSE task")
         diagnose(args.bibcodes, args.json)

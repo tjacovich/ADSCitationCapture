@@ -1,9 +1,11 @@
 import os
+from typing import OrderedDict
 from psycopg2 import IntegrityError
 from dateutil.tz import tzutc
-from ADSCitationCapture.models import Citation, CitationTarget, Event
+from ADSCitationCapture.models import Citation, CitationTarget, Event, Reader
 from ADSCitationCapture import doi
 from adsmsg import CitationChange
+import datetime
 from adsputils import setup_logging
 
 # ============================= INITIALIZATION ==================================== #
@@ -17,6 +19,13 @@ config = load_config(proj_home=proj_home)
 logger = setup_logging(__name__, proj_home=proj_home,
                         level=config.get('LOGGING_LEVEL', 'INFO'),
                         attach_stdout=config.get('LOG_STDOUT', False))
+
+#Dictionary that defines the output files for ADSDataPipeline
+file_names=OrderedDict()
+file_names['bibcode'] =proj_home+'/logs/output/bibcodes_CC.can.list'
+file_names['citations'] = proj_home+'/logs/output/citations_CC.list'
+file_names['references'] = proj_home+'/logs/output/references_CC.list'
+file_names['authors'] = proj_home+'/logs/output/facet_authors_CC.list'
 
 
 # =============================== FUNCTIONS ======================================= #
@@ -101,6 +110,69 @@ def update_citation_target_metadata(app, content, raw_metadata, parsed_metadata,
         metadata_updated =  _update_citation_target_metadata_session(session, content, raw_metadata, parsed_metadata, curated_metadata, status=status, bibcode=bibcode, associated=associated)
     return metadata_updated
 
+def write_citation_target_data(app, only_status=None):
+    """
+    Writes Canonical bibcodes to file for DataPipeline
+    returns: Reference Network File
+             Citation Network File
+             Canonical Bibcodes File
+             Facet Authors File
+    """
+    with app.session_scope() as session:
+        if only_status:
+            records_db = session.query(CitationTarget).filter_by(status=only_status).all()
+            disable_filter = only_status in ['DISCARDED','EMITTABLE']
+        else:
+            records_db = session.query(CitationTarget).all()
+            disable_filter = True
+        bibcodes = [r.bibcode for r in records_db]
+        records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
+        #writes canonical bibcodes to file.
+        with open(file_names['bibcode']+".tmp", 'w') as f:
+            f.write("\n".join(bibcodes))
+        logger.info("Writing Citation/Reference Network Files.")
+        _write_key_citation_reference_data(app, bibcodes)
+        logger.info("Writing author data for {} records".format(len(records)))
+        _write_key_citation_target_authors(app, records)
+        for file in file_names:
+            os.system('cp {} {}'.format(file+".tmp", file))
+            logger.debug("Copied {}.tmp to {}".format(file, file))
+
+def _write_key_citation_target_authors(app, records):
+    """
+    Writes facet author data to file.
+    """
+    try:
+        with open(file_names['authors']+".tmp", 'w') as f:
+            for rec in records:
+                parsed_metadata = get_citation_target_metadata(app, rec['content']).get('parsed', {})
+                if parsed_metadata:
+                    f.write(str(rec['bibcode'])+"\t"+"\t".join(parsed_metadata.get('authors',''))+"\n")
+
+        logger.info("Wrote file {} to disk.".format('authors'))
+    except Exception as e:
+        logger.exception("Failed to write file {}.".format(file_names['authors']+".tmp"))
+        raise Exception("Failed to write file {}.".format(file_names['authors']+".tmp"))
+
+def _write_key_citation_reference_data(app, bibcodes):
+    """
+    Write the two network files:
+    Citation Network File: X cites software record
+    Reference Network File: software record is cited by X
+
+    Both are needed to integrate software records into classic record metrics.
+    """
+    try:
+        with open(file_names['citations']+".tmp", 'w') as f, open(file_names['references']+".tmp", 'w') as g:
+            for bib in bibcodes:
+                cites=get_citations_by_bibcode(app, bib)
+                for cite in cites:
+                    g.write(str(cite)+"\t"+str(bib)+"\n")
+                    f.write(str(bib)+"\t"+str(cite)+"\n")
+        logger.info("Wrote files {} and {} to disk.".format(file_names['citations'], file_names['references']))
+    except Exception as e:
+        logger.exception("Failed to write files {} and {}.".format(file_names['citations']+".tmp", file_names['references']+".tmp"))
+        raise Exception("Failed to write files {} and {}.".format(file_names['citations']+".tmp", file_names['references']+".tmp"))
 def _update_citation_target_curator_message_session(session, content, msg):
     """
     Actual calls to database session for update_citation_target_metadata
@@ -143,6 +215,28 @@ def store_citation(app, citation_change, content_type, raw_metadata, parsed_meta
             logger.error("Ignoring new citation (citing '%s', content '%s' and timestamp '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString(), str(e))
         else:
             logger.info("Stored new citation (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+            stored = True
+    return stored
+
+def store_reader_data(app, reader_change, status):
+    """
+    Stores a new citation in the DB
+    """
+    stored = False
+    with app.session_scope() as session:
+        reads = Reader()
+        reads.bibcode = reader_change['bibcode']
+        reads.reader = reader_change['reader']
+        reads.timestamp = reader_change['timestamp']#.ToDatetime().replace(tzinfo=tzutc())
+        reads.status = status
+        session.add(reads)
+        try:
+            session.commit()
+        except IntegrityError as e:
+            # IntegrityError: (psycopg2.IntegrityError) duplicate key value violates unique constraint "citing_content_unique_constraint"
+            logger.error("Ignoring new reader information (bibcode '%s', reader '%s') because it already exists in the database when it is not supposed to (race condition?): '%s'", reader_change['bibcode'], reader_change['readers'], str(e))
+        else:
+            logger.info("Stored new reader (bibcode: '%s', reader '%s' timestamp '%s)", reader_change['bibcode'], reader_change['reader'], reader_change['timestamp'])
             stored = True
     return stored
 
@@ -204,6 +298,27 @@ def get_citation_targets_by_bibcode(app, bibcodes, only_status='REGISTERED'):
         records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
 
+def get_citation_targets_by_alt_bibcode(app, alt_bibcodes, only_status='REGISTERED'):
+    """
+    Return a list of dict with the requested citation targets based on their bibcode
+    """
+    with app.session_scope() as session:
+        records_db = []
+        for alt_bibcode in alt_bibcodes:
+            if only_status:
+                record_db = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata['alternate_bibcode'].contains([alt_bibcode])).filter_by(status=only_status).first()
+            else:
+                record_db = session.query(CitationTarget).filter(CitationTarget.parsed_cited_metadata['alternate_bibcode'].contains([alt_bibcode])).first()
+            if record_db:
+                records_db.append(record_db)
+
+        if only_status:
+            disable_filter = only_status == 'DISCARDED'
+        else:
+            disable_filter = True
+        records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
+    return records
+
 def get_citation_targets_by_doi(app, dois, only_status='REGISTERED'):
     """
     Return a list of dict with the requested citation targets based on their DOI
@@ -216,7 +331,6 @@ def get_citation_targets_by_doi(app, dois, only_status='REGISTERED'):
         else:
             records_db = session.query(CitationTarget).filter(CitationTarget.content.in_(dois)).all()
             disable_filter = True
-
         records = _extract_key_citation_target_data(records_db, disable_filter=disable_filter)
     return records
 
@@ -331,6 +445,18 @@ def get_citations(app, citation_change):
         citation_bibcodes = [r.citing for r in session.query(Citation).filter_by(content=citation_change.content, status="REGISTERED").all()]
     return citation_bibcodes
 
+def get_citation_target_readers(app, bibcode, alt_bibcodes):
+    """
+    Return all the Reader hashes for a given content.
+    It will ignore DELETED and DISCARDED hashes.
+    """
+    with app.session_scope() as session:
+        reader_hashes = [r.reader for r in session.query(Reader).filter_by(bibcode=bibcode, status="REGISTERED").all()]
+        for alt_bibcode in alt_bibcodes:
+            reader_hashes = reader_hashes + [r.reader for r in session.query(Reader).filter_by(bibcode=alt_bibcode, status="REGISTERED").all()]
+
+    return reader_hashes
+
 def generate_modified_metadata(parsed_metadata, curated_entry):
     """
     modify parsed_metadata with any curated metadata. return results.
@@ -404,6 +530,27 @@ def mark_citation_as_deleted(app, citation_change):
             logger.info("Marked citation as deleted (citing '%s', content '%s' and timestamp '%s')", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
         else:
             logger.info("Ignoring citation deletion (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", citation_change.citing, citation_change.content, citation_change.timestamp.ToJsonString())
+    return marked_as_deleted, previous_status
+
+def mark_reader_as_deleted(app, reader_change):
+    """
+    Update status to DELETED for a given reader
+    """
+    marked_as_deleted = False
+    previous_status = None
+    with app.session_scope() as session:
+        reader = session.query(Reader).with_for_update().filter_by(bibcode=reader_change['bibcode'], reader=reader_change['reader']).first()
+        previous_status = reader.status
+        change_timestamp = reader_change['timestamp']#.ToDatetime().replace(tzinfo=tzutc()) # Consider it as UTC to be able to compare it
+        if str(reader.timestamp) < reader_change['timestamp']:
+            reader.status = "DELETED"
+            reader.timestamp = reader_change['timestamp']
+            session.add(reader)
+            session.commit()
+            marked_as_deleted = True
+            logger.info("Marked reader as deleted (citing '%s', content '%s')", reader_change['bibcode'], reader_change['reader'])#, reader_change.timestamp.ToJsonString())
+        else:
+            logger.info("Ignoring reader deletion (citing '%s', content '%s' and timestamp '%s') because received timestamp is equal/older than timestamp in database", reader_change['bibcode'], reader_change['reader'], reader_change['timestamp'])
     return marked_as_deleted, previous_status
 
 def mark_all_discarded_citations_as_registered(app, content):

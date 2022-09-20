@@ -13,6 +13,8 @@ Base = declarative_base()
 
 citation_content_type = ENUM('DOI', 'PID', 'URL', name='citation_content_type')
 citation_change_type = ENUM('NEW', 'DELETED', 'UPDATED', name='citation_change_type')    
+reader_change_type = ENUM('NEW', 'DELETED', name='reader_change_type')    
+reader_status_type = ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='reader_status_type')
 citation_status_type = ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='citation_status_type')
 target_status_type = ENUM('EMITTABLE','REGISTERED', 'DELETED', 'DISCARDED', name='target_status_type')
 
@@ -23,6 +25,34 @@ class RawCitation(Base):
     id = Column(Integer, primary_key=True)
     bibcode = Column(String(19))
     payload = Column(JSONB) # Binary, faster than JSON (requires postgres >9.4)
+
+class ReaderData(Base):
+    __tablename__ = 'reader_data'
+    __table_args__ = ({"schema": "public"})
+    id = Column(Integer, primary_key=True)
+    bibcode = Column(String())
+    reader = Column(Text())
+
+class Reader(Base):
+    __tablename__ = 'readers'
+    __table_args__ = ({"schema": "public"})
+    id = Column(Integer, primary_key=True)
+    bibcode = Column(String())
+    reader = Column(Text())
+    timestamp = Column(UTCDateTime)
+    status = Column(reader_status_type)
+    created = Column(UTCDateTime, default=get_date)
+    updated = Column(UTCDateTime, onupdate=get_date)
+
+class ReaderChanges(Base):
+    __tablename__ = 'reader_changes'
+    __table_args__ = ({"schema": "public"})
+    id = Column(Integer, primary_key=True)
+    new_bibcode = Column(String())
+    new_reader = Column(Text())
+    previous_bibcode = Column(String())
+    previous_reader = Column(Text())
+    status = Column(reader_change_type)
 
 class CitationChanges(Base):
     __tablename__ = 'citation_changes'
