@@ -31,7 +31,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('bibcode', sa.String(), nullable=True),
     sa.Column('reader', sa.Text(), nullable=True),
-     sa.Column('timestamp', adsputils.UTCDateTime(timezone=True), nullable=True),
+    sa.Column('timestamp', adsputils.UTCDateTime(timezone=True), nullable=True),
     sa.Column('status', postgresql.ENUM('REGISTERED', 'DELETED', 'DISCARDED', name='reader_status_type'), nullable=True),
     sa.Column('created', adsputils.UTCDateTime(timezone=True), nullable=True),
     sa.Column('updated', adsputils.UTCDateTime(timezone=True), nullable=True),
