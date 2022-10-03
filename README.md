@@ -417,86 +417,88 @@ master_pipeline=> select bibcode,solr_processed,datalinks_processed,processed,st
 
 - Access the pipeline broker
 
-```
-ssh broker_hostname
-docker exec -it backoffice_rabbitmq rabbitmqctl list_queues -q -p citation_capture_pipeline
-```
+    ```
+    ssh broker_hostname
+    docker exec -it backoffice_rabbitmq rabbitmqctl list_queues -q -p citation_capture_pipeline
+    ```
 
 
 ## Usage
 
 - Process file:
 
-```
-python3 run.py PROCESS refids_zenodo.dat.20180911
-```
+    ```
+    python3 run.py PROCESS refids_zenodo.dat.20180911
+    ```
 
 - Update references to their canonical form using ADS API:
 
-```
-# All the registered citation targets
-python3 run.py MAINTENANCE --canonical
-# Specific bibcode (space separated list)
-python3 run.py MAINTENANCE --canonical --bibcode 2017zndo....840393W
-# Specific doi (space separated list)
-python3 run.py MAINTENANCE --canonical --doi 10.5281/zenodo.840393
-```
+    ```
+    # All the registered citation targets
+    python3 run.py MAINTENANCE --canonical
+    # Specific bibcode (space separated list)
+    python3 run.py MAINTENANCE --canonical --bibcode 2017zndo....840393W
+    # Specific doi (space separated list)
+    python3 run.py MAINTENANCE --canonical --doi 10.5281/zenodo.840393
+    ```
 
 - Update metadata:
     - It will identify as concept DOI all the records that report an empty `version_of` and a filled `versions` with at least one item (concept DOIs are basically pointers to the last release of a Zenodo record, thus publication year and authors can change with time).
     - If the record is identified as a concept DOI, metadata updates are merged in the system (overwriting all metadata) but the bibcode will not be changed. Hence, the bibcode will have the year of the first time the record was ingested in ADS.
     - If the bibcode changes, it generates `IsIdenticalTo` events and the old bibcode will also be listed in the alternate bibcodes/identifiers fields
 
-```
-# All the registered citation targets
-python3 run.py MAINTENANCE --metadata
-# Specific bibcode (space separated list)
-python3 run.py MAINTENANCE --metadata --bibcode 2017zndo....840393W
-# Specific doi (space separated list)
-python3 run.py MAINTENANCE --metadata --doi 10.5281/zenodo.840393
-# File containing doi and version columns (tab separated)
-python3 run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_updates_09232019.out
-```
+    ```
+    # All the registered citation targets
+    python3 run.py MAINTENANCE --metadata
+    # Specific bibcode (space separated list)
+    python3 run.py MAINTENANCE --metadata --bibcode 2017zndo....840393W
+    # Specific doi (space separated list)
+    python3 run.py MAINTENANCE --metadata --doi 10.5281/zenodo.840393
+    # File containing doi and version columns (tab separated)
+    python3 run.py MAINTENANCE --metadata --doi /proj/ads/references/links/zenodo_updates_09232019.out
+    ```
+
 - Resend metadata:
     - Takes all records or a portion of them defined by `--doi` or `--bibcode` flag.
     - Resends `REGISTERED` records to master pipeline if `--resend`.
     - Resends `REGISTERED` and `EMITTABLE` records to external broker if `--resend-broker`.
-```
-#Resend all records to Master pipeline
-python3 run.py MAINTENANCE --resend
-# Resend specific bibcode (space separated list)
-python3 run.py MAINTENANCE --resend --bibcode 2017zndo....840393W
-# Specific doi (space separated list)
-python3 run.py MAINTENANCE --resend --doi 10.5281/zenodo.840393
-# File containing doi and version columns (tab separated)
-python3 run.py MAINTENANCE --resend --doi /proj/ads/references/links/zenodo_updates_09232019.out
+    ```
+    #Resend all records to Master pipeline
+    python3 run.py MAINTENANCE --resend
+    # Resend specific bibcode (space separated list)
+    python3 run.py MAINTENANCE --resend --bibcode 2017zndo....840393W
+    # Specific doi (space separated list)
+    python3 run.py MAINTENANCE --resend --doi 10.5281/zenodo.840393
+    # File containing doi and version columns (tab separated)
+    python3 run.py MAINTENANCE --resend --doi /proj/ads/references/links/zenodo_updates_09232019.out
 
-#Resend all records to external data broker
-python3 run.py MAINTENANCE --resend-broker
-# Resend specific bibcode (space separated list)
-python3 run.py MAINTENANCE --resend-broker --bibcode 2017zndo....840393W
-# Specific doi (space separated list)
-python3 run.py MAINTENANCE --resend-broker --doi 10.5281/zenodo.840393
-# File containing doi and version columns (tab separated)
-python3 run.py MAINTENANCE --resend-broker --doi /proj/ads/references/links/zenodo_updates_09232019.out
-```
+    #Resend all records to external data broker
+    python3 run.py MAINTENANCE --resend-broker
+    # Resend specific bibcode (space separated list)
+    python3 run.py MAINTENANCE --resend-broker --bibcode 2017zndo....840393W
+    # Specific doi (space separated list)
+    python3 run.py MAINTENANCE --resend-broker --doi 10.5281/zenodo.840393
+    # File containing doi and version columns (tab separated)
+    python3 run.py MAINTENANCE --resend-broker --doi /proj/ads/references/links/zenodo_updates_09232019.out
+    ```
+    Additionally, the `--resend-nonbib` flag can be used identically to the `--resend` flag in order to resend only the nonbib record.
 
-Currently, the only way to resend urls is to send all records to the broker. Urls are not currently handled by Master Pipeline.
+    Currently, the only way to resend urls is to send all records to the broker. Urls are not currently handled by Master Pipeline.
 
 - Reevaluate Records
     - Reevaluates all discarded records, or a subset of those records
     - Resends to Master if `REGISTERED`
 
-```
-#Resend all records to Master pipeline
-python3 run.py MAINTENANCE --reevaluate
-# Resend specific bibcode (space separated list)
-python3 run.py MAINTENANCE --reevaluate --bibcode 2017zndo....840393W
-# Specific doi (space separated list)
-python3 run.py MAINTENANCE --reevaluate --doi 10.5281/zenodo.840393
-# File containing doi and version columns (tab separated)
-python3 run.py MAINTENANCE --reevaluate --doi /proj/ads/references/links/zenodo_updates_09232019.out
-```
+    ```
+    #Resend all records to Master pipeline
+    python3 run.py MAINTENANCE --reevaluate
+    # Resend specific bibcode (space separated list)
+    python3 run.py MAINTENANCE --reevaluate --bibcode 2017zndo....840393W
+    # Specific doi (space separated list)
+    python3 run.py MAINTENANCE --reevaluate --doi 10.5281/zenodo.840393
+    # File containing doi and version columns (tab separated)
+    python3 run.py MAINTENANCE --reevaluate --doi /proj/ads/references/links/zenodo_updates_09232019.out
+    ```
 
 Currently only sends newly registered records to Master.
 
@@ -512,54 +514,54 @@ Currently only sends newly registered records to Master.
     - Save `input_filename` entries in separate `curated_metadata` field to prevent automated updates from overwriting curated changes.
 
 
-```
- # Curating based on an input file.
- python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
- # Curating based on JSON from a command line argument by bibcode.
-python3 run.py MAINTENANCE --curation --bibcode "2021zndo...5659382R" --json '{"abstract": "Analysis software for COS observations of PG quasars from QUEST sample: Veilleux et al. 2022, ApJ, 926, 60."}'
- # Curating based on JSON from a command line argument by DOI.
-python3 run.py MAINTENANCE --curation --doi "10.5281/zenodo.5659382" --json '{"abstract": "Analysis software for COS observations of PG quasars from QUEST sample: Veilleux et al. 2022, ApJ, 926, 60."}'
- # Clear curated_metadata for a given entry by bibcode
- python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --reset
- # Clear curated_metadata for a given entry by doi
-python3 run.py MAINTENANCE --curation --doi "10.XYZA/zenodo.BCDEFG" --reset
-# Clear curated_metadata by file
-python3 run.py MAINTENANCE --curation --input_filename $/path/to/input_file --reset
-# Display current metadata for a given entry by doi as standard output
-python3 run.py MAINTENANCE --curation --doi "10.XYZA/zenodo.BCDEFG" --show
-# Display current metadata for a given entry by bibcode as standard output
-python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --show
-```
+    ```
+    # Curating based on an input file.
+    python3 run.py MAINTENANCE --curation --input_filename $path/to/input_file
+    # Curating based on JSON from a command line argument by bibcode.
+    python3 run.py MAINTENANCE --curation --bibcode "2021zndo...5659382R" --json '{"abstract": "Analysis software for COS observations of PG quasars from QUEST sample: Veilleux et al. 2022, ApJ, 926, 60."}'
+    # Curating based on JSON from a command line argument by DOI.
+    python3 run.py MAINTENANCE --curation --doi "10.5281/zenodo.5659382" --json '{"abstract": "Analysis software for COS observations of PG quasars from QUEST sample: Veilleux et al. 2022, ApJ, 926, 60."}'
+    # Clear curated_metadata for a given entry by bibcode
+    python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --reset
+    # Clear curated_metadata for a given entry by doi
+    python3 run.py MAINTENANCE --curation --doi "10.XYZA/zenodo.BCDEFG" --reset
+    # Clear curated_metadata by file
+    python3 run.py MAINTENANCE --curation --input_filename $/path/to/input_file --reset
+    # Display current metadata for a given entry by doi as standard output
+    python3 run.py MAINTENANCE --curation --doi "10.XYZA/zenodo.BCDEFG" --show
+    # Display current metadata for a given entry by bibcode as standard output
+    python3 run.py MAINTENANCE --curation --bibcode "YYYYzndo...BCDEFGR" --show
+    ```
 
-If the `"authors"` key is specified, CitationCapture will recalculate the `"normalized_authors"` field automatically.
+    If the `"authors"` key is specified, CitationCapture will recalculate the `"normalized_authors"` field automatically.
 
-**NOTE: Any attribute that has a list specified as the value must be given the entire list including any unedited entries ie. If you edit a single author name, the entire author list must be included in the `curated_metadata`. The lone exception being `alternate_bibcode`**
+    **NOTE: Any attribute that has a list specified as the value must be given the entire list including any unedited entries ie. If you edit a single author name, the entire author list must be included in the `curated_metadata`. The lone exception being `alternate_bibcode`**
 
-For clearing `curated_metadata` by input file, only the `doi` or `bibcode` needs to be specified in the file. Any other details entered into the entry will be ignored.
+    For clearing `curated_metadata` by input file, only the `doi` or `bibcode` needs to be specified in the file. Any other details entered into the entry will be ignored.
 
-Alternate bibcodes are handled in a slightly different manner. Any bibcode that is generated by CitationCapture is considered permanently attached to the target. Manual curation can add and delete additional alternate bibcodes, but anything that is assigned by the pipeline will remain permanently. For this reason, the user only needs to supply manually added bibcodes when providing updates. 
+    Alternate bibcodes are handled in a slightly different manner. Any bibcode that is generated by CitationCapture is considered permanently attached to the target. Manual curation can add and delete additional alternate bibcodes, but anything that is assigned by the pipeline will remain permanently. For this reason, the user only needs to supply manually added bibcodes when providing updates. 
 
-**NOTE: the `json` keys must be contained in `" "` not `' '` or else the entire process will error out. `--show` now returns the proper format by default.** 
+    **NOTE: the `json` keys must be contained in `" "` not `' '` or else the entire process will error out. `--show` now returns the proper format by default.** 
 
-If an error occurs during curation, the error will be saved into the `curated_metadata` field. Any previous curated metadata will be retained and `--show` will return the current metadata as well as the error message on a separate line.
+    If an error occurs during curation, the error will be saved into the `curated_metadata` field. Any previous curated metadata will be retained and `--show` will return the current metadata as well as the error message on a separate line.
 
-By default. `--show` displays the metadata as a single line. This is the required format for any metadata updates specified in `--input_filename` or `--json`. To make the text more readable you can pipe the output into `jq`
+    By default. `--show` displays the metadata as a single line. This is the required format for any metadata updates specified in `--input_filename` or `--json`. To make the text more readable you can pipe the output into `jq`
 
-```
-python3 run.py MAINTENANCE --curation --doi 10.5281/zenodo.123567 --show | jq . 
-```
+    ```
+    python3 run.py MAINTENANCE --curation --doi 10.5281/zenodo.123567 --show | jq . 
+    ```
 
-You can save this to a file by simply running
+    You can save this to a file by simply running
 
-```
-python3 run.py MAINTENANCE --curation --doi 10.5281/zenodo.123567 --show | jq . > /path/to/output_file.dat
-```
+    ```
+    python3 run.py MAINTENANCE --curation --doi 10.5281/zenodo.123567 --show | jq . > /path/to/output_file.dat
+    ```
 
-Once any edits have been made, you can convert the output back to a CitationCapture parsable format and append it to an curated input file using
+    Once any edits have been made, you can convert the output back to a CitationCapture parsable format and append it to an curated input file using
 
-```
-jq -c . /path/to/output_file.dat >> /path/to/curated_metadata_file.dat
-```
+    ```
+    jq -c . /path/to/output_file.dat >> /path/to/curated_metadata_file.dat
+    ```
 - Curated Example
 
     For a given citation target in the database, the `parsed_cited_metadata` takes the form
@@ -606,17 +608,32 @@ jq -c . /path/to/output_file.dat >> /path/to/curated_metadata_file.dat
         - Identifies all records that share the same concept record and are also in the database.
         - Collects bibcodes and version numbers for all associated records, including the concept record if it exists in the database.
         - Updates the nonbib_record for the original record and forwards it to Master pipeline.
-```
-# Reevaluate associated works for all registered citation targets
-python3 run.py MAINTENANCE --eval-associated
-# Reevaluate associated works for specified bibcode
-python3 run.py MAINTENANCE --eval-associated --bibcode 2017zndo....840393W
-# Reevaluate associated works for specified bibcode
-python3 run.py MAINTENANCE --eval-associated --doi 10.5281/zenodo.840393
-# File containing dois (tab separated)
-python3 run.py MAINTENANCE --eval-associated --doi /proj/ads/references/links/zenodo_updates_09232019.out
-```        
+    ```bash
+    # Reevaluate associated works for all registered citation targets
+    python3 run.py MAINTENANCE --eval-associated
+    # Reevaluate associated works for specified bibcode
+    python3 run.py MAINTENANCE --eval-associated --bibcode 2017zndo....840393W
+    # Reevaluate associated works for specified bibcode
+    python3 run.py MAINTENANCE --eval-associated --doi 10.5281/zenodo.840393
+    # File containing dois (tab separated)
+    python3 run.py MAINTENANCE --eval-associated --doi /proj/ads/references/links/zenodo_updates_09232019.out
+    ```   
 
+- Generating flat files for `ADSDataPipeline`
+    CitationCapture can generate files used by `ADSDataPipeline` to calculate metrics records. To do this, simply run the following command:
+    
+    ```bash
+    un.py MAINTENANCE --regenerate-nonbib
+    ```
+    This will put the flat files in `$PROJ_HOME/logs/output/` by default.
+
+- Import reader data
+    CitationCapture can also add reader data to the nonbib record by running the following:
+
+    ```bash
+    python3 run.py MAINTENANCE --readers --reader_filename logs/input/alsoread_bib_zenodo.links
+    ```
+    `logs/input/alsoread_bib.links` is found in `/proj/`. It is recommended to filter this for `zndo` bibstems as records that do not contain this bibstem are irrelevant to CitationCapture.
 ## Potential Race Condition
 ### Linking Associated Works
 When multiple new associated citation targets are processed in the same batch, there is a chance for the associated works to be out of sync between the multiple citation targets. A race condition can occur where associated works are collected from the database before either citation is entered, meaning the two new citations would not be associated with each other. The addition of another associated work in a subsequent batch would fix the problem, as would performing a `MAINTENANCE --eval_associated`.
