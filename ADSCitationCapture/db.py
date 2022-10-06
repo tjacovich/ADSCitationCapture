@@ -22,11 +22,14 @@ logger = setup_logging(__name__, proj_home=proj_home,
 
 #Dictionary that defines the output files for ADSDataPipeline
 file_names=OrderedDict()
-file_names['bibcode'] =proj_home+'/logs/output/bibcodes_CC.list.can'
-file_names['citations'] = proj_home+'/logs/output/citations_CC.list'
-file_names['references'] = proj_home+'/logs/output/references_CC.list'
-file_names['authors'] = proj_home+'/logs/output/facet_authors_CC.list'
+file_names['bibcode'] =proj_home+'/logs/output/bibcodes_CC.list.can.'
+file_names['citations'] = proj_home+'/logs/output/citations_CC.list.'
+file_names['references'] = proj_home+'/logs/output/references_CC.list.'
+file_names['authors'] = proj_home+'/logs/output/facet_authors_CC.list.'
 
+env_name = config.get('ENVIRONMENT', 'back-dev') 
+for key in file_names.keys():
+    file_names[key] = file_names[key] + str(env_name)
 
 # =============================== FUNCTIONS ======================================= #
 def store_event(app, data):
