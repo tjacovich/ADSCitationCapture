@@ -1,3 +1,4 @@
+ENVIRONMENT = "backoffice environment name"
 #LOGGING_LEVEL = 'WARN'
 #LOGGING_LEVEL = 'DEBUG'
 LOGGING_LEVEL = 'INFO'
