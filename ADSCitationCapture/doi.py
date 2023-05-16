@@ -211,13 +211,7 @@ def _parse_metadata_zenodo_doi(raw_metadata):
             parsed_metadata['bibcode'] = bibcode
     return parsed_metadata
 
-def fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):  
-    """
-    Takes zenodo parsed metadata and fetches DOI for all versions of zenodo repository
-    """
-    return _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata)
-
-def _fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):
+def fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):
     """
     Takes zenodo parsed metadata and fetches DOI for base repository as well as DOI for all versions.
     """

@@ -333,7 +333,12 @@ class TestBase(unittest.TestCase):
                     "10.5281/zenodo.7032947", 
                     "10.5281/zenodo.7032953", 
                     "10.5281/zenodo.7084615",
-                    "10.5281/zenodo.7162185"
+                    "10.5281/zenodo.7162185",
+                    "10.5281/zenodo.7275322", 
+                    "10.5281/zenodo.7527665", 
+                    "10.5281/zenodo.7570264", 
+                    "10.5281/zenodo.7637593", 
+                    "10.5281/zenodo.7697899"
                 ]},
                 'associated': {"Version v2.0.0": "2017zndo....248351D"}
         }
