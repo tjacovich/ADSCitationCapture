@@ -645,7 +645,7 @@ def task_maintenance_metadata(dois, bibcodes, reset=False):
                         alternate_bibcode += registered_record.get('alternate_bibcode')
                         parsed_metadata['alternate_bibcode'] = list(set(alternate_bibcode))
                 
-                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata=curated_metadata, bibcode=bibcode, db_versions=registered_record.get('associated_works', {"":""}))
+                updated = db.update_citation_target_metadata(app, registered_record['content'], raw_metadata, parsed_metadata, curated_metadata=curated_metadata, bibcode=bibcode, associated=registered_record.get('associated_works', {"":""}))
         
         if updated:
             citation_change = adsmsg.CitationChange(content=registered_record['content'],
@@ -940,7 +940,7 @@ def task_maintenance_resend(dois, bibcodes, broker, only_nonbib=False):
                 # Only update master
                 readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode',''), parsed_metadata.get('alternate_bibcode', []))
                 logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                task_output_results.delay(custom_citation_change, parsed_metadata, citations, db_versions = registered_record.get('associated_works',{"":""}), readers=readers, only_nonbib=only_nonbib)
+                task_output_results.delay(custom_citation_change, parsed_metadata, citations, db_versions=registered_record.get('associated_works',{"":""}), readers=readers, only_nonbib=only_nonbib)
 
             else:
                 # Only re-emit to the broker
