@@ -81,10 +81,17 @@ class TestWorkers(TestBase):
         self.assertEqual(bibcode, expected_bibcode)
     
     def test_fetch_all_versions_doi(self):
+        with open("ADSCitationCapture/tests/data/datacite_version_of.xml") as f:
+            raw_metadata = f.read()
+        doi_id = "10.5281/zenodo.592536"
         expected_output = self.mock_data["10.5281/zenodo.4475376"]["versions"]
         parsed_metadata = self.mock_data["10.5281/zenodo.4475376"]["parsed"]
+        httpretty.enable()  # enable HTTPretty so that it will monkey patch the socket module
+        httpretty.register_uri(httpretty.GET, self.app.conf['DOI_URL']+doi_id, body=raw_metadata)
         output = doi.fetch_all_versions_doi(self.app.conf['DOI_URL'], self.app.conf['DATACITE_URL'], parsed_metadata)
         self.assertEqual(expected_output,output)
+        httpretty.disable()
+        httpretty.reset()
 
 
 

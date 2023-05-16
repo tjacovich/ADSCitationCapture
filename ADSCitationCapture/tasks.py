@@ -215,7 +215,7 @@ def task_process_updated_citation(citation_change, force=False):
             original_citations = db.get_citations_by_bibcode(app, citation_target_bibcode)
             citations = api.get_canonical_bibcodes(app, original_citations)
             logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-            task_output_results.delay(citation_change, parsed_metadata, citations, db_versions = no_self_ref_versions, readers=readers)
+            task_output_results.delay(citation_change, parsed_metadata, citations, db_versions=no_self_ref_versions, readers=readers)
         logger.debug("Calling '_emit_citation_change' with '%s'", citation_change)
         _emit_citation_change(citation_change, parsed_metadata)
 
@@ -659,7 +659,7 @@ def task_maintenance_metadata(dois, bibcodes, reset=False):
                 citations = api.get_canonical_bibcodes(app, original_citations)
                 readers = db.get_citation_target_readers(app, registered_record['bibcode'], parsed_metadata.get('alternate_bibcode', []))
                 logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, associated=registered_record.get('associated_works', {"":""}), readers=readers)     
+                task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=registered_record.get('associated_works', {"":""}), readers=readers)     
 
 @app.task(queue='maintenance_metadata')
 def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
@@ -821,7 +821,7 @@ def task_maintenance_curation(dois, bibcodes, curated_entries, reset=False):
                         citations = api.get_canonical_bibcodes(app, original_citations)
                         readers = db.get_citation_target_readers(app, registered_record['bibcode'], parsed_metadata.get('alternate_bibcode', []))
                         logger.debug("Calling 'task_output_results' with '%s'", citation_change)
-                        task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, associated=registered_record.get('associated_works', {"":""}), readers=readers)    
+                        task_output_results.delay(citation_change, modified_metadata, citations, bibcode_replaced=bibcode_replaced, db_versions=registered_record.get('associated_works', {"":""}), readers=readers)    
                 else:
                     logger.warn("Curated metadata did not result in a change to recorded metadata for {}.".format(registered_record.get('content')))
             except Exception as e:
@@ -940,7 +940,7 @@ def task_maintenance_resend(dois, bibcodes, broker, only_nonbib=False):
                 # Only update master
                 readers = db.get_citation_target_readers(app, parsed_metadata.get('bibcode',''), parsed_metadata.get('alternate_bibcode', []))
                 logger.debug("Calling 'task_output_results' with '%s'", custom_citation_change)
-                task_output_results.delay(custom_citation_change, parsed_metadata, citations, db_versions = registered_record.get('associated_works',{"":""}), readers=readers, only_nonbib=only_nonbib)
+                task_output_results.delay(custom_citation_change, parsed_metadata, citations, db_versions=registered_record.get('associated_works',{"":""}), readers=readers, only_nonbib=only_nonbib)
 
             else:
                 # Only re-emit to the broker

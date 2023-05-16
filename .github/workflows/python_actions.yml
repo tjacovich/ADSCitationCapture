@@ -1,6 +1,10 @@
 name: Python CI actions
 
-on: [pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 env:
   PGDATABASE: citation_capture_pipeline_test
   PGPASSWORD: postgres
@@ -15,7 +19,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:9.6
+        image: postgres:14.0
         env:
           POSTGRES_DB: citation_capture_pipeline_test
           POSTGRES_PASSWORD: postgres

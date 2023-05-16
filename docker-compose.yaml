@@ -25,7 +25,7 @@ services:
       - CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
   pytest_citation_capture_db:
     container_name: pytest_citation_capture_db
-    image: postgres:12.6
+    image: postgres:14.0
     restart: always
     environment:
       - POSTGRES_USER=postgres

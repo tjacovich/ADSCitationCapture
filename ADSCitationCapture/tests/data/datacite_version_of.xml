@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://datacite.org/schema/kernel-4" xsi:schemaLocation="http://datacite.org/schema/kernel-4 http://schema.datacite.org/meta/kernel-4/metadata.xsd">
+  <identifier identifierType="DOI">10.5281/ZENODO.592536</identifier>
+  <creators>
+    <creator>
+      <creatorName nameType="Personal">Caswell, Thomas A</creatorName>
+      <givenName>Thomas A</givenName>
+      <familyName>Caswell</familyName>
+      <affiliation>Brookhaven National Lab</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Lee, Antony</creatorName>
+      <givenName>Antony</givenName>
+      <familyName>Lee</familyName>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">De Andrade, Elliott Sales</creatorName>
+      <givenName>Elliott Sales</givenName>
+      <familyName>De Andrade</familyName>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Droettboom, Michael</creatorName>
+      <givenName>Michael</givenName>
+      <familyName>Droettboom</familyName>
+      <affiliation>Microsoft</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Hoffmann, Tim</creatorName>
+      <givenName>Tim</givenName>
+      <familyName>Hoffmann</familyName>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Klymak, Jody</creatorName>
+      <givenName>Jody</givenName>
+      <familyName>Klymak</familyName>
+      <affiliation>University of Victoria</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Hunter, John</creatorName>
+      <givenName>John</givenName>
+      <familyName>Hunter</familyName>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Firing, Eric</creatorName>
+      <givenName>Eric</givenName>
+      <familyName>Firing</familyName>
+      <affiliation>University of Hawaii</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Stansby, David</creatorName>
+      <givenName>David</givenName>
+      <familyName>Stansby</familyName>
+      <affiliation>UCL</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Varoquaux, Nelle</creatorName>
+      <givenName>Nelle</givenName>
+      <familyName>Varoquaux</familyName>
+      <affiliation>TIMC</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Nielsen, Jens Hedegaard</creatorName>
+      <givenName>Jens Hedegaard</givenName>
+      <familyName>Nielsen</familyName>
+      <affiliation>@qdev-dk</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Root, Benjamin</creatorName>
+      <givenName>Benjamin</givenName>
+      <familyName>Root</familyName>
+      <affiliation>Atmospheric and Environmental Research, Inc.</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">May, Ryan</creatorName>
+      <givenName>Ryan</givenName>
+      <familyName>May</familyName>
+      <affiliation>UCAR/@Unidata</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Gustafsson, Oscar</creatorName>
+      <givenName>Oscar</givenName>
+      <familyName>Gustafsson</familyName>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Elson, Phil</creatorName>
+      <givenName>Phil</givenName>
+      <familyName>Elson</familyName>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Seppänen, Jouni K.</creatorName>
+      <givenName>Jouni K.</givenName>
+      <familyName>Seppänen</familyName>
+    </creator>
+    <creator>
+      <creatorName>Jae-Joon Lee</creatorName>
+      <affiliation>Korea Astronomy and Space Science Institute</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Dale, Darren</creatorName>
+      <givenName>Darren</givenName>
+      <familyName>Dale</familyName>
+      <affiliation>Cornell University</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">, Hannah</creatorName>
+      <givenName>Hannah</givenName>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">McDougall, Damon</creatorName>
+      <givenName>Damon</givenName>
+      <familyName>McDougall</familyName>
+      <affiliation>AMD</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Straw, Andrew</creatorName>
+      <givenName>Andrew</givenName>
+      <familyName>Straw</familyName>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Hobson, Paul</creatorName>
+      <givenName>Paul</givenName>
+      <familyName>Hobson</familyName>
+      <affiliation>@coiled</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Sunden, Kyle</creatorName>
+      <givenName>Kyle</givenName>
+      <familyName>Sunden</familyName>
+      <affiliation>matplotlib</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Lucas, Greg</creatorName>
+      <givenName>Greg</givenName>
+      <familyName>Lucas</familyName>
+      <affiliation>LASP / @lasp / @SWxTREC</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Gohlke, Christoph</creatorName>
+      <givenName>Christoph</givenName>
+      <familyName>Gohlke</familyName>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Vincent, Adrien F.</creatorName>
+      <givenName>Adrien F.</givenName>
+      <familyName>Vincent</familyName>
+      <affiliation>Bordeaux INP</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Yu, Tony S</creatorName>
+      <givenName>Tony S</givenName>
+      <familyName>Yu</familyName>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Ma, Eric</creatorName>
+      <givenName>Eric</givenName>
+      <familyName>Ma</familyName>
+      <affiliation>@modernatx</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Silvester, Steven</creatorName>
+      <givenName>Steven</givenName>
+      <familyName>Silvester</familyName>
+      <affiliation>MongoDB</affiliation>
+    </creator>
+    <creator>
+      <creatorName nameType="Personal">Moad, Charlie</creatorName>
+      <givenName>Charlie</givenName>
+      <familyName>Moad</familyName>
+      <affiliation>@SalesLoft</affiliation>
+    </creator>
+  </creators>
+  <titles>
+    <title>matplotlib/matplotlib: REL: v3.7.1</title>
+  </titles>
+  <publisher>Zenodo</publisher>
+  <publicationYear>2023</publicationYear>
+  <resourceType resourceTypeGeneral="Software">SoftwareSourceCode</resourceType>
+  <dates>
+    <date dateType="Issued">2023-03-04</date>
+  </dates>
+  <alternateIdentifiers>
+    <alternateIdentifier alternateIdentifierType="URL">https://zenodo.org/record/7697899</alternateIdentifier>
+  </alternateIdentifiers>
+  <relatedIdentifiers>
+    <relatedIdentifier relatedIdentifierType="URL" relationType="IsSupplementTo">https://github.com/matplotlib/matplotlib/tree/v3.7.1</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.11451</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.12287</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.12400</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.15423</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.30988</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.31764</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.32914</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.44579</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.53816</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.56926</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.57619</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.58058</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.61948</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.61952</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.192512</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.208224</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.248351</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.570311</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.573577</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.877339</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1004650</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1098480</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1154287</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1171187</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1189358</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1202050</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1202077</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1343133</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1343964</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1404439</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1420605</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1482098</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.1482099</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.2577644</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.2669103</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.2647603</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.2667837</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.2893252</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.3264781</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.3563226</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.3633833</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.3633844</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.3633877</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.3695547</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.3714460</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.3898017</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.3948793</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.3984190</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.4030140</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.4268928</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.4475376</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.4550144</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.4595919</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.4595937</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.4638398</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.4649959</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.4743323</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.5194481</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.5242609</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.5545068</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.5706396</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.5773480</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.6513224</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.6982547</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.7032947</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.7032953</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.7084615</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.7162185</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.7275322</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.7527665</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.7570264</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.7637593</relatedIdentifier>
+    <relatedIdentifier relatedIdentifierType="DOI" relationType="HasVersion">10.5281/zenodo.7697899</relatedIdentifier>
+  </relatedIdentifiers>
+  <sizes/>
+  <formats/>
+  <version>v3.7.1</version>
+  <rightsList>
+    <rights rightsURI="info:eu-repo/semantics/openAccess">Open Access</rights>
+  </rightsList>
+  <descriptions>
+    <description descriptionType="Abstract">This is the first bugfix release of the 3.7.x series. This release contains several bug-fixes and adjustments: Ensure Qhull license is included in binary wheels Fix application of rcParams on Axes labels Fix compatibility with Pandas datetime unit converter Fix compatibility with latest GTK4 Fix import of styles with relative path Fix Lasso unresponsiveness when clicking and immediately releasing Fix pickling of draggable legends Fix RangeSlider.set_val when new value is outside existing value Fix size of Tk spacers when changing display DPI Fix wrapped text in constrained layout Improve compatibility with third-party backends Improve error if animation save path does not exist</description>
+  </descriptions>
+</resource>
