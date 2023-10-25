@@ -4,8 +4,8 @@ import json
 import unittest
 import httpretty
 from pyingest.parsers.datacite import DataCiteParser
-from ADSCitationCapture import app, tasks
 from ADSCitationCapture import doi
+from mock import patch
 from .test_base import TestBase
 
 
@@ -86,9 +86,11 @@ class TestWorkers(TestBase):
         doi_id = "10.5281/zenodo.592536"
         expected_output = self.mock_data["10.5281/zenodo.4475376"]["versions"]
         parsed_metadata = self.mock_data["10.5281/zenodo.4475376"]["parsed"]
-        httpretty.enable()  # enable HTTPretty so that it will monkey patch the socket module
-        httpretty.register_uri(httpretty.GET, self.app.conf['DOI_URL']+doi_id, body=raw_metadata)
-        output = doi.fetch_all_versions_doi(self.app.conf['DOI_URL'], self.app.conf['DATACITE_URL'], parsed_metadata)
+        with open("ADSCitationCapture/tests/data/doi_sample_raw_metadata.xml") as f:
+            raw_metadata = f.read()
+        with TestBase.mock_multiple_targets({'fetch_metadata': patch.object(doi, 'fetch_metadata', return_value=raw_metadata)}) as mocked:
+            output = doi.fetch_all_versions_doi(self.app.conf['DOI_URL'], self.app.conf['DATACITE_URL'], parsed_metadata)
+        self.assertTrue(mocked['fetch_metadata'].called)
         self.assertEqual(expected_output,output)
         httpretty.disable()
         httpretty.reset()
