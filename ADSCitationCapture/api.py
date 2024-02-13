@@ -29,7 +29,7 @@ def _request_citations_page(app, bibcode, start, rows):
                 'sort': 'date desc, bibcode desc',
             })
     headers = {}
-    headers["Authorization"] = "Bearer:{}".format(app.conf['ADS_API_TOKEN'])
+    headers["Authorization"] = "Bearer {}".format(app.conf['ADS_API_TOKEN'])
     url = app.conf['ADS_API_URL']+"search/query?"+params
     r_json = {}
     try:
@@ -117,7 +117,7 @@ def _get_canonical_bibcodes(app, n_chunk, total_n_chunks, bibcodes_chunk, timeou
                 'rows': len(bibcodes_chunk),
             })
     headers = {}
-    headers["Authorization"] = "Bearer:{}".format(app.conf['ADS_API_TOKEN'])
+    headers["Authorization"] = "Bearer {}".format(app.conf['ADS_API_TOKEN'])
     headers["Content-Type"] = "big-query/csv"
     url = app.conf['ADS_API_URL']+"search/bigquery?"+params
     r_json = {}
