@@ -7,6 +7,7 @@ from ADSCitationCapture import doi
 from adsmsg import CitationChange
 import datetime
 from adsputils import setup_logging
+from sqlalchemy_continuum import version_class
 
 # ============================= INITIALIZATION ==================================== #
 # - Use app logger:
@@ -383,7 +384,7 @@ def get_citation_targets(app, only_status='REGISTERED'):
         records = _get_citation_targets_session(session, only_status)
     return records
 
-def _get_citation_target_metadata_session(session, doi, citation_in_db, metadata, curate=True):
+def _get_citation_target_metadata_session(session, doi, citation_in_db, metadata, curate=True, concept=False):
     """
     Actual calls to database session for get_citation_target_metadata
     """
@@ -400,10 +401,12 @@ def _get_citation_target_metadata_session(session, doi, citation_in_db, metadata
             if citation_target.bibcode: metadata['parsed'].update({'bibcode': citation_target.bibcode})
         else:
             metadata['parsed'] = citation_target.parsed_cited_metadata if citation_target.parsed_cited_metadata is not None else {}
+        if concept:
+            metadata['parsed']['pubdate']=citation_target.versions[0].parsed_cited_metadata.get('pubdate')
         metadata['associated'] = citation_target.associated_works
     return metadata
 
-def get_citation_target_metadata(app, doi, curate=True):
+def get_citation_target_metadata(app, doi, curate=True, concept=False):
     """
     If the citation target already exists in the database, return the raw and
     parsed metadata together with the status of the citation target in the
@@ -413,7 +416,7 @@ def get_citation_target_metadata(app, doi, curate=True):
     citation_in_db = False
     metadata = {}
     with app.session_scope() as session:
-        metadata = _get_citation_target_metadata_session(session, doi, citation_in_db, metadata, curate) 
+        metadata = _get_citation_target_metadata_session(session, doi, citation_in_db, metadata, curate, concept) 
     return metadata
 
 def get_citation_target_entry_date(app, doi):

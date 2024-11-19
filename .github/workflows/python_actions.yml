@@ -44,6 +44,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        pip install pip==24.0
         pip install -U -r requirements.txt
         pip install -U -r dev-requirements.txt
 
@@ -51,8 +52,9 @@ jobs:
       run: |
         py.test
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
+        include-hidden-files: true
         name: coverage-citationcapture
         path: .coverage
 
@@ -73,7 +75,7 @@ jobs:
         python -m pip install --upgrade wheel setuptools pip
         pip install coverage==5.2.1
         pip install coveralls==2.2.0
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@master
       with:
         name: coverage-citationcapture
 

@@ -5,8 +5,6 @@ import re
 import json
 import base64
 from pyingest.parsers.datacite import DataCiteParser
-from adsputils import setup_logging
-
 # ============================= INITIALIZATION ==================================== #
 # - Use app logger:
 #import logging
