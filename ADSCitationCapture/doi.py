@@ -209,6 +209,24 @@ def _parse_metadata_zenodo_doi(raw_metadata):
             parsed_metadata['bibcode'] = bibcode
     return parsed_metadata
 
+def _normalize_orcid_tags(parsed_metadata):
+    orcid_regex = re.compile('(*)<ORCID>([^\s]*)<\ORCID>(*)')
+    affs = parsed_metadata.get('affiliations')
+    corrected_affs = []
+    if affs:
+        for aff in affs:
+            orcid_id = orcid_regex.match(aff).groups()[0]
+            if not orcid_id:
+                corrected_affs.append(aff)
+            else:
+                orcid_aff  = '<ID system="ORCID">' + orcid_id + '</ID>'
+                #TODO This will remove anything outside of the <ORCID> tag from the affiliation. Need to fix.
+                corrected_affs.append(orcid_aff)
+
+
+
+    return parsed_metadata
+
 def fetch_all_versions_doi(base_doi_url, base_datacite_url, parsed_metadata):
     """
     Takes zenodo parsed metadata and fetches DOI for base repository as well as DOI for all versions.
