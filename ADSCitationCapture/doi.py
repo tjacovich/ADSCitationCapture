@@ -207,22 +207,35 @@ def _parse_metadata_zenodo_doi(raw_metadata):
         bibcode = build_bibcode(parsed_metadata, zenodo_doi_re, zenodo_bibstem)
         if bibcode not in (None, ""):
             parsed_metadata['bibcode'] = bibcode
+        parsed_metadata = _normalize_orcid_tags(parsed_metadata)
     return parsed_metadata
 
 def _normalize_orcid_tags(parsed_metadata):
-    orcid_regex = re.compile('(*)<ORCID>([^\s]*)<\ORCID>(*)')
+    """
+    This method takes the parsed metadata from the DataCite parser and converts <ORCID> tags 
+    so they conform to the tags the ADS system expects.
+    """
+    orcid_regex = re.compile('(.*)<ORCID>([^\s]*)</ORCID>')
+    
     affs = parsed_metadata.get('affiliations')
+
     corrected_affs = []
+
     if affs:
         for aff in affs:
-            orcid_id = orcid_regex.match(aff).groups()[0]
+            regex_groups = orcid_regex.match(aff).groups()
+            orcid_id = regex_groups[-1]
             if not orcid_id:
                 corrected_affs.append(aff)
             else:
                 orcid_aff  = '<ID system="ORCID">' + orcid_id + '</ID>'
-                #TODO This will remove anything outside of the <ORCID> tag from the affiliation. Need to fix.
+                if len(regex_groups) == 2:
+                    orcid_aff = regex_groups[0] + orcid_aff
                 corrected_affs.append(orcid_aff)
 
+        parsed_metadata['affiliations'] = corrected_affs
+        
+    return parsed_metadata
 
 
     return parsed_metadata
