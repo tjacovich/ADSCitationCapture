@@ -11,7 +11,7 @@ if [ -e alembic.ini ]; then
     fi
 fi
 
-#py.test
+py.test
 
 echo "For interactive access, run in a diferent terminal:"
 echo "  docker exec -it pytest_citation_capture_pipeline bash"
