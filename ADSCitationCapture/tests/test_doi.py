@@ -62,6 +62,16 @@ class TestWorkers(TestBase):
         parsed_metadata = doi.dc.parse(raw_metadata)
         self.assertEqual(parsed_metadata, expected_parsed_metadata)
 
+    def test_parse_metadata_orcid(self):
+        datacite_xml_format_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/datacite_decoded_orcid.xml")
+        with open(datacite_xml_format_filename, "r") as f:
+            raw_metadata = "".join(f.readlines())
+        datacite_parsed_metadata_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/datacite_parsed_metadata_orcid.json")
+        with open(datacite_parsed_metadata_filename, "r") as f:
+            expected_parsed_metadata = json.loads("".join(f.readlines()))
+        parsed_metadata = doi.dc.parse(raw_metadata)
+        self.assertEqual(parsed_metadata, expected_parsed_metadata)
+
     def test_build_bibcode(self):
         expected_bibcode = "2007zndo.....48535G"
         datacite_parsed_metadata_filename = os.path.join(self.app.conf['PROJ_HOME'], "ADSCitationCapture/tests/data/datacite_parsed_metadata_and_authors.json")
