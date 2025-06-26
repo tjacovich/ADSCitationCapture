@@ -7,6 +7,8 @@ from dateutil.tz import tzutc
 from adsmsg import DenormalizedRecord, NonBibRecord, Status, CitationChangeContentType
 from bs4 import BeautifulSoup
 from adsputils import setup_logging
+from ADSCitationCapture.doi import extract_orcids_from_affs
+
 
 # ============================= INITIALIZATION ==================================== #
 # - Use app logger:
@@ -125,7 +127,8 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         'read_count': len(readers),
         'title': [title],
         'publisher': source,
-        'version': version
+        'version': version,
+        'orcid_pub': []
     }
     if version is None: # Concept DOIs may not contain version
         del record_dict['version']
@@ -146,6 +149,13 @@ def build_record(app, citation_change, parsed_metadata, citations, db_versions, 
         record_dict['property'].append('ASSOCIATED')
     if is_release:
         record_dict['property'].append('RELEASE')
+
+    if record_dict["aff"] != ["-" for i in range(0, len(record_dict["aff"]))]:
+        record_dict['orcid_pub'], record_dict['aff'] = extract_orcids_from_affs(record_dict['aff'])
+        if set(record_dict['orcid_pub'])=={'-'}:
+            del record_dict['orcid_pub']
+    else:
+        del record_dict['orcid_pub']
 
     record = DenormalizedRecord(**record_dict)
     nonbib_record = _build_nonbib_record(app, citation_change, record, db_versions, status, readers=readers)

@@ -107,6 +107,23 @@ def fetch_metadata(base_doi_url, base_datacite_url, doi):
 
     return content if record_found else None
 
+def extract_orcids_from_affs(affiliations):
+    orcids = []
+    stripped_affs = []
+    orcid_tag_regex = re.compile('(.*)<ID system="ORCID">[^\s]*([\d]{4}-[\d]{4}-[\d]{4}-[\d]{4})<\/ID>')
+    orcid_tag_regex_legacy = re.compile('(.*)<ORCID>[^\s]*([\d]{4}-[\d]{4}-[\d]{4}-[\d]{4})<\/ORCID>')
+
+    for aff in affiliations:
+        if orcid_tag_regex.match(aff):
+            orcids.append(orcid_tag_regex.match(aff).groups()[-1])
+            stripped_affs.append(orcid_tag_regex.match(aff).groups()[0])
+        elif orcid_tag_regex_legacy.match(aff):
+            orcids.append(orcid_tag_regex_legacy.match(aff).groups()[-1])
+            stripped_affs.append(orcid_tag_regex_legacy.match(aff).groups()[0])
+        else:
+            stripped_affs.append(aff)
+            orcids.append("-")
+    return orcids, stripped_affs
 
 def build_bibcode(metadata, doi_re, bibstem):
     """

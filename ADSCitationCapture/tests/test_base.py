@@ -350,3 +350,30 @@ class TestBase(unittest.TestCase):
                     'associated_works': "",
                     'version': "v2.0.0"    
         }]
+        self.mock_data["10.5281/zenodo.10683242"] = {
+                'raw': '<?xml version="1.0" encoding="UTF-8"?> <resource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://datacite.org/schema/kernel-4" xsi:schemaLocation="http://datacite.org/schema/kernel-4 http://schema.datacite.org/meta/kernel-4/metadata.xsd">   <identifier identifierType="DOI">10.5281/ZENODO.10683242</identifier>   <creators>     <creator>       <creatorName nameType="Personal">Dudouet, Jérémie</creatorName>       <givenName>Jérémie</givenName>       <familyName>Dudouet</familyName>       <nameIdentifier nameIdentifierScheme="ORCID" schemeURI="">0000-0002-9018-6763</nameIdentifier>       <affiliation>CNRS Délégation Rhône-Auvergne</affiliation>     </creator>   </creators>   <titles>     <title>Cubix</title>   </titles>   <publisher>Zenodo</publisher>   <publicationYear>2024</publicationYear>   <resourceType resourceTypeGeneral="Software"/>   <subjects>     <subject>GUI</subject>     <subject>gamma-ray spectroscopy</subject>     <subject>ROOT</subject>     <subject>fits</subject>   </subjects>   <dates>     <date dateType="Issued">2024-02-20</date>     <date dateType="Created">2023</date>     <date dateType="Available" dateInformation="First official release">2024</date>   </dates>   <language>en</language>   <alternateIdentifiers>     <alternateIdentifier alternateIdentifierType="oai">oai:zenodo.org:10683242</alternateIdentifier>   </alternateIdentifiers>   <relatedIdentifiers>     <relatedIdentifier relatedIdentifierType="DOI" relationType="Requires" resourceTypeGeneral="Software">10.5281/zenodo.10255692</relatedIdentifier>     <relatedIdentifier relatedIdentifierType="DOI" relationType="IsVersionOf">10.5281/zenodo.10683241</relatedIdentifier>   </relatedIdentifiers>   <sizes/>   <formats/>   <version>1.0</version>   <rightsList>     <rights rightsURI="http://www.cecill.info/licences/Licence_CeCILL-B_V1-en.html" rightsIdentifier="cecill-b" rightsIdentifierScheme="SPDX" schemeURI="https://spdx.org/licenses/">CeCILL-B Free Software License Agreement</rights>   </rightsList>   <descriptions>     <description descriptionType="Abstract">Cubix is a ROOT based graphical interface providing a large number of tools for gamma-ray spectrocopy analysis like peak fits, calibrations, gamma-gamma analysis... It is linked with the TkN library to provide a direct access to nuclear databases. The source code is available on Gitlab: https://gitlab.in2p3.fr/ip2igamma/cubix/cubix The documentation website : https://cubix.in2p3.fr The Cubix project is governed by the CeCILL-B license under French law and abiding by the rules of distribution of free software. You can use, modify and/or redistribute the software under the terms of the CeCILL-B license as circulated by CEA, CNRS and INRIA at the following link www.cecill.info.</description>   </descriptions> </resource>',
+                'parsed': {
+                    "bibcode": "2023zndo..10683242D", 
+                    "authors": ["Dudouet, J\u00e9r\u00e9mie"], 
+                    "normalized_authors": ["Dudouet, J"], 
+                    "affiliations": ["CNRS D\u00e9l\u00e9gation Rh\u00f4ne-Auvergne <ID system=\"ORCID\">0000-0002-9018-6763</ID>"], 
+                    "title": "Cubix", 
+                    "pubdate": "2023", 
+                    "properties": {"DOI": "10.5281/ZENODO.10683242"}, 
+                    "keywords": ["GUI", "gamma-ray spectroscopy", "ROOT", "fits"], 
+                    "abstract": "Cubix is a ROOT based graphical interface providing a large number of tools for gamma-ray spectrocopy analysis like peak fits, calibrations, gamma-gamma analysis... It is linked with the TkN library to provide a direct access to nuclear databases.\n\nThe source code is available on Gitlab: https://gitlab.in2p3.fr/ip2igamma/cubix/cubix\n\nThe documentation website : https://cubix.in2p3.fr\n\n\n\nThe Cubix project is governed by the CeCILL-B license under French law and abiding by the rules of distribution of free software. You can use, modify and/or redistribute the software under the terms of the CeCILL-B license as circulated by CEA, CNRS and INRIA at the following link www.cecill.info.", 
+                    "references": [], 
+                    "citations": [],
+                    "doctype": "software", 
+                    "version": "1.0", 
+                    "versions": [], 
+                    "version_of": ["10.5281/zenodo.10683241"], 
+                    "forked_from": [], 
+                    "forks": [], 
+                    "described_by": [], 
+                    "description_of": [], 
+                    "source": "Zenodo"},
+                'status': 'REGISTERED',
+                'content': "10.5281/zenodo.248351",
+                'content_type': "DOI",
+        }
