@@ -549,7 +549,7 @@ def task_maintenance_metadata(dois, bibcodes, reparse=False):
         if not reparse: 
             raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
         else:
-            raw_metadata = registered_record['raw_cited_metadata']
+            raw_metadata = db.get_citation_target_metadata(app, registered_record['content'])
         if raw_metadata:
             parsed_metadata = doi.parse_metadata(raw_metadata)
             is_software = parsed_metadata.get('doctype', '').lower() == "software"
