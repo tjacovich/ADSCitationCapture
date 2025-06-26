@@ -521,7 +521,7 @@ def task_maintenance_canonical(dois, bibcodes):
             task_output_results.delay(custom_citation_change, parsed_metadata, existing_citation_bibcodes, db_versions=registered_record.get('associated_works', {"":""}), readers=readers)
    
 @app.task(queue='maintenance_metadata')
-def task_maintenance_metadata(dois, bibcodes, reset=False):
+def task_maintenance_metadata(dois, bibcodes, reparse=False):
     """
     Maintenance operation:
     - Get all the registered citation targets (or only a subset of them if DOIs and/or bibcodes are specified)
@@ -545,8 +545,11 @@ def task_maintenance_metadata(dois, bibcodes, reset=False):
 
         curated_metadata = registered_record.get('curated_metadata', {})
 
-        logger.debug("Curated metadata for {} is {}".format(registered_record['content'], registered_record['curated_metadata']))    
-        raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
+        logger.debug("Curated metadata for {} is {}".format(registered_record['content'], registered_record['curated_metadata']))   
+        if not reparse: 
+            raw_metadata = doi.fetch_metadata(app.conf['DOI_URL'], app.conf['DATACITE_URL'], registered_record['content'])
+        else:
+            raw_metadata = registered_record['raw_cited_metadata']
         if raw_metadata:
             parsed_metadata = doi.parse_metadata(raw_metadata)
             is_software = parsed_metadata.get('doctype', '').lower() == "software"

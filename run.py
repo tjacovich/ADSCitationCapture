@@ -73,7 +73,7 @@ def maintenance_canonical(dois, bibcodes):
     # Send to master updated citation bibcodes in their canonical form
     tasks.task_maintenance_canonical.delay(dois, bibcodes)
 
-def maintenance_metadata(dois, bibcodes):
+def maintenance_metadata(dois, bibcodes, reparse=False):
     """
     Refetch metadata and send updates to master (if any)
     """
@@ -84,7 +84,7 @@ def maintenance_metadata(dois, bibcodes):
         logger.info("MAINTENANCE task: requested a metadata update for '{}' records".format(n_requested))
 
     # Send to master updated metadata
-    tasks.task_maintenance_metadata.delay(dois, bibcodes)
+    tasks.task_maintenance_metadata.delay(dois, bibcodes, reparse=reparse)
 
 def maintenance_resend(dois, bibcodes, broker=False, only_nonbib=False):
     """
@@ -353,6 +353,12 @@ if __name__ == '__main__':
                         default=False,
                         help='Update DOI metadata for the provided list of citation target bibcodes, or if none is provided, for all the current existing citation targets.')
     maintenance_parser.add_argument(
+                        '--reparse',
+                        dest='reparse',
+                        action='store_true',
+                        default=False,
+                        help='Calls maintenance task to reparse existing metadata.')
+    maintenance_parser.add_argument(
                         '--readers',
                         dest='import_readers',
                         action='store_true',
@@ -445,7 +451,7 @@ if __name__ == '__main__':
                 bibcodes = args.bibcodes
             # Process
             if args.metadata:
-                maintenance_metadata(dois, bibcodes)
+                maintenance_metadata(dois, bibcodes, args.reparse)
             elif args.canonical:
                 maintenance_canonical(dois, bibcodes)
             elif args.resend:
